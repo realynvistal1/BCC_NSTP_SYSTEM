@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',()=>bootstrapPortalPage({expectedPortal:'cwts-admin',shellRole:'cwts',moduleSrc:'/assets/js/common/admin-records.js',render:async(content)=>renderAdminRecords('CWTS',content)}));

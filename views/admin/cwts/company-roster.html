@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company List | BCC NSTP</title>
+
+  <link rel="stylesheet" href="/assets/css/global.css">
+  <link rel="stylesheet" href="/assets/css/sidebar.css">
+  <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <link rel="stylesheet" href="/assets/css/forms.css">
+  <link rel="stylesheet" href="/assets/css/tables.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+</head>
+<body
+  data-role="cwts"
+  data-page="company-roster"
+  data-title="Company List"
+  data-subtitle="View CWTS students organized by company."
+>
+  <div class="top-mobile">
+    <button class="btn" id="mobileMenuButton" type="button">☰</button>
+    <strong>BCC NSTP</strong>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="/assets/images/bcclogo-removebg-preview.png"
+          alt="Buenavista Community College logo"
+        >
+        <div>
+          <h2>BCC NSTP</h2>
+          <p>CWTS Administrator</p>
+        </div>
+      </div>
+
+      <div class="nav-wrap">
+        <nav class="nav">
+          <a class="nav-link" href="/admin/cwts/dashboard">Dashboard</a>
+          <a class="nav-link" href="/admin/cwts/enrollment-schedule">Enrollment Schedule</a>
+          <a class="nav-link" href="/admin/cwts/enrollment-list">Enrollment List</a>
+          <a class="nav-link active" href="/admin/cwts/company-roster">Company List</a>
+          <a class="nav-link" href="/admin/cwts/attendance-summary">Attendance Summary</a>
+          <a class="nav-link" href="/admin/cwts/view-records">View Records</a>
+          <a class="nav-link" href="/admin/cwts/grades">Grades</a>
+          <a class="nav-link" href="/admin/cwts/offenses">Attendance Offenses</a>
+          <a class="nav-link" href="/admin/cwts/serial-number">Serial Number</a>
+          <a class="nav-link" href="/admin/cwts/settings">Settings</a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logoutButton" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="intro">
+        <div class="intro-brand-row">
+          <img id="portalEmblem" src="/assets/images/bcclogo-removebg-preview.png" alt="Portal emblem">
+          <div class="intro-copy">
+            <div class="intro-kicker">BCC NSTP Management System</div>
+            <h1 id="pageTitle">Company List</h1>
+            <p id="pageSubtitle">View CWTS students organized by company.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page-specific content is loaded here by cwts-admin/company-roster.js. -->
+      <div id="content"></div>
+
+      <div class="footer-note">
+        Buenavista Community College • ROTC &amp; CWTS NSTP Management System
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="/assets/js/common/api.js"></script>
+  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/common/ui.js"></script>
+  <script src="/assets/js/cwts-admin/company-roster.js"></script>
+</body>
+</html>
