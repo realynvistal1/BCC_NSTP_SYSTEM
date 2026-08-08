@@ -171,6 +171,152 @@
   line-height: 1.4;
   color: #8491a2
 }
+
+body[data-portal-theme="cwts"] .summary-grid {
+  gap: 16px
+}
+
+body[data-portal-theme="cwts"] .summary-tile {
+  border-radius: 20px;
+  border-color: #dfeae4;
+  box-shadow: 0 14px 28px rgba(45, 99, 79, .08);
+  background: linear-gradient(180deg, #ffffff, #fbfefc)
+}
+
+body[data-portal-theme="cwts"] .summary-number {
+  color: #163d2f
+}
+
+body[data-portal-theme="cwts"] .summary-helper {
+  color: #6a8379
+}
+
+body[data-portal-theme="cwts"] .summary-tile.blue .summary-accent {
+  background: linear-gradient(90deg, #5bc0a0, #2d8b6b)
+}
+
+body[data-portal-theme="cwts"] .summary-tile.green .summary-accent {
+  background: linear-gradient(90deg, #34d399, #15803d)
+}
+
+body[data-portal-theme="cwts"] .summary-tile.orange .summary-accent {
+  background: linear-gradient(90deg, #f4b740, #db7b21)
+}
+
+body[data-portal-theme="cwts"] .summary-tile.red .summary-accent {
+  background: linear-gradient(90deg, #ef7b8c, #dc2626)
+}
+
+body[data-portal-theme="cwts"] .section-card {
+  border-radius: 24px;
+  border-color: #dce8e1;
+  box-shadow: 0 16px 34px rgba(45, 99, 79, .07);
+  background: linear-gradient(180deg, #ffffff, #fbfefc)
+}
+
+body[data-portal-theme="cwts"] .section-heading h2 {
+  color: #173f31
+}
+
+body[data-portal-theme="cwts"] .section-heading p {
+  color: #6a8379
+}
+
+body[data-portal-theme="cwts"] .insight-card {
+  background: #f8fcfa;
+  border-color: #dfe9e3
+}
+
+body[data-portal-theme="cwts"] .insight-value {
+  color: #173f31
+}
+
+body[data-portal-theme="cwts"] .insight-card p {
+  color: #6a8379
+}
+
+body[data-portal-theme="cwts"] .progress-track {
+  background: #e3ece7
+}
+
+body[data-portal-theme="cwts"] .progress-meta strong {
+  color: #23483a
+}
+
+body[data-portal-theme="cwts"] .progress-meta span {
+  color: #7a9389
+}
+
+body[data-portal-theme="officer"] .summary-tile {
+  border-radius: 20px;
+  border-color: #dfe5ec;
+  box-shadow: 0 14px 28px rgba(71, 85, 105, .08);
+  background: linear-gradient(180deg, #ffffff, #fbfcfe)
+}
+
+body[data-portal-theme="officer"] .summary-number {
+  color: #1f2f46
+}
+
+body[data-portal-theme="officer"] .summary-helper {
+  color: #72849a
+}
+
+body[data-portal-theme="officer"] .summary-tile.blue .summary-accent {
+  background: linear-gradient(90deg, #7c93b6, #526b90)
+}
+
+body[data-portal-theme="officer"] .summary-tile.green .summary-accent {
+  background: linear-gradient(90deg, #59b79a, #2d8b6b)
+}
+
+body[data-portal-theme="officer"] .summary-tile.orange .summary-accent {
+  background: linear-gradient(90deg, #e8b15c, #d47a2f)
+}
+
+body[data-portal-theme="officer"] .summary-tile.red .summary-accent {
+  background: linear-gradient(90deg, #de8795, #c64f63)
+}
+
+body[data-portal-theme="officer"] .section-card {
+  border-radius: 24px;
+  border-color: #dde4eb;
+  box-shadow: 0 16px 34px rgba(71, 85, 105, .07);
+  background: linear-gradient(180deg, #ffffff, #fbfcfe)
+}
+
+body[data-portal-theme="officer"] .section-heading h2 {
+  color: #243449
+}
+
+body[data-portal-theme="officer"] .section-heading p {
+  color: #75869c
+}
+
+body[data-portal-theme="officer"] .insight-card {
+  background: #f8fafc;
+  border-color: #e2e8ef
+}
+
+body[data-portal-theme="officer"] .insight-value {
+  color: #243449
+}
+
+body[data-portal-theme="officer"] .insight-card p {
+  color: #75869c
+}
+
+body[data-portal-theme="officer"] .progress-track {
+  background: #e6ebf1
+}
+
+body[data-portal-theme="officer"] .progress-meta strong {
+  color: #334155
+}
+
+body[data-portal-theme="officer"] .progress-meta span {
+  color: #8594a8
+}
 .distribution-insights {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

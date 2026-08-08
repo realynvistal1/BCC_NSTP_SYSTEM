@@ -37,6 +37,30 @@ body {
   color: var(--ink);
   min-height: 100vh
 }
+
+body[data-portal-theme="student"] {
+  background:
+    radial-gradient(circle at top right, rgba(163, 210, 255, .18), transparent 24%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fb 100%)
+}
+
+body[data-portal-theme="rotc"] {
+  background:
+    radial-gradient(circle at top right, rgba(114, 146, 186, .16), transparent 22%),
+    linear-gradient(180deg, #f7f9fc 0%, #edf1f7 100%)
+}
+
+body[data-portal-theme="cwts"] {
+  background:
+    radial-gradient(circle at top right, rgba(143, 208, 188, .13), transparent 24%),
+    linear-gradient(180deg, #f6f8fb 0%, #eef2f7 100%)
+}
+
+body[data-portal-theme="officer"] {
+  background:
+    radial-gradient(circle at top right, rgba(178, 188, 206, .14), transparent 24%),
+    linear-gradient(180deg, #f7f8fb 0%, #edf1f5 100%)
+}
 a {
   text-decoration: none;
   color: inherit
@@ -50,131 +74,6 @@ button, input, select, textarea {
 .shell {
   display: flex;
   min-height: 100vh
-}
-.sidebar {
-  width: 288px;
-  background: linear-gradient(180deg, var(--sidebar-start), var(--sidebar-mid) 45%, var(--sidebar-end));
-  color: #fff;
-  padding: 18px 12px 14px;
-  position: fixed;
-  inset: 0 auto 0 0;
-  overflow: auto;
-  z-index: 30;
-  box-shadow: 14px 0 40px rgba(33, 80, 126, .12)
-}
-.sidebar:before {
-  content: "";
-  position: absolute;
-  left: -55px;
-  top: -35px;
-  width: 210px;
-  height: 210px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .13);
-  filter: blur(20px);
-  pointer-events: none
-}
-.brand {
-  position: relative;
-  display: flex;
-  gap: 13px;
-  align-items: center;
-  padding: 5px 10px 20px
-}
-.brand-mark {
-  width: 58px;
-  height: 58px;
-  border-radius: 20px;
-  background: #fff;
-  color: var(--accent-700);
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  font-size: 16px;
-  letter-spacing: .04em;
-  box-shadow: 0 12px 26px rgba(28, 65, 104, .2);
-  border: 1px solid rgba(255, 255, 255, .85)
-}
-.brand h2 {
-  font-size: 14px;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: .2em
-}
-.brand p {
-  font-size: 12px;
-  color: rgba(255, 255, 255, .9);
-  margin: 5px 0 0
-}
-.nav-wrap {
-  background: rgba(255, 255, 255, .11);
-  border: 1px solid rgba(255, 255, 255, .09);
-  border-radius: 28px;
-  padding: 9px;
-  margin: 0 2px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18)
-}
-.nav {
-  display: grid;
-  gap: 5px
-}
-.nav a {
-  padding: 10px 11px;
-  border-radius: 16px;
-  color: #fff;
-  font-size: 13.5px;
-  font-weight: 600;
-  display: flex;
-  gap: 11px;
-  align-items: center;
-  transition: .18s;
-  border: 1px solid transparent
-}
-.nav a:hover {
-  background: rgba(255, 255, 255, .11)
-}
-.nav a.active {
-  background: white;
-  color: #1f2937;
-  border-color: rgba(255, 255, 255, .75);
-  box-shadow: 0 14px 28px rgba(28, 65, 104, .18)
-}
-.nav-icon {
-  width: 37px;
-  height: 37px;
-  min-width: 37px;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, .08)
-}
-.nav a.active .nav-icon {
-  background: var(--accent-soft);
-  color: var(--accent-700)
-}
-.nav-icon svg {
-  width: 18px;
-  height: 18px
-}
-.sidebar-footer {
-  margin-top: 13px;
-  padding: 10px 8px
-}
-.logout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  border: 0;
-  background: transparent;
-  color: #fff;
-  padding: 11px;
-  border-radius: 15px;
-  font-weight: 600;
-  cursor: pointer
-}
-.logout-btn:hover {
-  background: rgba(255, 255, 255, .1)
 }
 .main {
   margin-left: 288px;
@@ -225,6 +124,66 @@ button, input, select, textarea {
   color: #5d7895;
   font-size: 13.5px;
   z-index: 1
+}
+
+body[data-portal-theme="cwts"] .intro {
+  background: linear-gradient(135deg, #d7f2e8 0%, #c6eadc 45%, #b0dfcd 100%);
+  border: 1px solid #56b893;
+  box-shadow: 0 16px 36px rgba(42, 112, 87, .14)
+}
+
+body[data-portal-theme="cwts"] .intro:after {
+  right: -32px;
+  top: -42px;
+  width: 198px;
+  height: 198px;
+  background: rgba(255, 255, 255, .24)
+}
+
+body[data-portal-theme="cwts"] .intro-kicker {
+  color: #2d8b6b
+}
+
+body[data-portal-theme="cwts"] .intro h1 {
+  color: #143f31
+}
+
+body[data-portal-theme="cwts"] .intro p {
+  color: #4c7568
+}
+
+body[data-portal-theme="cwts"] .main {
+  padding-top: 18px
+}
+
+body[data-portal-theme="officer"] .intro {
+  background: linear-gradient(135deg, #d8e0ec 0%, #c7d2e2 45%, #b9c8db 100%);
+  border: 1px solid #7f98bb;
+  box-shadow: 0 16px 36px rgba(71, 85, 105, .14)
+}
+
+body[data-portal-theme="officer"] .intro:after {
+  right: -32px;
+  top: -42px;
+  width: 198px;
+  height: 198px;
+  background: rgba(255, 255, 255, .26)
+}
+
+body[data-portal-theme="officer"] .intro-kicker {
+  color: #56739a
+}
+
+body[data-portal-theme="officer"] .intro h1 {
+  color: #1f2f46
+}
+
+body[data-portal-theme="officer"] .intro p {
+  color: #5f738b
+}
+
+body[data-portal-theme="officer"] .main {
+  padding-top: 18px
 }
 .content-head {
   display: flex;
@@ -489,41 +448,6 @@ button, input, select, textarea {
   border-color: #7db7e7;
   box-shadow: 0 0 0 3px #e5f3ff
 }
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px
-}
-.field {
-  display: grid;
-  gap: 6px
-}
-.field.full {
-  grid-column: 1/-1
-}
-.field label {
-  font-size: 12px;
-  font-weight: 750;
-  color: #5b6e84
-}
-.field input, .field select, .field textarea, td input, td select {
-  width: 100%;
-  border: 1px solid #dce5ef;
-  border-radius: 11px;
-  padding: 10px 11px;
-  background: #fbfdff;
-  outline: none;
-  color: #334155
-}
-.field textarea {
-  min-height: 95px;
-  resize: vertical
-}
-.field input:focus, .field select:focus, .field textarea:focus, td input:focus, td select:focus {
-  border-color: #6aaee5;
-  box-shadow: 0 0 0 3px #e4f2ff;
-  background: #fff
-}
 .table-tools {
   display: flex;
   align-items: center;
@@ -640,23 +564,12 @@ tbody tr:hover {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr))
   }
-  .sidebar {
-    width: 260px
-  }
   .main {
     margin-left: 260px;
     width: calc(100% - 260px)
   }
 }
 @media(max-width: 800px) {
-  .sidebar {
-    transform: translateX(-100%);
-    transition: .22s;
-    width: 280px
-  }
-  .sidebar.open {
-    transform: none
-  }
   .main {
     margin-left: 0;
     width: 100%;
@@ -674,11 +587,8 @@ tbody tr:hover {
     z-index: 20;
     backdrop-filter: blur(8px)
   }
-  .grid, .form-grid {
+  .grid {
     grid-template-columns: 1fr
-  }
-  .field.full {
-    grid-column: auto
   }
   .intro {
     padding: 21px
@@ -700,19 +610,6 @@ tbody tr:hover {
 /* Matched to the original BCC NSTP interface */
 body {
   background: linear-gradient(180deg, #f7faff 0%, #eef5ff 100%)
-}
-.sidebar {
-  background: linear-gradient(180deg, #67a9e8 0%, #5c9fdf 52%, #4f93d3 100%);
-  box-shadow: 10px 0 34px rgba(49, 104, 165, .12)
-}
-.nav a {
-  border: 1px solid transparent
-}
-.nav a.active {
-  background: #fff;
-  color: #2563eb;
-  border-color: rgba(255, 255, 255, .9);
-  box-shadow: 0 7px 24px rgba(37, 99, 235, .12)
 }
 .intro {
   background: linear-gradient(90deg, #f8fbff 0%, #cfe4ff 38%, #93c5fd 100%);
@@ -799,36 +696,6 @@ body {
   }
 }
 /* Shared portal layout helpers */
-.brand-logo {
-  width: 64px;
-  height: 64px;
-  flex: 0 0 64px;
-  border-radius: 22px;
-  background: #fff;
-  padding: 6px;
-  object-fit: contain;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, .22);
-  border: 1px solid rgba(255, 255, 255, .85)
-}
-.brand h2 {
-  letter-spacing: .27em
-}
-.sidebar {
-  padding-top: 20px
-}
-.nav-wrap {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  padding: 2px
-}
-.nav a {
-  padding: 10px 12px;
-  border-radius: 17px
-}
-.nav a.active {
-  box-shadow: 0 16px 32px rgba(15, 23, 42, .16), inset 0 1px 0 rgba(255, 255, 255, .9)
-}
 .portal-emblem {
   width: 42px;
   height: 42px;
