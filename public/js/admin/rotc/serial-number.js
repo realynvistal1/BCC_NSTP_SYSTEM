@@ -1,0 +1,8 @@
+document.addEventListener("DOMContentLoaded", () =>
+  bootstrapPortalPage({
+    expectedPortal: "rotc-admin",
+    shellRole: "rotc",
+    moduleSrc: "/assets/js/common/serial-certificate.js",
+    render: async (content) => renderAdminSerial(content, "rotc"),
+  })
+);
