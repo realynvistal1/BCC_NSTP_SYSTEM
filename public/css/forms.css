@@ -1,1 +1,51 @@
-/* Form-specific overrides can be placed here. Main legacy-compatible styles are in global.css. */
+/* Shared form layout and input styles */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px
+}
+
+.field {
+  display: grid;
+  gap: 6px
+}
+
+.field.full {
+  grid-column: 1/-1
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 750;
+  color: #5b6e84
+}
+
+.field input, .field select, .field textarea, td input, td select {
+  width: 100%;
+  border: 1px solid #dce5ef;
+  border-radius: 11px;
+  padding: 10px 11px;
+  background: #fbfdff;
+  outline: none;
+  color: #334155
+}
+
+.field textarea {
+  min-height: 95px;
+  resize: vertical
+}
+
+.field input:focus, .field select:focus, .field textarea:focus, td input:focus, td select:focus {
+  border-color: #6aaee5;
+  box-shadow: 0 0 0 3px #e4f2ff;
+  background: #fff
+}
+
+@media(max-width: 800px) {
+  .form-grid {
+    grid-template-columns: 1fr
+  }
+  .field.full {
+    grid-column: auto
+  }
+}
