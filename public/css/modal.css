@@ -1,0 +1,255 @@
+/* Modal-specific overrides can be placed here. Main legacy-compatible styles are in global.css. */
+
+/* Enrollment student record modal ---------------------------------------- */
+.old-student-record-modal {
+  width: min(980px, calc(100vw - 32px));
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.student-record-head {
+  flex: 0 0 auto;
+}
+
+.detail-avatar-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.student-record-scroll {
+  overflow-y: auto;
+  padding: 6px 2px 2px;
+}
+
+.student-detail-section {
+  margin: 14px 0;
+  padding: 18px;
+  border: 1px solid #e8eef5;
+  border-radius: 16px;
+  background: #fbfdff;
+}
+
+.student-detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.student-detail-section-head h4 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.student-detail-section-head span {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.student-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 22px;
+}
+
+.old-document-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.old-document-preview {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.old-document-preview.missing {
+  opacity: .72;
+  background: #f8fafc;
+}
+
+.old-document-thumb {
+  flex: 0 0 86px;
+  width: 86px;
+  height: 86px;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  background: #f8fafc;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #64748b;
+  text-decoration: none;
+}
+
+button.old-document-thumb {
+  padding: 0;
+  cursor: pointer;
+}
+
+.old-document-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.old-document-thumb svg {
+  width: 30px;
+  height: 30px;
+}
+
+.old-document-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.old-document-copy strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.old-document-copy > span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 5px;
+}
+
+.document-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.document-link:hover {
+  text-decoration: underline;
+}
+
+.file-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.file-preview-overlay.hidden { display: none; }
+
+.file-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .72);
+  backdrop-filter: blur(4px);
+}
+
+.file-preview-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(850px, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(0,0,0,.28);
+}
+
+.file-preview-head,
+.file-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.file-preview-head button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.file-preview-body {
+  min-height: 260px;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: auto;
+  background: #0f172a;
+}
+
+.file-preview-body img {
+  max-width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.file-preview-actions {
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 0;
+}
+
+.field-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+@media (max-width: 760px) {
+  .student-detail-grid,
+  .old-document-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-detail-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* Attendance offense / warning modal */
+.offense-overlay{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.58);backdrop-filter:blur(3px)}
+.offense-card{width:min(430px,100%);background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(15,23,42,.28);overflow:hidden}
+.offense-accent{height:6px;background:linear-gradient(90deg,#f59e0b,#d97706)}
+.offense-card.blocked .offense-accent{background:linear-gradient(90deg,#dc2626,#991b1b)}
+.offense-body{padding:26px}.offense-icon{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;font-size:30px;background:#fffbeb;color:#d97706;border:2px solid #fde68a}
+.offense-card.blocked .offense-icon{background:#fef2f2;color:#dc2626;border-color:#fecaca}.offense-title{text-align:center;margin:0;color:#1f2937;font-size:20px}.offense-level{display:table;margin:10px auto 18px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:#fffbeb;color:#b45309;border:1px solid #fde68a}.offense-card.blocked .offense-level{background:#fef2f2;color:#b91c1c;border-color:#fecaca}.offense-message{padding:15px;border-radius:14px;background:#fffbeb;border:1px solid #fef3c7;color:#4b5563;font-size:14px;line-height:1.6}.offense-card.blocked .offense-message{background:#fff1f2;border-color:#fecdd3}.offense-actions{padding:0 26px 26px}.offense-actions .btn{width:100%;justify-content:center}

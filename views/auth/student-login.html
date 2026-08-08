@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>
+   Student Portal | BCC NSTP
+  </title>
+  <link href="/assets/css/global.css" rel="stylesheet"/>
+ </head>
+ <body class="auth-page theme-student">
+  <div class="auth-shell">
+   <section class="auth-visual" style="--hero:url('/assets/images/student-login.png')">
+    <div class="auth-visual-overlay">
+    </div>
+    <div class="auth-visual-content">
+     <div class="auth-logo-wrap">
+      <img alt="Buenavista Community College Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
+     </div>
+     <h1>
+      Enrollment &amp; Attendance
+     </h1>
+     <p>
+      Buenavista Community College's ROTC &amp; CWTS management system for enrollment, attendance tracking, grades, and platoon coordination.
+     </p>
+     <div class="partner-logos">
+      <img alt="Organization logo" src="/assets/images/bcclogo-removebg-preview.png"/>
+      <img alt="Organization logo" src="/assets/images/ched-logo.png"/>
+      <img alt="Organization logo" src="/assets/images/cwts-logo.png"/>
+      <img alt="Organization logo" src="/assets/images/nstp-rotc.png"/>
+     </div>
+     <div class="visual-dots">
+      <i>
+      </i>
+      <i>
+      </i>
+      <i>
+      </i>
+     </div>
+    </div>
+   </section>
+   <section class="auth-form-side">
+    <div class="mobile-auth-hero" style="--hero:url('/assets/images/student-login.png')">
+    </div>
+    <div class="auth-card">
+     <div class="mobile-brand">
+      <img alt="BCC Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
+      <strong>
+       Enrollment &amp; Attendance
+      </strong>
+     </div>
+     <div class="auth-heading">
+      <div class="heading-icon">
+       ✦
+      </div>
+      <div>
+       <h2>
+        Welcome back
+       </h2>
+       <p>
+        Sign in to continue to your student dashboard
+       </p>
+      </div>
+     </div>
+     <div class="notice hidden" id="msg">
+     </div>
+     <form class="auth-form" data-portal="student" id="loginForm">
+      <label>
+       Email address
+       <div class="input-shell">
+        <span class="field-icon">
+         ✉
+        </span>
+        <input autocomplete="username" name="email" placeholder="Enter your email" required="" type="email"/>
+       </div>
+      </label>
+      <label>
+       Password
+       <div class="input-shell">
+        <span class="field-icon">
+         ●
+        </span>
+        <input autocomplete="current-password" name="password" placeholder="Enter your password" required="" type="password"/>
+        <button aria-label="Show password" class="password-toggle" type="button">
+         Show
+        </button>
+       </div>
+      </label>
+      <div class="auth-row">
+       <span>
+       </span>
+       <button class="link-button" onclick="showForgotMessage()" type="button">
+        Forgot password?
+       </button>
+      </div>
+      <button class="auth-submit student-submit" type="submit">
+       Sign In
+      </button>
+     </form>
+     <div class="auth-divider">
+      <span>
+       OR
+      </span>
+     </div>
+     <p class="auth-footer-text">
+      Don't have an account?
+      <a href="/enrollment">
+       Enroll Now
+      </a>
+     </p>
+    </div>
+    <p class="auth-copyright">
+     Buenavista Community College &copy; 2026
+    </p>
+   </section>
+  </div>
+  <script src="/assets/js/common/api.js"></script>
+  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/auth/login.js">
+  </script>
+ </body>
+</html>

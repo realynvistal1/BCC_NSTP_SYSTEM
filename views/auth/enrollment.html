@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>
+   NSTP Enrollment | Buenavista Community College
+  </title>
+  <link href="/assets/css/global.css" rel="stylesheet"/>
+ </head>
+ <body class="old-enrollment-page">
+  <main class="old-enrollment-shell">
+   <header class="old-enrollment-header">
+    <div class="old-enrollment-logo-halo">
+     <div class="old-enrollment-logo-card">
+      <img alt="Buenavista Community College Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
+     </div>
+    </div>
+    <h1>
+     NSTP ENROLLMENT
+    </h1>
+    <div class="old-enrollment-title-line">
+    </div>
+   </header>
+   <section aria-label="Enrollment progress" class="old-progress-card">
+    <div class="old-progress-track">
+     <div class="old-progress-item active" data-progress="0">
+      <div class="old-progress-line before">
+      </div>
+      <div class="old-progress-circle">
+       1
+      </div>
+      <div class="old-progress-line after">
+      </div>
+      <span>
+       Academic Info
+      </span>
+     </div>
+     <div class="old-progress-item" data-progress="1">
+      <div class="old-progress-line before">
+      </div>
+      <div class="old-progress-circle">
+       2
+      </div>
+      <div class="old-progress-line after">
+      </div>
+      <span>
+       Personal Info
+      </span>
+     </div>
+     <div class="old-progress-item" data-progress="2">
+      <div class="old-progress-line before">
+      </div>
+      <div class="old-progress-circle">
+       3
+      </div>
+      <div class="old-progress-line after">
+      </div>
+      <span>
+       Physical &amp; Health
+      </span>
+     </div>
+     <div class="old-progress-item" data-progress="3">
+      <div class="old-progress-line before">
+      </div>
+      <div class="old-progress-circle">
+       4
+      </div>
+      <div class="old-progress-line after">
+      </div>
+      <span>
+       Account Setup
+      </span>
+     </div>
+    </div>
+    <p class="old-mobile-step-label" id="mobileStepLabel">
+     Step 1 of 4 - Academic Info
+    </p>
+   </section>
+   <section class="old-enrollment-card" id="enrollWrap">
+    <div class="old-step-heading">
+     <div aria-hidden="true" class="old-step-icon">
+      <svg fill="currentColor" viewbox="0 0 24 24">
+       <path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm-7.59 8.47L12 15.53l7.59-4.06L12 7.41 4.41 11.47ZM6 14.78V18c0 1.66 2.69 3 6 3s6-1.34 6-3v-3.22l-6 3.27-6-3.27Z">
+       </path>
+      </svg>
+     </div>
+     <h2 id="stepHeading">
+      Step 1 - Academic Info
+     </h2>
+    </div>
+    <form id="enrollmentForm" novalidate="">
+     <section class="enroll-step old-step-body" data-step="0">
+      <div class="old-field-stack">
+       <div class="old-field">
+        <label for="course">
+         Course
+        </label>
+        <select id="course" name="course" required="">
+         <option disabled="" selected="" value="">
+          Select Course
+         </option>
+         <option value="BS Criminology">
+          BS Criminology
+         </option>
+         <option value="BS Hospitality Management">
+          BS Hospitality Management
+         </option>
+         <option value="BS Information Technology">
+          BS Information Technology
+         </option>
+         <option value="BS Tourism Management">
+          BS Tourism Management
+         </option>
+         <option disabled="">
+          Education:
+         </option>
+         <option value="BEED - Bachelor of Elementary Education">
+          &nbsp;&nbsp;&nbsp;BEED - Bachelor of Elementary Education
+         </option>
+         <option value="BSED - Major in English">
+          &nbsp;&nbsp;&nbsp;BSED - Major in English
+         </option>
+         <option value="BSED - Major in Mathematics">
+          &nbsp;&nbsp;&nbsp;BSED - Major in Mathematics
+         </option>
+        </select>
+       </div>
+       <div class="old-two-col">
+        <div class="old-field">
+         <label for="year_level">
+          Year Level
+         </label>
+         <select id="year_level" name="year_level" required="">
+          <option disabled="" selected="" value="">
+           Select year level
+          </option>
+          <option>
+           1st Year
+          </option>
+          <option>
+           2nd Year
+          </option>
+          <option>
+           3rd Year
+          </option>
+          <option>
+           4th Year
+          </option>
+         </select>
+        </div>
+        <div class="old-field">
+         <label id="levelLabel">
+          MS Level
+         </label>
+         <div class="old-readonly-select" id="levelDisplay">
+          Select NSTP first
+         </div>
+         <input id="ms_level" name="ms_level" type="hidden" value=""/>
+         <p class="old-field-hint hidden" id="scheduleHint">
+         </p>
+        </div>
+       </div>
+       <div class="old-field old-component-field">
+        <label>
+         NSTP Component
+        </label>
+        <div class="old-program-options">
+         <button class="old-program-btn" data-program="ROTC" type="button">
+          ROTC
+         </button>
+         <button class="old-program-btn" data-program="CWTS" type="button">
+          CWTS
+         </button>
+        </div>
+        <input id="nstp_component" name="nstp_component" required="" type="hidden"/>
+        <p class="old-field-hint old-warning hidden" id="rotcOnlyHint">
+         BS Criminology students are required to enroll in ROTC.
+        </p>
+       </div>
+      </div>
+     </section>
+     <section class="enroll-step old-step-body hidden" data-step="1">
+      <div class="old-field-stack">
+       <div class="old-field">
+        <label>
+         Student ID
+        </label>
+        <input maxlength="11" name="student_id" placeholder="e.g. 000000-0000" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Last Name
+        </label>
+        <input name="last_name" placeholder="Last Name" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         First Name
+        </label>
+        <input name="first_name" placeholder="First Name" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Middle Name
+        </label>
+        <input name="middle_name" placeholder="Middle Name"/>
+       </div>
+       <div class="old-field">
+        <label>
+         Suffix (optional)
+        </label>
+        <input name="suffix" placeholder="e.g. JR., SR., III"/>
+       </div>
+       <div class="old-two-col">
+        <div class="old-field">
+         <label>
+          Contact Number
+         </label>
+         <input maxlength="11" name="contact_number" placeholder="09XXXXXXXXX" required="" type="tel"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Religion
+         </label>
+         <input name="religion" placeholder="Religion" required=""/>
+        </div>
+       </div>
+       <div class="old-two-col">
+        <div class="old-field">
+         <label>
+          Date of Birth
+         </label>
+         <input name="birthdate" required="" type="date"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Gender
+         </label>
+         <select name="sex" required="">
+          <option disabled="" selected="" value="">
+           Select Gender
+          </option>
+          <option>
+           Male
+          </option>
+          <option>
+           Female
+          </option>
+         </select>
+        </div>
+       </div>
+       <div class="old-field">
+        <label>
+         Place of Birth
+        </label>
+        <input name="place_of_birth" placeholder="Place of Birth" required=""/>
+       </div>
+       <div class="old-section-label">
+        Temporary Address:
+       </div>
+       <div class="old-field">
+        <label>
+         No./ St / Vill / Brgy
+        </label>
+        <input name="temporary_barangay" placeholder="No./ St / Vill / Brgy" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Municipality
+        </label>
+        <input name="temporary_municipality" placeholder="Municipality" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Province
+        </label>
+        <input name="temporary_province" placeholder="Province" required=""/>
+       </div>
+       <div class="old-section-label">
+        Permament Address:
+       </div>
+       <div class="old-field">
+        <label>
+         No./ St / Vill / Brgy
+        </label>
+        <input name="permanent_barangay" placeholder="No./ St / Vill / Brgy" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Municipality
+        </label>
+        <input name="permanent_municipality" placeholder="Municipality" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Province
+        </label>
+        <input name="permanent_province" placeholder="Province" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Father Name
+        </label>
+        <input name="father_name" placeholder="Father Name" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Father Occupation
+        </label>
+        <input name="father_occupation" placeholder="Father Occupation" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Mother Name
+        </label>
+        <input name="mother_name" placeholder="Mother Name" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Mother Occupation
+        </label>
+        <input name="mother_occupation" placeholder="Mother Occupation" required=""/>
+       </div>
+       <div class="old-section-label">
+        Person to be notified in case of emergency:
+       </div>
+       <div class="old-field">
+        <label>
+         Name
+        </label>
+        <input name="emergency_contact_name" placeholder="Emergency Contact Name" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Emergency Contact Address
+        </label>
+        <input name="emergency_contact_address" placeholder="Emergency Contact Address" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Emergency Contact Relationship
+        </label>
+        <input name="emergency_contact_relationship" placeholder="Emergency Contact Relationship" required=""/>
+       </div>
+       <div class="old-field">
+        <label>
+         Emergency Contact Contact Number
+        </label>
+        <input maxlength="11" name="emergency_contact_contact_number" placeholder="09XXXXXXXXX" required="" type="tel"/>
+       </div>
+       <div class="old-radio-block hidden" id="rotcWillingness">
+        <p>
+         Select one if applicable:
+        </p>
+        <label>
+         <input name="willingness_option" type="radio" value="advance"/>
+         <span>
+          Are you willing to take the advance course?
+         </span>
+        </label>
+        <label id="medicsOption">
+         <input name="willingness_option" type="radio" value="medics"/>
+         <span>
+          Are you willing to be Medics?
+         </span>
+        </label>
+        <label id="mpOption">
+         <input name="willingness_option" type="radio" value="military_police"/>
+         <span>
+          Are you willing to be Military Police?
+         </span>
+        </label>
+        <label>
+         <input checked="" name="willingness_option" type="radio" value="none"/>
+         <span>
+          None
+         </span>
+        </label>
+       </div>
+      </div>
+     </section>
+     <section class="enroll-step old-step-body hidden" data-step="2">
+      <div class="old-field-stack">
+       <div class="old-three-col">
+        <div class="old-field">
+         <label>
+          Height (ft)
+         </label>
+         <div class="old-height-row">
+          <select id="heightFeet" required="">
+           <option disabled="" selected="" value="">
+            Feet
+           </option>
+           <option value="3">
+            3 ft
+           </option>
+           <option value="4">
+            4 ft
+           </option>
+           <option value="5">
+            5 ft
+           </option>
+           <option value="6">
+            6 ft
+           </option>
+           <option value="7">
+            7 ft
+           </option>
+          </select>
+          <select id="heightInches" required="">
+           <option disabled="" selected="" value="">
+            Inches
+           </option>
+           <option value="0">
+            0 in
+           </option>
+           <option value="1">
+            1 in
+           </option>
+           <option value="2">
+            2 in
+           </option>
+           <option value="3">
+            3 in
+           </option>
+           <option value="4">
+            4 in
+           </option>
+           <option value="5">
+            5 in
+           </option>
+           <option value="6">
+            6 in
+           </option>
+           <option value="7">
+            7 in
+           </option>
+           <option value="8">
+            8 in
+           </option>
+           <option value="9">
+            9 in
+           </option>
+           <option value="10">
+            10 in
+           </option>
+           <option value="11">
+            11 in
+           </option>
+          </select>
+         </div>
+         <input id="height" name="height" type="hidden"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Weight (kg)
+         </label>
+         <input name="weight" placeholder="e.g. 60" required="" type="number"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Blood Type
+         </label>
+         <select name="blood_type" required="">
+          <option disabled="" selected="" value="">
+           Select blood type
+          </option>
+          <option>
+           A+
+          </option>
+          <option>
+           A-
+          </option>
+          <option>
+           B+
+          </option>
+          <option>
+           B-
+          </option>
+          <option>
+           AB+
+          </option>
+          <option>
+           AB-
+          </option>
+          <option>
+           O+
+          </option>
+          <option>
+           O-
+          </option>
+          <option>
+           N/A
+          </option>
+         </select>
+        </div>
+       </div>
+       <div class="old-field">
+        <label>
+         Complexion
+        </label>
+        <input name="complexion" placeholder="e.g. Brown, Fair, etc." required=""/>
+       </div>
+       <div class="old-medical-question" id="medicalQuestion">
+        <label class="old-main-label">
+         Do you have any medical condition?
+        </label>
+        <div class="old-inline-radios">
+         <label>
+          <input name="has_medical_condition_choice" type="radio" value="yes"/>
+          Yes
+         </label>
+         <label>
+          <input name="has_medical_condition_choice" type="radio" value="no"/>
+          No
+         </label>
+        </div>
+       </div>
+       <input name="has_medical_condition" type="hidden" value="0"/>
+       <div class="old-field old-indent hidden" id="medicalConditionName">
+        <label>
+         Medical Condition Name
+        </label>
+        <input name="medical_condition" placeholder="e.g. Asthma, Hypertension"/>
+       </div>
+       <div class="old-upload-area hidden" id="uploadArea">
+        <p class="old-main-label" id="uploadIntro">
+        </p>
+        <div class="old-field">
+         <label>
+          Medical Certificate
+         </label>
+         <label class="old-dropzone">
+          <svg viewbox="0 0 24 24">
+           <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
+           </path>
+          </svg>
+          <span id="medicalCertificateLabel">
+           Click to attach certificate
+          </span>
+          <input accept=".pdf,image/*" name="medical_certificate_file" required="" type="file"/>
+         </label>
+        </div>
+        <div class="old-field hidden" id="xrayGroup">
+         <label>
+          X-ray
+         </label>
+         <label class="old-dropzone">
+          <svg viewbox="0 0 24 24">
+           <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
+           </path>
+          </svg>
+          <span id="xrayLabel">
+           Click to attach X-ray
+          </span>
+          <input accept=".pdf,image/*" name="xray_file_input" type="file"/>
+         </label>
+        </div>
+       </div>
+      </div>
+     </section>
+     <section class="enroll-step old-step-body hidden" data-step="3">
+      <div class="old-field-stack">
+       <div class="old-two-col">
+        <div class="old-field">
+         <label>
+          Email
+         </label>
+         <input name="email" placeholder="you@example.com" required="" type="email"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Username
+         </label>
+         <input name="username" placeholder="e.g. juan.delacruz" required=""/>
+        </div>
+       </div>
+       <div class="old-two-col">
+        <div class="old-field">
+         <label>
+          Password
+         </label>
+         <input minlength="6" name="password" placeholder="Min. 6 characters" required="" type="password"/>
+        </div>
+        <div class="old-field">
+         <label>
+          Confirm Password
+         </label>
+         <input minlength="6" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
+        </div>
+       </div>
+       <div class="old-field">
+        <label>
+         2x2 Photo
+        </label>
+        <div class="old-photo-upload-row">
+         <label class="old-dropzone old-photo-dropzone">
+          <svg viewbox="0 0 24 24">
+           <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2 1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+           </path>
+          </svg>
+          <span id="photoLabel">
+           Click to upload photo
+          </span>
+          <input accept="image/*" name="photo_file" required="" type="file"/>
+         </label>
+         <img alt="Photo preview" class="old-photo-preview hidden" id="photoPreview"/>
+        </div>
+       </div>
+       <div class="old-field">
+        <label>
+         Upload COR highlight NSTP you enrolled in
+        </label>
+        <label class="old-dropzone">
+         <svg viewbox="0 0 24 24">
+          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+          </path>
+         </svg>
+         <span id="corLabel">
+          Click to upload COR
+         </span>
+         <input accept=".pdf,image/*" name="cor_file_input" required="" type="file"/>
+        </label>
+       </div>
+      </div>
+     </section>
+    </form>
+    <div class="old-form-error hidden" id="enrollMsg">
+    </div>
+    <div class="old-enrollment-actions">
+     <button class="old-nav-btn old-back-btn hidden" id="backBtn" type="button">
+      Back
+     </button>
+     <button class="old-nav-btn old-next-btn" id="nextBtn" type="button">
+      Next
+     </button>
+    </div>
+   </section>
+   <p class="old-signin-note">
+    Already have an account?
+    <a href="/student/login">
+     Sign in
+    </a>
+   </p>
+   <footer class="old-enrollment-footer">
+    &copy; 2026 Buenavista Community College. All rights reserved.
+   </footer>
+  </main>
+  <script src="/assets/js/common/api.js"></script>
+  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/auth/enrollment.js">
+  </script>
+ </body>
+</html>
