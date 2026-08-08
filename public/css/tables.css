@@ -1,2 +1,32 @@
 /* Table-specific overrides can be placed here. Main legacy-compatible styles are in global.css. */
-.offense-filter-row{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-bottom:1px solid #e5e7eb}.offense-filter-row input{min-width:260px;flex:1}.offense-row-alert{background:#fff5f5}.summary-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.stat-card.warning .value{color:#b45309}.stat-card.danger .value{color:#b91c1c}@media(max-width:700px){.summary-grid.three{grid-template-columns:1fr}.offense-filter-row>*{width:100%}}
+.offense-filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb
+}
+.offense-filter-row input {
+  min-width: 260px;
+  flex: 1
+}
+.offense-row-alert {
+  background: #fff5f5
+}
+.summary-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+.stat-card.warning .value {
+  color: #b45309
+}
+.stat-card.danger .value {
+  color: #b91c1c
+}
+@media(max-width: 700px) {
+  .summary-grid.three {
+    grid-template-columns: 1fr
+  }
+  .offense-filter-row>* {
+    width: 100%
+  }
+}
