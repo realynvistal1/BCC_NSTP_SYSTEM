@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',()=>bootstrapPortalPage({expectedPortal:'rotc-admin',shellRole:'rotc',moduleSrc:'/assets/js/common/admin-grades.js',render:async(content)=>renderAdminGrades('ROTC',content)}));
