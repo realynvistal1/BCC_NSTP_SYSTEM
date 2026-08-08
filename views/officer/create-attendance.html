@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Attendance | BCC NSTP</title>
+  <link rel="stylesheet" href="/assets/css/global.css">
+  <link rel="stylesheet" href="/assets/css/sidebar.css">
+  <link rel="stylesheet" href="/assets/css/forms.css">
+  <link rel="stylesheet" href="/assets/css/attendance.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body data-role="officer" data-page="create-attendance" data-title="Create Attendance" data-subtitle="Set up attendance sessions for ROTC, CWTS, and Advance Course.">
+  <div class="top-mobile">
+    <button class="btn" id="mobileMenuButton" type="button">☰</button>
+    <strong>BCC NSTP</strong>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img class="brand-logo" src="/assets/images/bcclogo-removebg-preview.png" alt="BCC logo">
+        <div><h2>BCC NSTP</h2><p>NSTP Director</p></div>
+      </div>
+      <div class="nav-wrap">
+        <nav class="nav">
+          <a class="nav-link" href="/officer/dashboard">Dashboard</a>
+          <a class="nav-link" href="/officer/rotc/battalion-1">ROTC Battalion 1</a>
+          <a class="nav-link" href="/officer/rotc/battalion-2">ROTC Battalion 2</a>
+          <a class="nav-link" href="/officer/rotc/advance-course">Advance Course</a>
+          <a class="nav-link" href="/officer/cwts">CWTS</a>
+          <a class="nav-link active" href="/officer/create-attendance">Create Attendance</a>
+          <a class="nav-link" href="/officer/view-attendance">View Attendance</a>
+          <a class="nav-link" href="/officer/view-records">View Student Records</a>
+          <a class="nav-link" href="/officer/settings">Settings</a>
+        </nav>
+      </div>
+      <div class="sidebar-footer"><button class="logout-btn" id="logoutButton" type="button">Logout</button></div>
+    </aside>
+
+    <main class="main">
+      <section class="intro">
+        <div class="intro-brand-row">
+          <img id="portalEmblem" src="/assets/images/ched-logo.png" alt="CHED logo">
+          <div class="intro-copy">
+            <div class="intro-kicker">BCC NSTP Management System</div>
+            <h1 id="pageTitle">Create Attendance</h1>
+            <p id="pageSubtitle">Set up attendance sessions for ROTC, CWTS, and Advance Course.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="attendance-create-layout">
+        <section class="attendance-setup-card">
+          <div class="attendance-step">
+            <div class="attendance-step-head"><span class="step-number">1</span><div><h2>Select Program</h2><p>Select the attendance group for this session.</p></div></div>
+            <select id="attendanceProgram" class="attendance-select">
+              <option value="">Select a program...</option>
+              <option value="ROTC">ROTC — Reserve Officers' Training Corps</option>
+              <option value="CWTS">CWTS — Civic Welfare Training Service</option>
+              <option value="ADVANCE_COURSE">Advance Course — ROTC Advanced Training</option>
+            </select>
+            <div id="cycleInfo" class="attendance-inline-info hidden"></div>
+          </div>
+
+          <div class="attendance-step locked" id="miStep">
+            <div class="attendance-step-head"><span class="step-number">2</span><div><h2 id="miStepTitle">Select MI</h2><p>Sessions must be created in sequence from 1 to 15.</p></div></div>
+            <div id="miProgress" class="mi-grid"></div>
+            <div class="mi-legend">
+              <span><i class="legend-dot complete"></i> Complete</span>
+              <span><i class="legend-dot partial"></i> IN created</span>
+              <span><i class="legend-dot current"></i> Available</span>
+              <span><i class="legend-dot locked"></i> Locked</span>
+            </div>
+          </div>
+
+          <div class="attendance-step locked" id="typeStep">
+            <div class="attendance-step-head"><span class="step-number">3</span><div><h2>Attendance Type</h2><p>IN must be completed before OUT becomes available.</p></div></div>
+            <div class="attendance-type-grid">
+              <button class="attendance-type-btn" id="timeInBtn" type="button"><strong>Time In</strong><span>Student arrival attendance</span></button>
+              <button class="attendance-type-btn" id="timeOutBtn" type="button"><strong>Time Out</strong><span>Student dismissal attendance</span></button>
+            </div>
+          </div>
+
+          <div class="attendance-step locked" id="scheduleStep">
+            <div class="attendance-step-head"><span class="step-number">4</span><div><h2>Set Schedule</h2><p>The first period is Present; the next 15 minutes are Late.</p></div></div>
+            <div class="attendance-form-grid">
+              <label class="form-field"><span>Opening Date & Time</span><input id="attendanceOpenDate" type="datetime-local"></label>
+              <label class="form-field"><span>On-time Closing Time</span><input id="attendanceCloseDate" type="datetime-local"></label>
+            </div>
+            <div class="late-rule-box"><strong>15-minute Late Window</strong><span>After the closing time, students can still mark for 15 minutes and will automatically be recorded as Late. After that, unmarked eligible students become Absent.</span></div>
+          </div>
+
+          <div class="attendance-step locked" id="locationStep">
+            <div class="attendance-step-head"><span class="step-number">5</span><div><h2>Attendance Location</h2><p>The old system uses a fixed 100-meter geolocation radius.</p></div></div>
+            <div class="location-action-row">
+              <button class="btn primary" id="captureDirectorLocation" type="button">Use My Current Location</button>
+              <span id="locationStatus" class="location-status">No location captured yet.</span>
+            </div>
+            <div id="attendanceMap" class="attendance-map"></div>
+            <div class="location-coordinates">
+              <label><span>Latitude</span><input id="attendanceLatitude" type="number" step="any" placeholder="Latitude"></label>
+              <label><span>Longitude</span><input id="attendanceLongitude" type="number" step="any" placeholder="Longitude"></label>
+              <label><span>Radius</span><input value="100 meters" disabled></label>
+            </div>
+          </div>
+
+          <div class="attendance-submit-row">
+            <div id="attendanceValidation" class="attendance-validation">Complete the steps above to activate attendance.</div>
+            <button class="btn primary attendance-create-btn" id="createAttendanceButton" type="button" disabled>Save / Activate Attendance</button>
+          </div>
+        </section>
+
+        <aside class="attendance-side-panel">
+          <div class="attendance-side-card">
+            <h3>Attendance Flow</h3>
+            <ol class="flow-mini-list">
+              <li>Choose ROTC, CWTS, or Advance Course.</li>
+              <li>Create MI/CS 1 IN first.</li>
+              <li>Wait until IN and its 15-minute late window close.</li>
+              <li>Create the matching OUT session.</li>
+              <li>Continue until MI/CS 15.</li>
+            </ol>
+          </div>
+          <div class="attendance-side-card" id="progressSummary"><h3>Current Progress</h3><p>Select a program to see its attendance cycle.</p></div>
+        </aside>
+      </div>
+
+      <div class="footer-note">Buenavista Community College • ROTC &amp; CWTS NSTP Management System</div>
+    </main>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/assets/js/common/api.js"></script>
+  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/common/ui.js"></script>
+  <script src="/assets/js/officer/create-attendance.js"></script>
+</body>
+</html>

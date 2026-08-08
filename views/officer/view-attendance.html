@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>View Attendance | BCC NSTP</title>
+  <link rel="stylesheet" href="/assets/css/global.css">
+  <link rel="stylesheet" href="/assets/css/sidebar.css">
+  <link rel="stylesheet" href="/assets/css/forms.css">
+  <link rel="stylesheet" href="/assets/css/tables.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+  <link rel="stylesheet" href="/assets/css/attendance.css">
+</head>
+<body data-role="officer" data-page="view-attendance" data-title="View Attendance" data-subtitle="Monitor ROTC, CWTS, and Advance Course attendance sessions.">
+  <div class="top-mobile"><button class="btn" id="mobileMenuButton" type="button">☰</button><strong>BCC NSTP</strong></div>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><img class="brand-logo" src="/assets/images/bcclogo-removebg-preview.png" alt="BCC logo"><div><h2>BCC NSTP</h2><p>NSTP Director</p></div></div>
+      <div class="nav-wrap"><nav class="nav">
+        <a class="nav-link" href="/officer/dashboard">Dashboard</a>
+        <a class="nav-link" href="/officer/rotc/battalion-1">ROTC Battalion 1</a>
+        <a class="nav-link" href="/officer/rotc/battalion-2">ROTC Battalion 2</a>
+        <a class="nav-link" href="/officer/rotc/advance-course">Advance Course</a>
+        <a class="nav-link" href="/officer/cwts">CWTS</a>
+        <a class="nav-link" href="/officer/create-attendance">Create Attendance</a>
+        <a class="nav-link active" href="/officer/view-attendance">View Attendance</a>
+        <a class="nav-link" href="/officer/view-records">View Student Records</a>
+        <a class="nav-link" href="/officer/settings">Settings</a>
+      </nav></div>
+      <div class="sidebar-footer"><button class="logout-btn" id="logoutButton" type="button">Logout</button></div>
+    </aside>
+    <main class="main">
+      <section class="intro"><div class="intro-brand-row"><img id="portalEmblem" src="/assets/images/ched-logo.png" alt="CHED logo"><div class="intro-copy"><div class="intro-kicker">BCC NSTP Management System</div><h1 id="pageTitle">View Attendance</h1><p id="pageSubtitle">Monitor ROTC, CWTS, and Advance Course attendance sessions.</p></div></div></section>
+
+      <section class="attendance-toolbar-card">
+        <div class="attendance-toolbar-grid">
+          <label><span>Program</span><select id="viewProgram"><option value="ROTC">ROTC</option><option value="CWTS">CWTS</option><option value="ADVANCE_COURSE">Advance Course</option></select></label>
+          <label><span>School Year / Level</span><select id="viewCycle"><option value="">All cycles</option></select></label>
+          <label><span>MI / CS</span><select id="viewMI"><option value="">All</option></select></label>
+          <label><span>IN / OUT</span><select id="viewType"><option value="">Both</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
+        </div>
+      </section>
+
+      <div id="officerSessionList" class="attendance-session-list"></div>
+      <div class="footer-note">Buenavista Community College • ROTC &amp; CWTS NSTP Management System</div>
+    </main>
+  </div>
+
+  <div class="attendance-modal hidden" id="attendanceRecordsModal">
+    <div class="attendance-modal-backdrop"></div>
+    <div class="attendance-modal-card">
+      <div class="attendance-modal-head"><div><span class="modal-eyebrow">Attendance Monitoring</span><h2 id="recordsModalTitle">Student Records</h2><p id="recordsModalSubtitle"></p></div><button type="button" id="closeAttendanceRecords">×</button></div>
+      <div id="recordsModalBody"></div>
+    </div>
+  </div>
+  <div id="toast" class="hidden"></div>
+  <script src="/assets/js/common/api.js"></script><script src="/assets/js/common/layout.js"></script><script src="/assets/js/common/ui.js"></script><script src="/assets/js/officer/view-attendance.js"></script>
+</body>
+</html>
