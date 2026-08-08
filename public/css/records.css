@@ -1,1 +1,344 @@
-.records-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.record-search{position:relative;flex:1;min-width:260px}.record-search span{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;color:#94a3b8}.record-search svg{width:16px;height:16px}.record-search input,.records-tools select{height:40px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:0 11px;font-size:11px;outline:none}.record-search input{width:100%;padding-left:36px}.records-tools select{min-width:125px}.records-tools .btn svg{width:15px;height:15px}.record-list-panel{padding:0;overflow:hidden}.record-modal-card{max-width:760px;max-height:92vh;overflow:hidden}.record-modal-head{padding:17px 20px;border-bottom:1px solid #e9eef4;background:linear-gradient(135deg,#eff6ff,#f5f3ff);display:flex;align-items:flex-start;justify-content:space-between}.record-modal-head span{display:block;color:#4f7fad;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}.record-modal-head h2{font-size:17px;margin:3px 0;color:#273449}.record-modal-head p{font-size:10px;color:#8997a8;margin:0}.record-modal-scroll{padding:18px;display:grid;gap:18px;max-height:70vh;overflow:auto}.record-section h3{margin:0 0 9px;font-size:12px;color:#475569}.record-info-grid,.record-grade-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:#f8fafc;border-radius:13px;padding:12px}.record-grade-row{grid-template-columns:repeat(4,minmax(0,1fr))}.record-info-item{min-width:0}.record-info-item small{display:block;color:#9aa6b5;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:800}.record-info-item strong{display:block;margin-top:3px;color:#3e4b5f;font-size:10.5px;word-break:break-word}.record-attendance-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}.record-attendance-stats>div{border-radius:12px;padding:12px;text-align:center;border:1px solid}.record-attendance-stats strong{display:block;font-size:21px}.record-attendance-stats span{font-size:9px;font-weight:800}.record-attendance-stats .present{background:#ecfdf5;border-color:#d1fae5;color:#047857}.record-attendance-stats .late{background:#fffbeb;border-color:#fde68a;color:#b45309}.record-attendance-stats .absent{background:#fff1f2;border-color:#fecdd3;color:#be123c}.withdrawal-history{border:1px solid #edf1f5;border-radius:12px;padding:11px;margin-top:8px}.withdrawal-history>div{display:flex;justify-content:space-between;gap:10px;align-items:center}.withdrawal-history p{margin:7px 0 0;font-size:10px;color:#64748b}.withdrawal-history small{color:#94a3b8}.withdraw-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.withdraw-tabs button{border:1px solid #e4e9f0;background:#fff;border-radius:10px;padding:8px 13px;font-size:10.5px;font-weight:800;color:#64748b;cursor:pointer}.withdraw-tabs button.active{background:#4f46e5;color:#fff;border-color:#4f46e5}.withdraw-tabs button b{margin-left:5px;background:#facc15;color:#713f12;padding:2px 6px;border-radius:999px;font-size:9px}.withdraw-list{display:grid;gap:12px}.withdraw-card{background:#fff;border:1px solid #edf1f5;border-radius:16px;padding:16px;box-shadow:0 5px 18px rgba(15,23,42,.04)}.withdraw-card-top{display:flex;align-items:flex-start;gap:11px}.withdraw-avatar{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:900;flex:none}.withdraw-student{flex:1}.withdraw-student h3{font-size:12px;color:#334155;margin:1px 0}.withdraw-student p,.withdraw-student small{font-size:9.5px;color:#94a3b8;margin:2px 0}.withdraw-reason{margin:12px 0;padding:11px;background:#f8fafc;border-radius:11px}.withdraw-reason small{font-size:8px;text-transform:uppercase;color:#9aa6b5;font-weight:850}.withdraw-reason p{font-size:10.5px;color:#475569;margin:5px 0 0}.advance-withdraw-box{margin-top:18px;text-align:left;padding:14px;border:1px solid #fde68a;background:#fffbeb;border-radius:13px}.advance-withdraw-box h3{margin:0 0 5px;font-size:12px;color:#92400e}.advance-withdraw-box p{font-size:10.5px;color:#78634a}.withdraw-status-row{display:flex;align-items:center;gap:8px;margin:8px 0}.withdraw-status-row span:last-child{font-size:9px;color:#a16207}.small-modal{max-width:440px}.modal-form-body{padding:16px}.modal-form-body textarea{width:100%;margin-top:6px;border:1px solid #e1e7ef;border-radius:10px;padding:10px;resize:vertical}.notice.success{background:#ecfdf5;border-color:#d1fae5;color:#047857}@media(max-width:640px){.record-info-grid,.record-grade-row{grid-template-columns:1fr 1fr}.records-tools>*{width:100%}.record-search{min-width:100%}.record-modal-card{max-width:96vw}}
+.records-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px
+}
+.record-search {
+  position: relative;
+  flex: 1;
+  min-width: 260px
+}
+.record-search span {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  color: #94a3b8
+}
+.record-search svg {
+  width: 16px;
+  height: 16px
+}
+.record-search input, .records-tools select {
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 11px;
+  font-size: 11px;
+  outline: none
+}
+.record-search input {
+  width: 100%;
+  padding-left: 36px
+}
+.records-tools select {
+  min-width: 125px
+}
+.records-tools .btn svg {
+  width: 15px;
+  height: 15px
+}
+.record-list-panel {
+  padding: 0;
+  overflow: hidden
+}
+.record-modal-card {
+  max-width: 760px;
+  max-height: 92vh;
+  overflow: hidden
+}
+.record-modal-head {
+  padding: 17px 20px;
+  border-bottom: 1px solid #e9eef4;
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between
+}
+.record-modal-head span {
+  display: block;
+  color: #4f7fad;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .08em
+}
+.record-modal-head h2 {
+  font-size: 17px;
+  margin: 3px 0;
+  color: #273449
+}
+.record-modal-head p {
+  font-size: 10px;
+  color: #8997a8;
+  margin: 0
+}
+.record-modal-scroll {
+  padding: 18px;
+  display: grid;
+  gap: 18px;
+  max-height: 70vh;
+  overflow: auto
+}
+.record-section h3 {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: #475569
+}
+.record-info-grid, .record-grade-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 13px;
+  padding: 12px
+}
+.record-grade-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr))
+}
+.record-info-item {
+  min-width: 0
+}
+.record-info-item small {
+  display: block;
+  color: #9aa6b5;
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 800
+}
+.record-info-item strong {
+  display: block;
+  margin-top: 3px;
+  color: #3e4b5f;
+  font-size: 10.5px;
+  word-break: break-word
+}
+.record-attendance-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 10px
+}
+.record-attendance-stats>div {
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid
+}
+.record-attendance-stats strong {
+  display: block;
+  font-size: 21px
+}
+.record-attendance-stats span {
+  font-size: 9px;
+  font-weight: 800
+}
+.record-attendance-stats .present {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+  color: #047857
+}
+.record-attendance-stats .late {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309
+}
+.record-attendance-stats .absent {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c
+}
+.withdrawal-history {
+  border: 1px solid #edf1f5;
+  border-radius: 12px;
+  padding: 11px;
+  margin-top: 8px
+}
+.withdrawal-history>div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center
+}
+.withdrawal-history p {
+  margin: 7px 0 0;
+  font-size: 10px;
+  color: #64748b
+}
+.withdrawal-history small {
+  color: #94a3b8
+}
+.withdraw-tabs {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 14px
+}
+.withdraw-tabs button {
+  border: 1px solid #e4e9f0;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer
+}
+.withdraw-tabs button.active {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5
+}
+.withdraw-tabs button b {
+  margin-left: 5px;
+  background: #facc15;
+  color: #713f12;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px
+}
+.withdraw-list {
+  display: grid;
+  gap: 12px
+}
+.withdraw-card {
+  background: #fff;
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, .04)
+}
+.withdraw-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px
+}
+.withdraw-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+  flex: none
+}
+.withdraw-student {
+  flex: 1
+}
+.withdraw-student h3 {
+  font-size: 12px;
+  color: #334155;
+  margin: 1px 0
+}
+.withdraw-student p, .withdraw-student small {
+  font-size: 9.5px;
+  color: #94a3b8;
+  margin: 2px 0
+}
+.withdraw-reason {
+  margin: 12px 0;
+  padding: 11px;
+  background: #f8fafc;
+  border-radius: 11px
+}
+.withdraw-reason small {
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #9aa6b5;
+  font-weight: 850
+}
+.withdraw-reason p {
+  font-size: 10.5px;
+  color: #475569;
+  margin: 5px 0 0
+}
+.advance-withdraw-box {
+  margin-top: 18px;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 13px
+}
+.advance-withdraw-box h3 {
+  margin: 0 0 5px;
+  font-size: 12px;
+  color: #92400e
+}
+.advance-withdraw-box p {
+  font-size: 10.5px;
+  color: #78634a
+}
+.withdraw-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0
+}
+.withdraw-status-row span:last-child {
+  font-size: 9px;
+  color: #a16207
+}
+.small-modal {
+  max-width: 440px
+}
+.modal-form-body {
+  padding: 16px
+}
+.modal-form-body textarea {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid #e1e7ef;
+  border-radius: 10px;
+  padding: 10px;
+  resize: vertical
+}
+.notice.success {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+  color: #047857
+}
+.hero-assignment {
+  padding: 28px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #eef8ff, #e3f2ff);
+  border: 1px solid #d3e9fa;
+  text-align: center
+}
+.hero-assignment .assignment-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: #fff;
+  color: #4a92d2;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 13px;
+  box-shadow: 0 10px 24px rgba(55, 121, 178, .12)
+}
+.hero-assignment h2 {
+  font-size: 23px;
+  margin: 0 0 7px
+}
+@media(max-width: 640px) {
+  .record-info-grid, .record-grade-row {
+    grid-template-columns: 1fr 1fr
+  }
+  .records-tools>* {
+    width: 100%
+  }
+  .record-search {
+    min-width: 100%
+  }
+  .record-modal-card {
+    max-width: 96vw
+  }
+}
