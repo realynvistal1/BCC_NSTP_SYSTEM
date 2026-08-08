@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>bootstrapPortalPage({expectedPortal:"student",shellRole:"student",moduleSrc:"/assets/js/common/serial-certificate.js",render:async(content)=>renderStudentSerial(content)}));

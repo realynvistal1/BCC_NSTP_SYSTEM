@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Platoon | BCC NSTP</title>
+
+  <link rel="stylesheet" href="/assets/css/global.css">
+  <link rel="stylesheet" href="/assets/css/sidebar.css">
+  <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <link rel="stylesheet" href="/assets/css/forms.css">
+  <link rel="stylesheet" href="/assets/css/tables.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+  <link rel="stylesheet" href="/assets/css/records.css">
+</head>
+<body
+  data-role="student"
+  data-page="assigned-platoon"
+  data-title="My Platoon"
+  data-subtitle="View your ROTC platoon, special unit, or CWTS company assignment."
+>
+  <div class="top-mobile">
+    <button class="btn" id="mobileMenuButton" type="button">☰</button>
+    <strong>BCC NSTP</strong>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="/assets/images/bcclogo-removebg-preview.png"
+          alt="Buenavista Community College logo"
+        >
+        <div>
+          <h2>BCC NSTP</h2>
+          <p>Student Portal</p>
+        </div>
+      </div>
+
+      <div class="nav-wrap">
+        <nav class="nav">
+          <a class="nav-link" href="/student/dashboard">Dashboard</a>
+          <a class="nav-link" href="/student/enrollment-status">Enrollment Status</a>
+          <a class="nav-link" href="/student/re-enrollment">Apply Enrollment</a>
+          <a class="nav-link active" href="/student/assigned-platoon">My Platoon</a>
+          <a class="nav-link" href="/student/attendance">Attendance</a>
+          <a class="nav-link" href="/student/grades">Grades</a>
+          <a class="nav-link" href="/student/serial-number">Serial Number</a>
+          <a class="nav-link" href="/student/settings">Settings</a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logoutButton" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="intro">
+        <div class="intro-brand-row">
+          <img id="portalEmblem" src="/assets/images/bcclogo-removebg-preview.png" alt="Portal emblem">
+          <div class="intro-copy">
+            <div class="intro-kicker">BCC NSTP Management System</div>
+            <h1 id="pageTitle">My Platoon</h1>
+            <p id="pageSubtitle">View your ROTC platoon, special unit, or CWTS company assignment.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page-specific content is loaded here by student/assigned-platoon.js. -->
+      <div id="content"></div>
+
+      <div class="footer-note">
+        Buenavista Community College • ROTC &amp; CWTS NSTP Management System
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="/assets/js/common/api.js"></script>
+  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/common/ui.js"></script>
+  <script src="/assets/js/student/assigned-platoon.js"></script>
+</body>
+</html>
