@@ -14,6 +14,65 @@ const NAV = {
   officer: [],
 }
 ;
+function navIconName(href, label) {
+  const text = `${label} ${href}`.toLowerCase();
+  if (text.includes("dashboard")) return "dashboard";
+  if (text.includes("schedule")) return "schedule";
+  if (text.includes("enrollment")) return "enrollment";
+  if (text.includes("platoon") || text.includes("roster") || text.includes("company")) return "platoon";
+  if (text.includes("attendance")) return "attendance";
+  if (text.includes("record")) return "records";
+  if (text.includes("grade")) return "grades";
+  if (text.includes("serial") || text.includes("certificate")) return "serial";
+  if (text.includes("offense")) return "offense";
+  if (text.includes("setting")) return "settings";
+  if (text.includes("withdraw")) return "refresh";
+  return "dashboard";
+}
+function navKicker(role, href, label) {
+  const text = `${label} ${href}`.toLowerCase();
+  if (role === "student") return "Student";
+  if (text.includes("dashboard")) return "Overview";
+  if (text.includes("attendance")) return "Monitoring";
+  if (text.includes("grade")) return "Academic";
+  if (text.includes("record")) return "Files";
+  if (text.includes("setting")) return "Preferences";
+  if (text.includes("offense")) return "Review";
+  if (text.includes("serial")) return "Certificate";
+  if (text.includes("roster") || text.includes("company") || text.includes("platoon")) return "Units";
+  if (text.includes("enrollment")) return "Admissions";
+  return role === "officer" ? "Director" : "Administration";
+}
+function decorateSidebar(role) {
+  document.body.dataset.portalTheme = role;
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    if (link.dataset.enhanced === "true") return;
+    const href = link.getAttribute("href") || "";
+    const label = link.textContent.trim();
+    const iconName = navIconName(href, label);
+    const kicker = navKicker(role, href, label);
+    link.innerHTML = `
+      <span class="nav-icon" aria-hidden="true">${icon(iconName)}</span>
+      <span class="nav-copy">
+        <small class="nav-kicker">${esc(kicker)}</small>
+        <span class="nav-label">${esc(label)}</span>
+      </span>
+    `;
+    link.dataset.enhanced = "true";
+  });
+
+  const logoutButton = document.getElementById("logoutButton");
+  if (logoutButton && logoutButton.dataset.enhanced !== "true") {
+    logoutButton.innerHTML = `<span class="nav-icon" aria-hidden="true">${icon("logout")}</span><span>Logout</span>`;
+    logoutButton.dataset.enhanced = "true";
+  }
+
+  const mobileMenuButton = document.getElementById("mobileMenuButton");
+  if (mobileMenuButton && mobileMenuButton.dataset.enhanced !== "true") {
+    mobileMenuButton.innerHTML = `${icon("dashboard")}<span>Menu</span>`;
+    mobileMenuButton.dataset.enhanced = "true";
+  }
+}
 function portalLabel(role) {
   if (role === "student") return "Student Portal";
   if (role === "officer") return "NSTP Director";
@@ -29,6 +88,7 @@ function roleEmblem(role) {
 function shell(role, title, subtitle, auth) {
   document.getElementById("pageTitle").textContent = title;
   document.getElementById("pageSubtitle").textContent = subtitle;
+  decorateSidebar(role);
   const emblem = document.getElementById("portalEmblem");
   if (emblem) emblem.src = roleEmblem(role);
   const current = window.location.pathname;
