@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded',()=>bootstrapPortalPage({
-  expectedPortal:'rotc-admin',shellRole:'rotc',moduleSrc:'/assets/js/rotc-admin/_pages.js',render:async(content)=>{
+  expectedPortal:'rotc-admin',shellRole:'rotc',moduleSrc:'/assets/js/admin/rotc/_pages.js',render:async(content)=>{
     const requests=await API.get('/api/admin/rotc/withdrawals');
     content.innerHTML=`<div class="withdraw-tabs" id="withdrawTabs"></div><div id="withdrawList" class="withdraw-list"></div><div id="withdrawRejectModal" class="old-modal hidden"><div class="old-modal-backdrop"></div><div class="old-modal-card small-modal"><div class="old-modal-head"><div><span class="modal-eyebrow">Withdrawal Request</span><h3>Reject Request</h3><p id="withdrawRejectName"></p></div><button class="modal-close" id="withdrawRejectClose">×</button></div><form id="withdrawRejectForm" class="modal-form-body"><input type="hidden" name="id"><label class="field">Admin Remarks<textarea name="remarks" rows="4" required placeholder="Enter rejection reason..."></textarea></label><div class="old-modal-actions"><button type="button" class="btn" id="withdrawRejectCancel">Cancel</button><button class="btn danger">Reject Request</button></div></form></div></div>`;
     let filter='all';
@@ -18,3 +18,4 @@ document.addEventListener('DOMContentLoaded',()=>bootstrapPortalPage({
   }
 }));
 function formatWithdrawDate(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+
