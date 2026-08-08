@@ -63,7 +63,7 @@ The original uploaded schema was preserved as the base database design. Some old
 
 ## Flow Matching
 
-See `EXACT_SYSTEM_FLOW.md`. This build follows the old uploaded system's actor order, enrollment schedule checks, MS/CWTS 1 first-enrollment rule, pending admin verification, CWTS company capacity, ROTC sex-based battalion assignment, 4 platoons per company, 37 ROTC slots per platoon, geolocation attendance, 1.00–5.00 grading, and Level 2 re-enrollment flow.
+See `docs/reference/EXACT_SYSTEM_FLOW.md`. This build follows the old uploaded system's actor order, enrollment schedule checks, MS/CWTS 1 first-enrollment rule, pending admin verification, CWTS company capacity, ROTC sex-based battalion assignment, 4 platoons per company, 37 ROTC slots per platoon, geolocation attendance, 1.00–5.00 grading, and Level 2 re-enrollment flow.
 
 
 ## Separate Portal URLs
@@ -129,3 +129,4 @@ This build recreates the old assignment screens:
 - ROTC Platoon List with MS selector, summary cards, enrollment-close lock, Assign Platoons action, Battalion 1 (Male), Battalion 2 (Female), Advance Course, and Special Platoon sections.
 - ROTC rules: Alpha–Delta for Battalion 1, Echo–Hotel for Battalion 2, 4 platoons/company, 37 cadets/platoon; medical condition -> HQ, Medics preference -> Medics (37 max), MP preference -> MP (37 max), Advance Course kept separate.
 - CWTS Company List with Alpha–Foxtrot, 60 students/company, automatic company assignment on approval, capacity summaries, alphabetical sorting, and expandable company member tables.
+
