@@ -1,5 +1,6 @@
 const db = require("../config/database");
 const attendance = require("../services/attendanceService");
+const platoonService = require("../services/platoonService");
 
 function sessionLabel(session) {
   const unit = session.program === "CWTS" ? "CS" : "MI";

@@ -1,4 +1,6 @@
 const db=require('../config/database');
+const gradesService=require('../services/gradesService');
+const platoonService=require('../services/platoonService');
 function program(req){
   return req.params.program?.toUpperCase() || (/cwts/i.test(req.user.portal)?'CWTS':'ROTC');
 }
@@ -129,10 +131,7 @@ exports.updateEnrollment=async(req,res)=>{
       }
       // Match old source: medical condition -> HQ, Medics preference -> Medics, MP preference -> MP.
       const [[pref]]=await db.execute('SELECT has_medical_condition,willing_to_be_medics,willing_to_be_military_police,willing_to_take_advance_course FROM students WHERE id=?',[rec.student_id]);
-      let unit=null;
-      if(Number(pref?.has_medical_condition||0)===1) unit='HQ';
-      else if(Number(pref?.willing_to_be_medics||0)===1) unit='Medics';
-      else if(Number(pref?.willing_to_be_military_police||0)===1) unit='MP';
+      const unit=platoonService.specialUnitForStudent(pref);
       if(unit){
         if(unit!=='HQ'){
           const [[ct]]=await db.execute('SELECT COUNT(*) total FROM students s WHERE s.special_unit=? AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status=\'approved\')',[unit]);
@@ -187,10 +186,7 @@ exports.bulkApprove=async(req,res)=>{
           await db.execute("UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",[id]);
           if(String(rec.ms_level)!=='2'){
             const [[pref]]=await db.execute('SELECT has_medical_condition,willing_to_be_medics,willing_to_be_military_police,willing_to_take_advance_course FROM students WHERE id=?',[rec.student_id]);
-            let unit=null;
-            if(Number(pref?.has_medical_condition||0)===1)unit='HQ';
-            else if(Number(pref?.willing_to_be_medics||0)===1)unit='Medics';
-            else if(Number(pref?.willing_to_be_military_police||0)===1)unit='MP';
+            const unit=platoonService.specialUnitForStudent(pref);
             if(unit){
               if(unit!=='HQ'){
                 const [[ct]]=await db.execute('SELECT COUNT(*) total FROM students s WHERE s.special_unit=? AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status=\'approved\')',[unit]);
@@ -313,8 +309,8 @@ exports.grades=async(req,res)=>{
     if(!Number(approved.total))return res.status(400).json({message:`This student does not have an approved ${p==='CWTS'?'CWTS':'MS'} ${level} enrollment.`});
     const mid=Number(midterm),fin=Number(final_term);
     if(!Number.isFinite(mid)||!Number.isFinite(fin)||mid<1||mid>5||fin<1||fin>5)return res.status(400).json({message:'Midterm and final grades must be from 1.00 to 5.00.'});
-    const grade=Math.round(((mid+fin)/2)*100)/100;
-    const status=grade>=1.0&&grade<=3.0?'Passed':'Failed';
+    const grade=gradesService.calculateGrade(mid,fin);
+    const status=gradesService.statusFromGrade(grade);
     await db.execute(`INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program)
       VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE midterm=VALUES(midterm),final_term=VALUES(final_term),grade=VALUES(grade),status=VALUES(status),updated_at=CURRENT_TIMESTAMP`,
       [student_id,level,mid,fin,grade,status,p]);
@@ -396,9 +392,7 @@ exports.serials=async(req,res)=>{
     const {student_id,serial_number}=req.body;
     if(!student_id||!String(serial_number||'').trim()) return res.status(400).json({message:'Student and serial number are required.'});
     const [gradeRows]=await db.execute(`SELECT ms_level,grade,status FROM student_grades WHERE student_id=? AND program=?`,[student_id,p]);
-    const has1=gradeRows.some(g=>String(g.ms_level)==='1');
-    const has2=gradeRows.some(g=>String(g.ms_level)==='2');
-    if(!has1||!has2) return res.status(400).json({message:'The student is not yet eligible. Both Level 1 and Level 2 grades must be completed.'});
+    if(!gradesService.hasRequiredGradeLevels(gradeRows)) return res.status(400).json({message:'The student is not yet eligible. Both Level 1 and Level 2 grades must be completed.'});
     const [settingsRows]=await db.execute('SELECT * FROM serial_number_settings WHERE program=?',[p]);
     const st=settingsRows[0];
     const complete=p==='ROTC'
@@ -648,6 +642,7 @@ exports.attendanceSummary = async (req, res) => {
 
 exports.verifyAttendance = async (req, res) => {
   try {
+    const offenseService = require('../services/offenseService');
     const p = program(req);
     const sessionId = Number(req.params.sessionId);
     const studentId = Number(req.body.student_id);
@@ -657,6 +652,11 @@ exports.verifyAttendance = async (req, res) => {
     }
     const [[session]] = await db.execute('SELECT id,program,mi_number,mi_type FROM attendance_sessions WHERE id=? AND program=?', [sessionId, p]);
     if (!session) return res.status(404).json({ message: 'Attendance session not found.' });
+    const [beforeRows] = await db.execute(
+      'SELECT id,status FROM attendance_records WHERE student_id=? AND attendance_session_id=? LIMIT 1',
+      [studentId, sessionId]
+    );
+    const previousStatus = beforeRows[0]?.status || null;
 
     await db.execute(
       `INSERT INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type,verified_by,verified_at)
@@ -664,9 +664,19 @@ exports.verifyAttendance = async (req, res) => {
        ON DUPLICATE KEY UPDATE status=VALUES(status),verified_by=VALUES(verified_by),verified_at=NOW(),updated_at=NOW()`,
       [studentId, sessionId, status, session.mi_number, session.mi_type, req.user.email]
     );
-    res.json({ message: 'Attendance verified and saved.' });
+    let offense = null;
+    if (status === 'absent' && ['present', 'late'].includes(previousStatus)) {
+      offense = await offenseService.record(studentId);
+    }
+    res.json({
+      message: offense
+        ? (Number(offense.offend) >= 2
+          ? 'Attendance verified. Second offense recorded; settlement is required.'
+          : 'Attendance verified. First-offense warning recorded.')
+        : 'Attendance verified and saved.',
+      offense,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-

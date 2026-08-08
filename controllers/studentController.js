@@ -4,10 +4,9 @@ const {
   latestRecord,studentById,studentPublic
 }
 =require('../services/systemService');
-function nowWithin(schedule){
-  const now=Date.now(),open=new Date(schedule.open_date).getTime(),deadline=new Date(schedule.deadline).getTime();
-  return Number.isFinite(open)&&Number.isFinite(deadline)&&now>=open&&now<=deadline;
-}
+const authService=require('../services/authService');
+const enrollmentService=require('../services/enrollmentService');
+const platoonService=require('../services/platoonService');
 exports.checkSchedule=async(req,res)=>{
   try{
     const program=String(req.query.program||'').toUpperCase();
@@ -15,11 +14,8 @@ exports.checkSchedule=async(req,res)=>{
     if(!['ROTC','CWTS'].includes(program)||!['1','2'].includes(ms)) return res.status(400).json({message:'Select a valid NSTP component and level.'});
     const [rows]=await db.execute('SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',[program,ms]);
     const schedule=rows[0]||null;
-    if(!schedule)return res.json({open:false,schedule:null,message:`${program} ${program==='ROTC'?'MS':'CWTS'} ${ms} is not yet open for enrollment.`});
-    const now=Date.now(),open=new Date(schedule.open_date).getTime(),deadline=new Date(schedule.deadline).getTime();
-    if(now<open)return res.json({open:false,schedule,message:`Enrollment opens on ${schedule.open_date}.`});
-    if(now>deadline)return res.json({open:false,schedule,message:`Enrollment closed on ${schedule.deadline}.`});
-    res.json({open:true,schedule,message:'Enrollment is open.'});
+    if(!schedule)return res.json({open:false,schedule:null,message:`${enrollmentService.levelLabel(program,ms)} is not yet open for enrollment.`});
+    res.json(enrollmentService.statusMessageForClosedSchedule(schedule,program));
   }   catch(e){
     res.status(500).json({message:e.message})
   }
@@ -48,16 +44,17 @@ exports.register=async(req,res)=>{
     const [schRows]=await conn.execute("SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='1' ORDER BY id DESC LIMIT 1",[b.nstp_component]);
     const schedule=schRows[0];
     if(!schedule)return res.status(400).json({message:`${b.nstp_component} ${b.nstp_component==='ROTC'?'MS':'CWTS'} 1 is not yet open for enrollment.`});
-    if(!nowWithin(schedule))return res.status(400).json({message:'Enrollment is currently unavailable for the selected component.'});
+    if(!enrollmentService.nowWithin(schedule))return res.status(400).json({message:'Enrollment is currently unavailable for the selected component.'});
     const [dup]=await conn.execute('SELECT id FROM students WHERE email=? OR username=? OR student_id=?',[b.email,b.username,b.student_id]);
     if(dup.length)return res.status(409).json({message:'Student ID, email, or username is already registered.'});
     if(b.password!==b.confirm_password)return res.status(400).json({message:'Passwords do not match.'});
-    if(String(b.password).length<6)return res.status(400).json({message:'Password must be at least 6 characters.'});
+    const passwordError=authService.passwordValidationMessage(b.password);
+    if(passwordError)return res.status(400).json({message:passwordError});
     if(b.nstp_component==='ROTC'&&!b.xray_file)return res.status(400).json({message:'X-ray is required for ROTC enrollment.'});
     const pass=await bcrypt.hash(b.password,10);
     await conn.beginTransaction();
     const sql=`INSERT INTO students (student_id,last_name,first_name,middle_name,suffix,religion,birthdate,sex,contact_number,place_of_birth,temporary_barangay,temporary_municipality,temporary_province,permanent_barangay,permanent_municipality,permanent_province,father_name,father_occupation,mother_name,mother_occupation,emergency_contact_name,emergency_contact_address,emergency_contact_relationship,emergency_contact_contact_number,willing_to_take_advance_course,willing_to_be_medics,willing_to_be_military_police,course,year_level,nstp_component,height,weight,blood_type,complexion,has_medical_condition,medical_condition,medical_certificate,xray_file,email,username,password,photo,cor_file,role) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'student')`;
-    const vals=[b.student_id,b.last_name,b.first_name,b.middle_name||'',b.suffix||null,b.religion,b.birthdate,b.sex,b.contact_number,b.place_of_birth,b.temporary_barangay,b.temporary_municipality,b.temporary_province,b.permanent_barangay,b.permanent_municipality,b.permanent_province,b.father_name,b.father_occupation,b.mother_name,b.mother_occupation,b.emergency_contact_name,b.emergency_contact_address,b.emergency_contact_relationship,b.emergency_contact_contact_number,Number(b.willing_to_take_advance_course||0),Number(b.willing_to_be_medics||0),Number(b.willing_to_be_military_police||0),b.course,b.year_level,b.nstp_component,b.height,b.weight,b.blood_type,b.complexion,b.has_medical_condition===''?null:Number(b.has_medical_condition||0),b.medical_condition||'',b.medical_certificate,b.xray_file||null,b.email,b.username,pass,b.photo,b.cor_file];
+    const vals=[b.student_id,b.last_name,b.first_name,b.middle_name||'',b.suffix||null,b.religion,b.birthdate,b.sex,b.contact_number,b.place_of_birth,b.temporary_barangay,b.temporary_municipality,b.temporary_province,b.permanent_barangay,b.permanent_municipality,b.permanent_province,b.father_name,b.father_occupation,b.mother_name,b.mother_occupation,b.emergency_contact_name,b.emergency_contact_address,b.emergency_contact_relationship,b.emergency_contact_contact_number,Number(b.willing_to_take_advance_course||0),Number(b.willing_to_be_medics||0),Number(b.willing_to_be_military_police||0),b.course,b.year_level,b.nstp_component,b.height,b.weight,b.blood_type,b.complexion,enrollmentService.normalizeMedicalCondition(b.has_medical_condition),b.medical_condition||'',b.medical_certificate,b.xray_file||null,b.email,b.username,pass,b.photo,b.cor_file];
     const [r]=await conn.execute(sql,vals);
     await conn.execute("INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program) VALUES(?,?,?,'pending',?)",[r.insertId,String(schedule.id),msLevel,b.nstp_component]);
     await conn.commit();
@@ -139,10 +136,7 @@ exports.openSessions = async (req, res) => {
       [student.nstp_component, latest.ms_level]
     );
 
-    const isAdvance = student.nstp_component === 'ROTC'
-      && Number(student.willing_to_take_advance_course || 0) === 1
-      && !student.special_unit
-      && Number(student.has_medical_condition || 0) === 0;
+    const isAdvance = platoonService.isAdvanceCourseCadet(student);
 
     const eligible = rows
       .filter((session) => {
@@ -182,9 +176,7 @@ exports.markAttendance = async (req, res) => {
     }
 
     if (session.program === 'ROTC') {
-      const isAdvance = Number(student.willing_to_take_advance_course || 0) === 1
-        && !student.special_unit
-        && Number(student.has_medical_condition || 0) === 0;
+      const isAdvance = platoonService.isAdvanceCourseCadet(student);
       if (Boolean(Number(session.is_advance_course || 0)) !== isAdvance) {
         return res.status(403).json({ message: isAdvance ? 'Use the Advance Course attendance session.' : 'This session is for Advance Course students only.' });
       }
@@ -241,7 +233,7 @@ exports.reEnroll=async(req,res)=>{
     if(dup.length)return res.status(409).json({message:'You already have a level 2 enrollment request.'});
     const [sch]=await db.execute("SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='2' ORDER BY id DESC LIMIT 1",[s.nstp_component]);
     const schedule=sch[0];
-    if(!schedule||!nowWithin(schedule))return res.status(400).json({message:`${s.nstp_component==='ROTC'?'MS':'CWTS'} 2 enrollment is not open at this time.`});
+    if(!schedule||!enrollmentService.nowWithin(schedule))return res.status(400).json({message:`${s.nstp_component==='ROTC'?'MS':'CWTS'} 2 enrollment is not open at this time.`});
     await db.execute("INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program) VALUES(?,?, '2','pending',?)",[req.user.id,String(schedule.id),s.nstp_component]);
     res.json({message:`${s.nstp_component==='ROTC'?'MS':'CWTS'} 2 enrollment submitted successfully.`})
   }   catch(e){
