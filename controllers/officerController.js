@@ -128,8 +128,30 @@ exports.dashboard = async (req, res) => {
     await refreshSessionStatuses();
     const [[summary]] = await db.query(`
       SELECT
-        (SELECT COUNT(*) FROM students WHERE role='student' AND nstp_component='ROTC') rotc,
-        (SELECT COUNT(*) FROM students WHERE role='student' AND nstp_component='CWTS') cwts,
+        (SELECT COUNT(DISTINCT s.id)
+         FROM students s
+         WHERE s.role='student'
+           AND s.nstp_component='ROTC'
+           AND EXISTS (
+             SELECT 1
+             FROM student_ms_records smr
+             WHERE smr.student_id=s.id
+               AND smr.program='ROTC'
+               AND smr.status='approved'
+           )
+        ) rotc,
+        (SELECT COUNT(DISTINCT s.id)
+         FROM students s
+         WHERE s.role='student'
+           AND s.nstp_component='CWTS'
+           AND EXISTS (
+             SELECT 1
+             FROM student_ms_records smr
+             WHERE smr.student_id=s.id
+               AND smr.program='CWTS'
+               AND smr.status='approved'
+           )
+        ) cwts,
         (SELECT COUNT(*) FROM attendance_sessions WHERE status='open') open_sessions,
         (SELECT COUNT(*) FROM attendance_records) attendance_records
     `);
