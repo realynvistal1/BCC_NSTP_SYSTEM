@@ -9,19 +9,16 @@ async function adminPage(role,page,c){
     if(intro){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>${program} Dashboard</h1><p>${program==='ROTC'?'Track cadet movement, assignment load, approvals, and ROTC actions from one control center.':'Monitor company allocation, enrollment flow, and CWTS readiness from one overview.'}</p>`;
     }
-    c.innerHTML=`<div class="summary-grid">${summaryTile('Total Students',total,`Students in the current ${
-      program
-    }
-    enrollment cycle`,'blue')}${summaryTile('Approved',approved,`${
-      approvalRate
-    }
+      c.innerHTML=`<div class="summary-grid">${summaryTile('Approved Students',approved,`Students approved in the current ${
+        program
+      }
+      enrollment cycle`,'blue')}${summaryTile('Approved',approved,`${
+        approvalRate
+      }
     % of students cleared`,'green')}${summaryTile('Pending',pending,`${
       pendingRate
     }
-    % still need review`,'orange')}${summaryTile('Rejected Students',rejected,'Students who were not approved','red')}</div><div class="admin-analytics"><section class="section-card"><div class="section-heading"><h2>Enrollment Pipeline</h2><p>A quick snapshot of how student applications are moving through review.</p></div>${progressRow('Approved',approved,total,'green')}${progressRow('Pending',pending,total,'orange')}${progressRow('Rejected',rejected,total,'red')}</section><section class="section-card"><div class="section-heading"><h2>What Needs Attention</h2><p>Use these numbers to decide what to review first.</p></div><div class="insight-list">${insight('Pending Reviews',pending,'Students waiting for enrollment approval')}${insight('Rejected Cases',rejected,'Applications that may need follow-up or re-submission')}${insight('Approval Rate',approvalRate+'%','Current success rate across student records')}</div></section></div><section class="section-card distribution-card"><div class="section-heading"><h2>${program} Distribution</h2><p>${program==='ROTC'?'Current view highlights approved cadets and assignment readiness.':'Company analytics show how students are spread across available CWTS units.'}</p></div><div class="distribution-insights">${insight(program==='ROTC'?'Assigned Cadets':'Assigned Students',assigned,`Out of ${
-      approved
-    }
-    approved students`)}${insight(program==='ROTC'?'Needs Assignment':'Needs Company',Math.max(approved-assigned,0),'Approved students still waiting for placement')}${insight('Assignment Rate',approved?Math.round((assigned/approved)*100)+'%':'0%','Current approved-student assignment coverage')}</div></section><section class="section-card"><div class="section-heading"><h2>Management Shortcuts</h2><p>Keep the most important admin pages one click away.</p></div><div class="old-dashboard-grid">${dashCard('Enrollment Schedule','Manage Schedule',`Manage the ${
+    % still need review`,'orange')}${summaryTile('Rejected Students',rejected,'Students who were not approved','red')}</div><div class="admin-analytics"><section class="section-card"><div class="section-heading"><h2>Enrollment Pipeline</h2><p>A quick snapshot of how student applications are moving through review.</p></div>${progressRow('Approved',approved,total,'green')}${progressRow('Pending',pending,total,'orange')}${progressRow('Rejected',rejected,total,'red')}</section><section class="section-card"><div class="section-heading"><h2>What Needs Attention</h2><p>Use these numbers to decide what to review first.</p></div><div class="insight-list">${insight('Pending Reviews',pending,'Students waiting for enrollment approval')}${insight('Rejected Cases',rejected,'Applications that may need follow-up or re-submission')}${insight('Approval Rate',approvalRate+'%','Current success rate across student records')}</div></section></div><section class="section-card"><div class="section-heading"><h2>Management Shortcuts</h2><p>Keep the most important admin pages one click away.</p></div><div class="old-dashboard-grid">${dashCard('Enrollment Schedule','Manage Schedule',`Manage the ${
       program
     }
     enrollment period.`,`/admin/${
