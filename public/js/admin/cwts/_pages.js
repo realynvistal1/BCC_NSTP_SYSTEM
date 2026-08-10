@@ -9,12 +9,12 @@ async function adminPage(role,page,c){
     if(intro){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>${program} Dashboard</h1><p>${program==='ROTC'?'Track cadet movement, assignment load, approvals, and ROTC actions from one control center.':'Monitor company allocation, enrollment flow, and CWTS readiness from one overview.'}</p>`;
     }
-    c.innerHTML=`<div class="summary-grid">${summaryTile('Total Students',total,`Students in the current ${
-      program
-    }
-    enrollment cycle`,'blue')}${summaryTile('Approved',approved,`${
-      approvalRate
-    }
+      c.innerHTML=`<div class="summary-grid">${summaryTile('Approved Students',approved,`Students approved in the current ${
+        program
+      }
+      enrollment cycle`,'blue')}${summaryTile('Approved',approved,`${
+        approvalRate
+      }
     % of students cleared`,'green')}${summaryTile('Pending',pending,`${
       pendingRate
     }
