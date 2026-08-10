@@ -34,7 +34,7 @@ async function studentPage(page,c){
     c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Enrollment Status</h2><p class="panel-subtitle">Your latest NSTP enrollment information and review result.</p></div>${badge(rec.status||'pending')}</div>${rec.rejection_reason?`<div class="notice error"><strong>Admin remark:</strong> ${
       esc(rec.rejection_reason)
     }
-    </div>`:''}<div class="status-timeline"><div class="timeline-step done"><strong>1. Submitted</strong><span>Enrollment form received</span></div><div class="timeline-step ${rec.status==='pending'?'current':'done'}"><strong>2. Admin Review</strong><span>${rec.status==='pending'?'Waiting for review':'Review completed'}</span></div><div class="timeline-step ${rec.status==='approved'?'done':rec.status==='rejected'?'current':''}"><strong>3. ${rec.status==='rejected'?'Needs Action':'Approved & Assignment'}</strong><span>${rec.status==='approved'?'Ready for platoon/company assignment':rec.status==='rejected'?'See administrator remark':'Pending approval'}</span></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
+    </div>`:''}${rec.status==='rejected'?`<div class="actions" style="justify-content:flex-start;margin:16px 0 0"><button class="btn primary" id="resubmitEnrollment">Submit Enrollment Again</button></div>`:''}<div class="status-timeline"><div class="timeline-step done"><strong>1. Submitted</strong><span>Enrollment form received</span></div><div class="timeline-step ${rec.status==='pending'?'current':'done'}"><strong>2. Admin Review</strong><span>${rec.status==='pending'?'Waiting for review':'Review completed'}</span></div><div class="timeline-step ${rec.status==='approved'?'done':rec.status==='rejected'?'current':''}"><strong>3. ${rec.status==='rejected'?'Needs Action':'Approved & Assignment'}</strong><span>${rec.status==='approved'?'Ready for platoon/company assignment':rec.status==='rejected'?'See administrator remark and submit again':'Pending approval'}</span></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
       x.first_name
     }
     ${
@@ -53,6 +53,18 @@ async function studentPage(page,c){
       esc(a[1])
     }
     </td></tr>`))}</div>`;
+    if(rec.status==='rejected'&&$('#resubmitEnrollment'))$('#resubmitEnrollment').onclick=async()=>{
+      try{
+        const msg=`Submit your ${x.nstp_component} ${rec.ms_level?`MS ${rec.ms_level}`:'enrollment'} again for review?`;
+        if(!confirm(msg))return;
+        const out=await API.post('/api/student/re-enroll',{});
+        toast(out.message);
+        setTimeout(()=>location.reload(),700)
+      }catch(e){
+        toast(e.message,true)
+      }
+    }
+    ;
     return
   }
   if(page==='assigned-platoon'){
