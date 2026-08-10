@@ -215,6 +215,35 @@ exports.bulkApprove=async(req,res)=>{
   }
 }
 ;
+exports.bulkReject=async(req,res)=>{
+  try{
+    const p=program(req);
+    const ids=Array.isArray(req.body.ids)?req.body.ids.map(Number).filter(Boolean):[];
+    const rejectionReason=String(req.body.rejection_reason||'').trim();
+    if(!ids.length)return res.status(400).json({message:'No pending enrollment records selected.'});
+    if(!rejectionReason)return res.status(400).json({message:'Enter the reason for rejecting the selected enrollments.'});
+    let rejected=0, skipped=0, failed=0;
+    const messages=[];
+    for(const id of ids){
+      try{
+        const [[rec]]=await db.execute(`SELECT id,status FROM student_ms_records WHERE id=? AND program=? LIMIT 1`,[id,p]);
+        if(!rec||rec.status!=='pending'){
+          skipped++;
+          continue;
+        }
+        await db.execute("UPDATE student_ms_records SET status='rejected',rejection_reason=? WHERE id=?",[rejectionReason,id]);
+        rejected++;
+      }catch(err){
+        failed++;
+        messages.push(err.message);
+      }
+    }
+    res.json({message:`Bulk review complete: ${rejected} rejected, ${skipped} skipped, ${failed} failed.`,rejected,skipped,failed,details:messages.slice(0,3)});
+  }catch(e){
+    res.status(500).json({message:e.message})
+  }
+}
+;
 exports.roster=async(req,res)=>{
   try{
     const p=program(req);
@@ -232,7 +261,7 @@ exports.autoAssign=async(req,res)=>{
     const ms=String(req.body.ms_level||req.query.ms_level||'1');
     const [sched]=await db.execute('SELECT * FROM enrollment_schedules WHERE program=\'ROTC\' AND ms_level=? ORDER BY id DESC LIMIT 1',[ms]);
     if(sched[0]&&Date.now()<=new Date(sched[0].deadline).getTime())return res.status(400).json({message:`Wait until the MS ${ms} enrollment schedule closes before assigning platoons.`});
-    const [rows]=await db.execute(`SELECT s.id,s.sex,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police FROM students s JOIN student_ms_records r ON r.student_id=s.id WHERE s.nstp_component='ROTC' AND r.ms_level=? AND r.status='approved' AND r.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.ms_level=?) ORDER BY s.last_name,s.first_name`,[ms,ms]);
+    const [rows]=await db.execute(`SELECT s.id,s.last_name,s.first_name,s.middle_name,s.suffix,s.sex,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police FROM students s JOIN student_ms_records r ON r.student_id=s.id WHERE s.nstp_component='ROTC' AND r.ms_level=? AND r.status='approved' AND r.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.ms_level=?) ORDER BY s.last_name,s.first_name,s.middle_name,s.id`,[ms,ms]);
     const maleCompanies=['Alpha','Bravo','Charlie','Delta'],femaleCompanies=['Echo','Foxtrot','Golf','Hotel'],platoons=4,slot=37;
     const candidates=rows.filter(x=>!x.rotc_company&&!x.special_unit&&!x.has_medical_condition&&!x.willing_to_take_advance_course&&!x.willing_to_be_medics&&!x.willing_to_be_military_police);
     const assignedExisting=rows.filter(x=>x.rotc_company&&!x.special_unit);
@@ -249,7 +278,15 @@ exports.autoAssign=async(req,res)=>{
     }
     async function assignGroup(list,battalion,companies,counts){
       let assigned=0;
-      for(const st of list.sort((a,b)=>a.id-b.id)){
+      for(const st of [...list].sort((a,b)=>{
+        const last=String(a.last_name||'').localeCompare(String(b.last_name||''),undefined,{sensitivity:'base'});
+        if(last)return last;
+        const first=String(a.first_name||'').localeCompare(String(b.first_name||''),undefined,{sensitivity:'base'});
+        if(first)return first;
+        const middle=String(a.middle_name||'').localeCompare(String(b.middle_name||''),undefined,{sensitivity:'base'});
+        if(middle)return middle;
+        return Number(a.id)-Number(b.id);
+      })){
         let choice=null;
         outer:for(const c of companies){
           for(let p=1;p<=platoons;p++){
