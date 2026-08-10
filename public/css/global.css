@@ -788,3 +788,46 @@ body {
     transform: rotate(360deg);
   }
 }
+.route-loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, .28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
+  z-index: 120;
+}
+.route-loading-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.route-loading-card {
+  min-width: 220px;
+  padding: 18px 22px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid rgba(148, 163, 184, .22);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: #1f2937;
+  text-align: center;
+}
+.route-loading-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(59, 130, 246, .18);
+  border-top-color: #3b82f6;
+  animation: route-spin .75s linear infinite;
+}
+@keyframes route-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
