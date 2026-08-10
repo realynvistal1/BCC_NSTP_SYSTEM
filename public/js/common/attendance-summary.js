@@ -500,6 +500,177 @@ function makeAttendanceSummary(programKey) {
     toast('PDF attendance report downloaded.');
   }
 
+  function exportStructuredPdf() {
+    const meta = exportMetadata();
+    if (!meta) {
+      toast('Select an attendance session first.', true);
+      return;
+    }
+
+    const { session, students } = meta;
+
+    function summarize(sectionStudents) {
+      return sectionStudents.reduce((result, student) => {
+        const key = student.attendance_status || 'unmarked';
+        result[key] = (result[key] || 0) + 1;
+        return result;
+      }, { present: 0, late: 0, absent: 0, unmarked: 0 });
+    }
+
+    function compareStudents(a, b) {
+      return `${a.last_name || ''}`.localeCompare(`${b.last_name || ''}`)
+        || `${a.first_name || ''}`.localeCompare(`${b.first_name || ''}`)
+        || `${a.student_id || ''}`.localeCompare(`${b.student_id || ''}`);
+    }
+
+    function statusText(student) {
+      return student.attendance_status === 'unmarked'
+        ? 'NOT YET MARKED'
+        : String(student.attendance_status || '').toUpperCase();
+    }
+
+    function buildRotcSections() {
+      const selectedGroup = $('#summaryGroup').value || 'overall';
+      const sections = [];
+
+      if (selectedGroup === 'advance-course') {
+        ['Male', 'Female'].forEach((sex) => {
+          const sectionStudents = students
+            .filter((student) => String(student.sex || '').toLowerCase() === sex.toLowerCase())
+            .sort(compareStudents);
+          if (!sectionStudents.length) return;
+          sections.push({
+            heading: 'ADVANCE COURSE',
+            subheading: `${sex.toUpperCase()} CADETS`,
+            tableTitle: sex.toUpperCase(),
+            students: sectionStudents,
+          });
+        });
+        return sections;
+      }
+
+      if (selectedGroup === 'special-platoon') {
+        ['Medics', 'HQ', 'MP'].forEach((specialUnit) => {
+          const sectionStudents = students
+            .filter((student) => student.special_unit === specialUnit)
+            .sort(compareStudents);
+          if (!sectionStudents.length) return;
+          sections.push({
+            heading: 'SPECIAL PLATOON',
+            subheading: specialUnit.toUpperCase(),
+            tableTitle: specialUnit.toUpperCase(),
+            students: sectionStudents,
+          });
+        });
+        return sections;
+      }
+
+      const battalionFilter = selectedGroup === 'battalion-1' ? 1 : selectedGroup === 'battalion-2' ? 2 : null;
+      const regularStudents = students.filter((student) => !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1);
+      const battalions = battalionFilter ? [battalionFilter] : [1, 2];
+
+      battalions.forEach((battalion) => {
+        const battalionRows = regularStudents.filter((student) => Number(student.battalion) === battalion);
+        const companies = [...new Set(battalionRows.map((student) => student.rotc_company).filter(Boolean))].sort();
+        companies.forEach((company) => {
+          const companyRows = battalionRows.filter((student) => student.rotc_company === company);
+          const platoons = [...new Set(companyRows.map((student) => Number(student.rotc_platoon)).filter(Boolean))].sort((a, b) => a - b);
+          platoons.forEach((platoon) => {
+            const sectionStudents = companyRows.filter((student) => Number(student.rotc_platoon) === platoon).sort(compareStudents);
+            if (!sectionStudents.length) return;
+            sections.push({
+              heading: `BATTALION ${battalion}`,
+              subheading: `${String(company).toUpperCase()} COMPANY`,
+              tableTitle: `PLATOON ${platoon}`,
+              students: sectionStudents,
+            });
+          });
+        });
+      });
+
+      return sections;
+    }
+
+    function buildCwtsSections() {
+      const companies = [...new Set(students.map((student) => student.company).filter(Boolean))].sort();
+      return companies.map((company) => ({
+        heading: 'CWTS',
+        subheading: `${String(company).toUpperCase()} COMPANY`,
+        tableTitle: `${String(company).toUpperCase()} COMPANY`,
+        students: students.filter((student) => student.company === company).sort(compareStudents),
+      })).filter((section) => section.students.length);
+    }
+
+    function fallbackSections() {
+      return [{
+        heading: meta.groupText.toUpperCase(),
+        subheading: 'ATTENDANCE SUMMARY',
+        tableTitle: 'STUDENT LIST',
+        students: [...students].sort(compareStudents),
+      }];
+    }
+
+    function buildPage(section, index, totalSections) {
+      const lines = [];
+      const counts = summarize(section.students);
+      let y = 560;
+
+      lines.push({ x: 180, y, size: 15, bold: true, text: `${program} ${meta.groupText.toUpperCase()}` });
+      y -= 24;
+      lines.push({ x: 40, y, size: 9, text: `${unit} / Type: ${unit} ${session.mi_number} - ${String(session.mi_type || '').toUpperCase()}` });
+      lines.push({ x: 320, y, size: 9, text: `Session Date: ${fmtDate(session.open_date)}` });
+      y -= 14;
+      lines.push({ x: 40, y, size: 9, text: `Time Window: ${fmtTime(session.open_date)} - ${fmtTime(session.close_date)}` });
+      lines.push({ x: 320, y, size: 9, text: `School Year: ${session.school_year || '-'}` });
+      y -= 14;
+      lines.push({ x: 40, y, size: 9, text: `${program === 'CWTS' ? 'CWTS' : 'MS'} Level: ${session.ms_level || '-'}` });
+      lines.push({ x: 320, y, size: 9, text: `Page: ${index + 1} of ${totalSections}` });
+      y -= 26;
+
+      lines.push({ x: 40, y, size: 10, bold: true, text: `TOTAL: ${section.students.length}` });
+      lines.push({ x: 145, y, size: 10, text: `PRESENT: ${counts.present || 0}` });
+      lines.push({ x: 275, y, size: 10, text: `LATE: ${counts.late || 0}` });
+      lines.push({ x: 380, y, size: 10, text: `ABSENT: ${counts.absent || 0}` });
+      lines.push({ x: 495, y, size: 10, text: `NOT YET: ${counts.unmarked || 0}` });
+      y -= 28;
+
+      lines.push({ x: 40, y, size: 12, bold: true, text: section.heading });
+      y -= 18;
+      lines.push({ x: 60, y, size: 11, bold: true, text: section.subheading });
+      y -= 18;
+      lines.push({ x: 80, y, size: 10, bold: true, text: section.tableTitle });
+      y -= 16;
+
+      lines.push({ x: 40, y, size: 8.5, bold: true, text: 'No.  Student Name                 ID Number      Status         Time In' });
+      y -= 10;
+      lines.push({ x: 40, y, size: 8, text: '-'.repeat(78) });
+      y -= 10;
+
+      section.students.forEach((student, rowIndex) => {
+        const row = [
+          String(rowIndex + 1).padEnd(4),
+          truncate(`${student.last_name || ''}, ${student.first_name || ''}`, 28).padEnd(28),
+          truncate(student.student_id || '', 12).padEnd(12),
+          truncate(statusText(student), 13).padEnd(13),
+          truncate(student.attendance_time ? fmtTime(student.attendance_time) : '-', 10),
+        ].join(' ');
+        lines.push({ x: 40, y, size: 8, text: row });
+        y -= 10;
+      });
+
+      lines.push({ x: 40, y: 26, size: 7.5, text: `Generated: ${new Date().toLocaleString()}` });
+      return lines;
+    }
+
+    let sections = program === 'CWTS' ? buildCwtsSections() : buildRotcSections();
+    if (!sections.length) sections = fallbackSections();
+    const pages = sections.map((section, index) => buildPage(section, index, sections.length));
+
+    const filename = `${safeFilename(program)}-${safeFilename(unit + '-' + session.mi_number)}-${safeFilename(session.mi_type)}-attendance-summary.pdf`;
+    downloadBlob(makePdfBlob(pages), filename);
+    toast(`PDF attendance report downloaded. ${sections.length} page${sections.length === 1 ? '' : 's'} created.`);
+  }
+
   async function init() {
     const auth = await guard(program === 'CWTS' ? 'cwts-admin' : 'rotc-admin');
     if (!auth) return;
@@ -532,7 +703,7 @@ function makeAttendanceSummary(programKey) {
 
     const pdfButton = $('#downloadAttendancePdf');
     const excelButton = $('#downloadAttendanceExcel');
-    if (pdfButton) pdfButton.onclick = exportPdf;
+    if (pdfButton) pdfButton.onclick = exportStructuredPdf;
     if (excelButton) excelButton.onclick = exportExcel;
   }
 
