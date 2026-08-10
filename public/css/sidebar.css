@@ -75,7 +75,8 @@
   gap: 5px
 }
 
-.nav a {
+.nav a,
+.nav .nav-link {
   padding: 10px 11px;
   border-radius: 18px;
   color: #fff;
@@ -87,10 +88,19 @@
   transition: .18s;
   border: 1px solid transparent;
   position: relative;
-  overflow: hidden
+  overflow: hidden;
+  text-decoration: none;
+  transform: translateZ(0);
+  transition:
+    background .22s ease,
+    color .22s ease,
+    border-color .22s ease,
+    box-shadow .22s ease,
+    transform .18s ease
 }
 
-.nav a::before {
+.nav a::before,
+.nav .nav-link::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -99,15 +109,24 @@
   transition: opacity .18s
 }
 
-.nav a:hover {
-  background: rgba(255, 255, 255, .11)
+.nav a:hover,
+.nav .nav-link:hover {
+  background: rgba(255, 255, 255, .11);
+  transform: translateX(2px)
 }
 
-.nav a:hover::before {
+.nav a:active,
+.nav .nav-link:active {
+  transform: scale(.985)
+}
+
+.nav a:hover::before,
+.nav .nav-link:hover::before {
   opacity: 1
 }
 
-.nav a.active {
+.nav a.active,
+.nav .nav-link.active {
   background: white;
   color: #1f2937;
   border-color: rgba(255, 255, 255, .75);
@@ -121,12 +140,23 @@
   border-radius: 11px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, .08)
+  background: rgba(255, 255, 255, .08);
+  transition:
+    background .22s ease,
+    color .22s ease,
+    transform .18s ease,
+    box-shadow .22s ease
 }
 
-.nav a.active .nav-icon {
+.nav a.active .nav-icon,
+.nav .nav-link.active .nav-icon {
   background: var(--accent-soft);
   color: var(--accent-700)
+}
+
+.nav a:hover .nav-icon,
+.nav .nav-link:hover .nav-icon {
+  transform: translateY(-1px)
 }
 
 .nav-icon svg {
@@ -137,7 +167,13 @@
 .nav-copy {
   min-width: 0;
   display: grid;
-  gap: 3px
+  gap: 3px;
+  transition: transform .18s ease, opacity .18s ease
+}
+
+.nav a:hover .nav-copy,
+.nav .nav-link:hover .nav-copy {
+  transform: translateX(1px)
 }
 
 .nav-kicker {
@@ -154,7 +190,8 @@
   line-height: 1.1
 }
 
-.nav a.active .nav-kicker {
+.nav a.active .nav-kicker,
+.nav .nav-link.active .nav-kicker {
   color: #75a7d4
 }
 
@@ -215,11 +252,13 @@
   box-shadow: 10px 0 34px rgba(49, 104, 165, .12)
 }
 
-.nav a {
+.nav a,
+.nav .nav-link {
   border: 1px solid transparent
 }
 
-.nav a.active {
+.nav a.active,
+.nav .nav-link.active {
   background: #fff;
   color: #2563eb;
   border-color: rgba(255, 255, 255, .9);
@@ -254,9 +293,91 @@
   padding: 2px
 }
 
-.nav a {
+.nav a,
+.nav .nav-link {
   padding: 10px 12px;
   border-radius: 17px
+}
+
+.nav-group {
+  display: grid;
+  gap: 4px
+}
+
+.nav-dropdown-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent
+}
+
+.nav-dropdown-chevron {
+  margin-left: auto;
+  font-size: 16px;
+  line-height: 1;
+  color: inherit;
+  opacity: .78;
+  transition: transform .22s ease, opacity .18s ease
+}
+
+.nav-group.open .nav-dropdown-chevron {
+  transform: rotate(180deg);
+  opacity: 1
+}
+
+.nav-submenu {
+  display: block;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0 0 0 50px;
+  pointer-events: none;
+  transition: max-height .28s cubic-bezier(.22, 1, .36, 1), opacity .22s ease, padding-top .22s ease, padding-bottom .22s ease
+}
+
+.nav-group.open .nav-submenu {
+  opacity: 1;
+  padding-top: 2px;
+  padding-bottom: 4px;
+  pointer-events: auto
+}
+
+.nav-submenu-inner {
+  display: grid;
+  gap: 6px;
+  transform: translateY(-8px);
+  transition: transform .28s cubic-bezier(.22, 1, .36, 1)
+}
+
+.nav-group.open .nav-submenu-inner {
+  transform: translateY(0)
+}
+
+.nav-sublink {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, .88);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+  border: 1px solid transparent;
+  text-decoration: none
+}
+
+.nav-sublink:hover {
+  background: rgba(255, 255, 255, .1);
+  transform: translateX(2px)
+}
+
+.nav-sublink.active {
+  background: rgba(255, 255, 255, .18);
+  border-color: rgba(255, 255, 255, .2);
+  color: #fff
 }
 
 .nav a.active {
