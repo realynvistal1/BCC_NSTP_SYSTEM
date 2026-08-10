@@ -43,6 +43,70 @@ function navKicker(role, href, label) {
   if (text.includes("enrollment")) return "Admissions";
   return role === "officer" ? "Director" : "Administration";
 }
+function decorateAttendanceSummaryDropdown(role) {
+  if (role !== "rotc") return;
+  const nav = document.querySelector(".nav");
+  if (!nav) return;
+  const summaryLink = [...nav.querySelectorAll(".nav-link")].find((link) => (link.getAttribute("href") || "") === "/admin/rotc/attendance-summary");
+  if (!summaryLink || summaryLink.closest(".nav-group")) return;
+
+  const currentPath = window.location.pathname;
+  const currentGroup = new URLSearchParams(window.location.search).get("group") || "overall";
+  const onSummaryPage = currentPath === "/admin/rotc/attendance-summary";
+  const items = [
+    ["Overall Attendance Summary", "/admin/rotc/attendance-summary?group=overall"],
+    ["Battalion 1", "/admin/rotc/attendance-summary?group=battalion-1"],
+    ["Battalion 2", "/admin/rotc/attendance-summary?group=battalion-2"],
+    ["Advance Course", "/admin/rotc/attendance-summary?group=advance-course"],
+    ["Special Platoon", "/admin/rotc/attendance-summary?group=special-platoon"],
+  ];
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "nav-group";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "nav-link nav-dropdown-toggle";
+  if (onSummaryPage) toggle.classList.add("active");
+  toggle.setAttribute("aria-expanded", onSummaryPage ? "true" : "false");
+  toggle.innerHTML = summaryLink.innerHTML + `<span class="nav-dropdown-chevron" aria-hidden="true">⌄</span>`;
+
+  const submenu = document.createElement("div");
+  submenu.className = "nav-submenu";
+  const submenuInner = document.createElement("div");
+  submenuInner.className = "nav-submenu-inner";
+  items.forEach(([label, href]) => {
+    const link = document.createElement("a");
+    link.className = "nav-sublink";
+    link.href = href;
+    link.textContent = label;
+    const group = new URL(href, window.location.origin).searchParams.get("group") || "overall";
+    if (onSummaryPage && group === currentGroup) link.classList.add("active");
+    submenuInner.appendChild(link);
+  });
+  submenu.appendChild(submenuInner);
+
+  function setDropdownOpen(open, immediate = false) {
+    wrapper.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (immediate) {
+      submenu.style.maxHeight = open ? `${submenuInner.scrollHeight}px` : "0px";
+      return;
+    }
+    requestAnimationFrame(() => {
+      submenu.style.maxHeight = open ? `${submenuInner.scrollHeight}px` : "0px";
+    });
+  }
+
+  toggle.addEventListener("click", () => {
+    setDropdownOpen(!wrapper.classList.contains("open"));
+  });
+
+  wrapper.appendChild(toggle);
+  wrapper.appendChild(submenu);
+  summaryLink.replaceWith(wrapper);
+  setDropdownOpen(onSummaryPage, true);
+}
 function decorateSidebar(role) {
   document.body.dataset.portalTheme = role;
   document.querySelectorAll(".nav-link").forEach((link) => {
@@ -60,6 +124,7 @@ function decorateSidebar(role) {
     `;
     link.dataset.enhanced = "true";
   });
+  decorateAttendanceSummaryDropdown(role);
 
   const logoutButton = document.getElementById("logoutButton");
   if (logoutButton && logoutButton.dataset.enhanced !== "true") {
@@ -151,7 +216,8 @@ async function showStudentAttendanceOffense(offense) {
 async function guard(expected){
   try{
     const d=await API.get('/api/auth/me');
-    if(expected&&d.portal!==expected){
+    const session=d.user||d;
+    if(expected&&session.portal!==expected){
       location.href=portalLogin(expected);
       return null
     }
@@ -161,7 +227,7 @@ async function guard(expected){
         setTimeout(()=>showStudentAttendanceOffense(offense),0);
       }catch{/* offense check should not prevent page loading */}
     }
-    return d
+    return { ...d, user: session }
   }   catch{
     location.href=portalLogin(expected);
     return null
@@ -218,6 +284,26 @@ function showPageLoading(message = 'Loading page...') {
       <strong>${esc(message)}</strong>
     </div>
   `;
+}
+
+function showRouteLoading(message = 'Opening page...') {
+  let overlay = document.getElementById('routeLoadingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'routeLoadingOverlay';
+    overlay.className = 'route-loading-overlay';
+    overlay.innerHTML = `
+      <div class="route-loading-card" role="status" aria-live="polite">
+        <span class="route-loading-spinner" aria-hidden="true"></span>
+        <strong id="routeLoadingMessage">${esc(message)}</strong>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  } else {
+    const messageNode = document.getElementById('routeLoadingMessage');
+    if (messageNode) messageNode.textContent = message;
+  }
+  overlay.classList.add('visible');
 }
 
 function showPageError(error) {
@@ -282,4 +368,18 @@ document.addEventListener('click', (event) => {
   const link = event.target.closest('.nav-link');
   if (!link) return;
   document.getElementById('sidebar')?.classList.remove('open');
+  const href = link.getAttribute('href');
+  if (!href) return;
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const target = link.getAttribute('target');
+  if (target && target !== '_self') return;
+  const nextUrl = new URL(href, window.location.origin);
+  if (nextUrl.origin !== window.location.origin) return;
+  if (nextUrl.href === window.location.href) return;
+  event.preventDefault();
+  showRouteLoading('Opening page...');
+  window.setTimeout(() => {
+    window.location.href = nextUrl.href;
+  }, 1000);
 });
