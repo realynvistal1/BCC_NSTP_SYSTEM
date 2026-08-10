@@ -3,11 +3,29 @@
 -- MySQL Schema for BCC ROTC/CWTS 
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS `bcc_nstp_system`
+CREATE DATABASE IF NOT EXISTS `bcc_nstp_database`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE `bcc_nstp_system`;
+USE `bcc_nstp_database`;
+
+
+CREATE TABLE IF NOT EXISTS `admins` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `email` VARCHAR(255) NOT NULL,
+  `username` VARCHAR(100) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `role` ENUM('admin','director') NOT NULL DEFAULT 'admin',
+  `program` ENUM('ROTC','CWTS','BOTH') NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_admin_email` (`email`),
+  UNIQUE KEY `uk_admin_username` (`username`),
+  KEY `idx_admin_role` (`role`),
+  KEY `idx_admin_program` (`program`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ============================================================
 -- 1. students (was: account_reservations)
