@@ -13,6 +13,7 @@ module.exports = {
   enrollmentDetail: withProgram(shared.enrollmentDetail),
   updateEnrollment: withProgram(shared.updateEnrollment),
   bulkApprove: withProgram(shared.bulkApprove),
+  bulkReject: withProgram(shared.bulkReject),
   roster: withProgram(shared.roster),
   autoAssign: withProgram(shared.autoAssign),
   grades: withProgram(shared.grades),
