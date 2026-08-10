@@ -1,51 +1,50 @@
 require("dotenv").config();
 
-const fs = require("fs");
-const path = require("path");
-const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
+const mysql = require("mysql2/promise");
 
 const cfg = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  multipleStatements: true,
+  database: process.env.DB_NAME || "bcc_nstp_database",
 };
 
-const admins = [
-  ["ROTC Admin", "bcc.rotc.admin@gmail.com", "ROTC Admin", "rotc@admin", "admin", "ROTC", "Admin"],
-  ["CWTS Admin", "bcc.cwts.admin@gmail.com", "CWTS Admin", "cwts@admin", "admin", "CWTS", "Admin"],
-  ["NSTP Director", "bcc.officer.admin@gmail.com", "NSTP Director", "officer@admin", "officer", "NSTP", "Director"],
-];
+async function seedAdmins() {
+  const conn = await mysql.createConnection(cfg);
 
-(async () => {
-  const root = await mysql.createConnection(cfg);
-  await root.query(fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8"));
-  await root.end();
+  try {
+    const sharedPassword = await bcrypt.hash("bcc@admin123", 10);
 
-  const db = await mysql.createConnection({
-    ...cfg,
-    database: process.env.DB_NAME || "bcc_nstp_system",
-    multipleStatements: false,
-  });
+    const admins = [
+      ["bcc.rotc.admin@gmail.com", "rotcadmin", sharedPassword, "admin", "ROTC"],
+      ["bcc.cwts.admin@gmail.com", "cwtsadmin", sharedPassword, "admin", "CWTS"],
+      ["bcc.officer.admin@gmail.com", "directoradmin", sharedPassword, "director", "BOTH"],
+    ];
 
-  for (const [sid, email, user, pw, role, first, last] of admins) {
-    const hash = await bcrypt.hash(pw, 10);
-    await db.execute(
-      `INSERT INTO students(student_id,email,username,password,role,first_name,last_name,nstp_component)
-       VALUES(?,?,?,?,?,?,?,'')
-       ON DUPLICATE KEY UPDATE password=VALUES(password),role=VALUES(role),username=VALUES(username)`,
-      [sid, email, user, hash, role, first, last]
-    );
+    for (const [email, username, password, role, program] of admins) {
+      await conn.execute(
+        `INSERT INTO admins (email, username, password, role, program)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           email = VALUES(email),
+           username = VALUES(username),
+           password = VALUES(password),
+           role = VALUES(role),
+           program = VALUES(program)`,
+        [email, username, password, role, program]
+      );
+    }
+
+    console.log("Admins seeded successfully.");
+    console.log("Shared password: bcc@admin123");
+  } finally {
+    await conn.end();
   }
+}
 
-  await db.end();
-  console.log("Database setup complete.");
-  console.log("ROTC Admin: bcc.rotc.admin@gmail.com / rotc@admin");
-  console.log("CWTS Admin: bcc.cwts.admin@gmail.com / cwts@admin");
-  console.log("NSTP Director: bcc.officer.admin@gmail.com / officer@admin");
-})().catch((e) => {
-  console.error(e);
+seedAdmins().catch((error) => {
+  console.error("Failed to seed admins:", error);
   process.exit(1);
 });
