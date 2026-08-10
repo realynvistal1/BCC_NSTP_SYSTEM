@@ -4,6 +4,7 @@ let attendanceCircle = null;
 let attendanceProgress = null;
 let selectedNumber = 0;
 let selectedType = "in";
+const DEFAULT_ATTENDANCE_RADIUS = 100;
 
 function formatAttendanceTime(value) {
   if (!value) return "—";
@@ -21,6 +22,10 @@ function initAttendanceMap() {
   attendanceMap.on("click", (event) => setAttendanceLocation(event.latlng.lat, event.latlng.lng, "Location selected on map."));
 }
 
+function getAttendanceRadius() {
+  return DEFAULT_ATTENDANCE_RADIUS;
+}
+
 function setAttendanceLocation(latitude, longitude, message) {
   const lat = Number(latitude);
   const lng = Number(longitude);
@@ -32,8 +37,16 @@ function setAttendanceLocation(latitude, longitude, message) {
   if (attendanceMap && window.L) {
     if (attendanceMarker) attendanceMarker.remove();
     if (attendanceCircle) attendanceCircle.remove();
-    attendanceMarker = L.marker([lat, lng]).addTo(attendanceMap);
-    attendanceCircle = L.circle([lat, lng], { radius: 100 }).addTo(attendanceMap);
+    attendanceMarker = L.marker([lat, lng], { draggable: true }).addTo(attendanceMap);
+    attendanceCircle = L.circle([lat, lng], { radius: getAttendanceRadius() }).addTo(attendanceMap);
+    attendanceMarker.on("dragend", () => {
+      const markerLatLng = attendanceMarker.getLatLng();
+      document.getElementById("attendanceLatitude").value = markerLatLng.lat.toFixed(7);
+      document.getElementById("attendanceLongitude").value = markerLatLng.lng.toFixed(7);
+      attendanceCircle.setLatLng(markerLatLng);
+      document.getElementById("locationStatus").textContent = `Location moved • ${markerLatLng.lat.toFixed(6)}, ${markerLatLng.lng.toFixed(6)}`;
+      validateAttendanceForm();
+    });
     attendanceMap.setView([lat, lng], 18);
   }
   validateAttendanceForm();
@@ -194,9 +207,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("attendanceProgram").addEventListener("change", () => loadAttendanceProgress().catch((error) => toast(error.message, true)));
     document.getElementById("timeInBtn").addEventListener("click", () => { selectedType = "in"; renderTypeButtons(); validateAttendanceForm(); });
     document.getElementById("timeOutBtn").addEventListener("click", () => { selectedType = "out"; renderTypeButtons(); validateAttendanceForm(); });
-    ["attendanceOpenDate", "attendanceCloseDate", "attendanceLatitude", "attendanceLongitude"].forEach((id) => document.getElementById(id).addEventListener("input", validateAttendanceForm));
-    document.getElementById("attendanceLatitude").addEventListener("change", () => setAttendanceLocation(document.getElementById("attendanceLatitude").value, document.getElementById("attendanceLongitude").value, "Manual coordinates selected."));
-    document.getElementById("attendanceLongitude").addEventListener("change", () => setAttendanceLocation(document.getElementById("attendanceLatitude").value, document.getElementById("attendanceLongitude").value, "Manual coordinates selected."));
+    ["attendanceOpenDate", "attendanceCloseDate"].forEach((id) => document.getElementById(id).addEventListener("input", validateAttendanceForm));
     document.getElementById("captureDirectorLocation").addEventListener("click", () => {
       const status = document.getElementById("locationStatus");
       if (!navigator.geolocation) return toast("Geolocation is not supported by this browser.", true);
