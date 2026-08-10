@@ -225,8 +225,18 @@ exports.markAttendance = async (req, res) => {
 exports.reEnroll=async(req,res)=>{
   try{
     const s=await studentById(req.user.id);
-    const [ms1Grades]=await db.execute("SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? LIMIT 1",[req.user.id,s.nstp_component]);
     const latest=await latestRecord(req.user.id);
+    if(latest&&latest.status==='rejected'){
+      const retryLevel=String(latest.ms_level||'1');
+      const [dupRejectedRetry]=await db.execute("SELECT id FROM student_ms_records WHERE student_id=? AND ms_level=? AND status='pending' LIMIT 1",[req.user.id,retryLevel]);
+      if(dupRejectedRetry.length)return res.status(409).json({message:'You already have a pending enrollment request for review.'});
+      const [retryScheduleRows]=await db.execute('SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',[s.nstp_component,retryLevel]);
+      const retrySchedule=retryScheduleRows[0];
+      if(!retrySchedule||!enrollmentService.nowWithin(retrySchedule))return res.status(400).json({message:`${s.nstp_component==='ROTC'?'MS':'CWTS'} ${retryLevel} enrollment is not open at this time.`});
+      await db.execute("INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",[req.user.id,String(retrySchedule.id),retryLevel,s.nstp_component]);
+      return res.json({message:`Your ${s.nstp_component==='ROTC'?'MS':'CWTS'} ${retryLevel} enrollment has been submitted again for administrator review.`});
+    }
+    const [ms1Grades]=await db.execute("SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? LIMIT 1",[req.user.id,s.nstp_component]);
     if(!latest||String(latest.ms_level)!=='1'||latest.status!=='approved')return res.status(400).json({message:`You can apply for ${s.nstp_component==='ROTC'?'MS':'CWTS'} 2 only after your level 1 enrollment is approved.`});
     if(ms1Grades[0]&&ms1Grades[0].status==='Failed')return res.status(400).json({message:'You cannot proceed to level 2 because your level 1 grade is Failed.'});
     const [dup]=await db.execute("SELECT id FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",[req.user.id]);
