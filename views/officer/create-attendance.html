@@ -92,15 +92,15 @@
           </div>
 
           <div class="attendance-step locked" id="locationStep">
-            <div class="attendance-step-head"><span class="step-number">5</span><div><h2>Attendance Location</h2><p>The old system uses a fixed 100-meter geolocation radius.</p></div></div>
+            <div class="attendance-step-head"><span class="step-number">5</span><div><h2>Attendance Location</h2><p>Move the attendance point on the map. The allowed geolocation radius stays fixed at 100 meters.</p></div></div>
             <div class="location-action-row">
               <button class="btn primary" id="captureDirectorLocation" type="button">Use My Current Location</button>
               <span id="locationStatus" class="location-status">No location captured yet.</span>
             </div>
             <div id="attendanceMap" class="attendance-map"></div>
             <div class="location-coordinates">
-              <label><span>Latitude</span><input id="attendanceLatitude" type="number" step="any" placeholder="Latitude"></label>
-              <label><span>Longitude</span><input id="attendanceLongitude" type="number" step="any" placeholder="Longitude"></label>
+              <label><span>Latitude</span><input id="attendanceLatitude" type="text" placeholder="Latitude" readonly></label>
+              <label><span>Longitude</span><input id="attendanceLongitude" type="text" placeholder="Longitude" readonly></label>
               <label><span>Radius</span><input value="100 meters" disabled></label>
             </div>
           </div>
