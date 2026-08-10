@@ -1613,6 +1613,10 @@ body[data-portal-theme="officer"] .progress-meta span {
   background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
   border-color: #d1fae5
 }
+.old-page-intro.sky {
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  border-color: #bfdbfe
+}
 .old-page-intro.rose {
   background: linear-gradient(135deg, #fff1f2, #fff7f7);
   border-color: #ffe4e6
@@ -1622,6 +1626,134 @@ body[data-portal-theme="officer"] .progress-meta span {
 }
 .old-create-btn.emerald:hover {
   background: #047857
+}
+body[data-portal-theme="rotc"] .old-page-intro.sky {
+  background:
+    radial-gradient(circle at top right, rgba(147, 197, 253, .28), transparent 30%),
+    linear-gradient(135deg, #dbeafe, #eff6ff 55%, #f8fbff);
+  border-color: #93c5fd;
+  box-shadow: 0 20px 36px rgba(37, 99, 235, .08)
+}
+body[data-portal-theme="rotc"] .old-page-intro.sky .old-intro-kicker {
+  color: #1d4ed8
+}
+body[data-portal-theme="rotc"] .old-page-intro.sky h2 {
+  color: #0f172a
+}
+body[data-portal-theme="rotc"] .old-page-intro.sky p {
+  color: #4f6b95
+}
+body[data-portal-theme="rotc"] .roster-summary-grid .roster-stat {
+  border-color: rgba(148, 163, 184, .24);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, .05)
+}
+body[data-portal-theme="rotc"] .roster-summary-grid .roster-stat .roster-stat-label,
+body[data-portal-theme="rotc"] .roster-section-title small,
+body[data-portal-theme="rotc"] .roster-count {
+  color: #64748b
+}
+body[data-portal-theme="rotc"] .roster-summary-grid .roster-stat .roster-stat-value,
+body[data-portal-theme="rotc"] .roster-section-title h3,
+body[data-portal-theme="rotc"] .company-card-head strong,
+body[data-portal-theme="rotc"] .roster-expand-title,
+body[data-portal-theme="rotc"] .roster-table td strong {
+  color: #0f172a
+}
+body[data-portal-theme="rotc"] .assignment-box {
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  border-color: rgba(37, 99, 235, .18);
+  box-shadow: 0 18px 34px rgba(37, 99, 235, .08)
+}
+body[data-portal-theme="rotc"] .assignment-box.ready .assignment-icon {
+  background: #dbeafe;
+  color: #1d4ed8
+}
+body[data-portal-theme="rotc"] .assignment-box.waiting .assignment-icon {
+  background: #e2e8f0;
+  color: #475569
+}
+body[data-portal-theme="rotc"] .company-card,
+body[data-portal-theme="rotc"] .roster-expand-card {
+  border-color: rgba(148, 163, 184, .22);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, .05)
+}
+body[data-portal-theme="rotc"] .company-card {
+  background:
+    linear-gradient(180deg, rgba(219, 234, 254, .4), rgba(255, 255, 255, 0) 48px),
+    #fff
+}
+body[data-portal-theme="rotc"] .roster-expand-head:hover,
+body[data-portal-theme="rotc"] .roster-table tbody tr:hover {
+  background: #f8fbff
+}
+body[data-portal-theme="rotc"] .roster-table th {
+  background: #eff6ff;
+  color: #5b77a2
+}
+body[data-portal-theme="rotc"] .roster-table td {
+  border-top-color: #e2e8f0;
+  color: #475569
+}
+body[data-portal-theme="rotc"] .roster-progress {
+  background: #dbeafe
+}
+body[data-portal-theme="rotc"] .roster-progress i.blue,
+body[data-portal-theme="rotc"] .roster-progress i.cyan {
+  background: linear-gradient(90deg, #2563eb, #38bdf8)
+}
+body[data-portal-theme="rotc"] .roster-progress i.green,
+body[data-portal-theme="rotc"] .roster-progress i.teal {
+  background: linear-gradient(90deg, #0f766e, #14b8a6)
+}
+body[data-portal-theme="rotc"] .roster-progress i.amber,
+body[data-portal-theme="rotc"] .roster-progress i.orange {
+  background: linear-gradient(90deg, #d97706, #f59e0b)
+}
+body[data-portal-theme="rotc"] .roster-progress i.purple,
+body[data-portal-theme="rotc"] .roster-progress i.rose {
+  background: linear-gradient(90deg, #7c3aed, #f43f5e)
+}
+body[data-portal-theme="cwts"] .old-page-intro.emerald {
+  background:
+    radial-gradient(circle at top right, rgba(74, 222, 128, .18), transparent 32%),
+    linear-gradient(135deg, #ecfdf5, #f0fdf4 55%, #f7fff9);
+  border-color: #86efac;
+  box-shadow: 0 20px 36px rgba(5, 150, 105, .08)
+}
+body[data-portal-theme="cwts"] .old-page-intro.emerald .old-intro-kicker {
+  color: #047857
+}
+body[data-portal-theme="cwts"] .old-page-intro.emerald p {
+  color: #4d7667
+}
+body[data-portal-theme="cwts"] .roster-summary-grid .roster-stat {
+  border-color: rgba(134, 239, 172, .32);
+  box-shadow: 0 18px 34px rgba(5, 150, 105, .06)
+}
+body[data-portal-theme="cwts"] .assignment-box,
+body[data-portal-theme="cwts"] .company-card,
+body[data-portal-theme="cwts"] .roster-expand-card {
+  border-color: rgba(110, 231, 183, .28);
+  box-shadow: 0 18px 34px rgba(5, 150, 105, .06)
+}
+body[data-portal-theme="cwts"] .assignment-box {
+  background: linear-gradient(135deg, #f0fdf4, #f7fff9)
+}
+body[data-portal-theme="cwts"] .company-card {
+  background:
+    linear-gradient(180deg, rgba(220, 252, 231, .6), rgba(255, 255, 255, 0) 48px),
+    #fff
+}
+body[data-portal-theme="cwts"] .roster-expand-head:hover,
+body[data-portal-theme="cwts"] .roster-table tbody tr:hover {
+  background: #f7fff9
+}
+body[data-portal-theme="cwts"] .roster-table th {
+  background: #ecfdf5;
+  color: #5c7d70
+}
+body[data-portal-theme="cwts"] .roster-progress {
+  background: #d1fae5
 }
 @media(max-width: 1100px) {
   .roster-summary-grid.six {
