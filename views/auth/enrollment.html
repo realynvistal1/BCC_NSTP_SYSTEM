@@ -24,8 +24,13 @@
     <div class="enrollment-header-orbit orbit-left">
     </div>
     <div class="enrollment-header-orbit orbit-right">
-    </div>
+   </div>
     <div class="enrollment-title-line">
+    </div>
+    <div class="enrollment-header-pills">
+     <span class="enrollment-header-pill">4-step guided form</span>
+     <span class="enrollment-header-pill">ROTC and CWTS intake</span>
+     <span class="enrollment-header-pill">Fast student registration</span>
     </div>
    </header>
    <section aria-label="Enrollment progress" class="enrollment-progress-card">
@@ -97,92 +102,137 @@
     </div>
     <form id="enrollmentForm" novalidate="">
      <section class="enroll-step enrollment-step-body" data-step="0">
-      <div class="enrollment-field-stack">
-       <div class="enrollment-field">
-        <label for="course">
-         Course
-        </label>
-        <select id="course" name="course" required="">
-         <option disabled="" selected="" value="">
-          Select Course
-         </option>
-         <option value="BS Criminology">
-          BS Criminology
-         </option>
-         <option value="BS Hospitality Management">
-          BS Hospitality Management
-         </option>
-         <option value="BS Information Technology">
-          BS Information Technology
-         </option>
-         <option value="BS Tourism Management">
-          BS Tourism Management
-         </option>
-         <option disabled="">
-          Education:
-         </option>
-         <option value="BEED - Bachelor of Elementary Education">
-          &nbsp;&nbsp;&nbsp;BEED - Bachelor of Elementary Education
-         </option>
-         <option value="BSED - Major in English">
-          &nbsp;&nbsp;&nbsp;BSED - Major in English
-         </option>
-         <option value="BSED - Major in Mathematics">
-          &nbsp;&nbsp;&nbsp;BSED - Major in Mathematics
-         </option>
-        </select>
+      <div class="enrollment-form-intro">
+       <div>
+        <span class="enrollment-form-kicker">
+         Academic Details
+        </span>
+        <h3>
+         Start with your school information
+        </h3>
+        <p>
+         Choose your course, year level, and NSTP component so we can match you to the correct enrollment flow.
+        </p>
        </div>
-       <div class="enrollment-two-col">
+       <div class="enrollment-form-badge">
+        <strong>
+         Step 1
+        </strong>
+        <span>
+         Required before continuing
+        </span>
+       </div>
+      </div>
+      <div class="enrollment-field-stack">
+       <div class="enrollment-form-panel">
+        <div class="enrollment-panel-header">
+         <div>
+          <span class="enrollment-panel-kicker">
+           Program Selection
+          </span>
+          <h4>
+           Academic profile
+          </h4>
+         </div>
+        </div>
         <div class="enrollment-field">
-         <label for="year_level">
-          Year Level
+         <label for="course">
+          Course
          </label>
-         <select id="year_level" name="year_level" required="">
+         <select id="course" name="course" required="">
           <option disabled="" selected="" value="">
-           Select year level
+           Select Course
           </option>
-          <option>
-           1st Year
+          <option value="BS Criminology">
+           BS Criminology
           </option>
-          <option>
-           2nd Year
+          <option value="BS Hospitality Management">
+           BS Hospitality Management
           </option>
-          <option>
-           3rd Year
+          <option value="BS Information Technology">
+           BS Information Technology
           </option>
-          <option>
-           4th Year
+          <option value="BS Tourism Management">
+           BS Tourism Management
+          </option>
+          <option disabled="">
+           Education:
+          </option>
+          <option value="BEED - Bachelor of Elementary Education">
+           &nbsp;&nbsp;&nbsp;BEED - Bachelor of Elementary Education
+          </option>
+          <option value="BSED - Major in English">
+           &nbsp;&nbsp;&nbsp;BSED - Major in English
+          </option>
+          <option value="BSED - Major in Mathematics">
+           &nbsp;&nbsp;&nbsp;BSED - Major in Mathematics
           </option>
          </select>
         </div>
-        <div class="enrollment-field">
-         <label id="levelLabel">
-          MS Level
-         </label>
-         <div class="enrollment-readonly-select" id="levelDisplay">
-          Select NSTP first
+        <div class="enrollment-two-col">
+         <div class="enrollment-field">
+          <label for="year_level">
+           Year Level
+          </label>
+          <select id="year_level" name="year_level" required="">
+           <option disabled="" selected="" value="">
+            Select year level
+           </option>
+           <option>
+            1st Year
+           </option>
+           <option>
+            2nd Year
+           </option>
+           <option>
+            3rd Year
+           </option>
+           <option>
+            4th Year
+           </option>
+          </select>
          </div>
-         <input id="ms_level" name="ms_level" type="hidden" value=""/>
-         <p class="enrollment-field-hint hidden" id="scheduleHint">
-         </p>
+         <div class="enrollment-field">
+          <label id="levelLabel">
+           MS Level
+          </label>
+          <div class="enrollment-readonly-select" id="levelDisplay">
+           Select NSTP first
+          </div>
+          <input id="ms_level" name="ms_level" type="hidden" value=""/>
+          <p class="enrollment-field-hint hidden" id="scheduleHint">
+          </p>
+         </div>
         </div>
        </div>
-       <div class="enrollment-field enrollment-component-field">
-        <label>
-         NSTP Component
-        </label>
-        <div class="enrollment-program-options">
-         <button class="enrollment-program-btn" data-program="ROTC" type="button">
-          ROTC
-         </button>
-         <button class="enrollment-program-btn" data-program="CWTS" type="button">
-          CWTS
-         </button>
+       <div class="enrollment-form-panel enrollment-component-panel">
+        <div class="enrollment-panel-header">
+         <div>
+          <span class="enrollment-panel-kicker">
+           Component Choice
+          </span>
+          <h4>
+           Select your NSTP track
+          </h4>
+         </div>
         </div>
-        <input id="nstp_component" name="nstp_component" required="" type="hidden"/>
-        <p class="enrollment-field-hint warning-text hidden" id="rotcOnlyHint">
-         BS Criminology students are required to enroll in ROTC.
-        </p>
+        <div class="enrollment-field enrollment-component-field">
+         <label>
+          NSTP Component
+         </label>
+         <div class="enrollment-program-options">
+          <button class="enrollment-program-btn" data-program="ROTC" type="button">
+           ROTC
+          </button>
+          <button class="enrollment-program-btn" data-program="CWTS" type="button">
+           CWTS
+          </button>
+         </div>
+         <input id="nstp_component" name="nstp_component" required="" type="hidden"/>
+         <p class="enrollment-field-hint warning-text hidden" id="rotcOnlyHint">
+          BS Criminology students are required to enroll in ROTC.
+         </p>
+        </div>
        </div>
       </div>
      </section>
