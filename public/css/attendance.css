@@ -1,4 +1,4 @@
-.attendance-create-layout {
+﻿.attendance-create-layout {
   display: grid;
   grid-template-columns: minmax(0, 760px) 280px;
   gap: 22px;
@@ -277,47 +277,168 @@
 }
 .attendance-session-list {
   display: grid;
-  gap: 14px
+  gap: 18px
+}
+.attendance-session-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px 2px;
+  color: #61738f;
+  font-size: 13px;
+}
+.attendance-session-summary strong {
+  color: #13345a;
+  font-size: 14px;
 }
 .officer-session-card {
-  background: #fff;
-  border: 1px solid #e8eef5;
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 8px 24px rgba(37, 74, 120, .06)
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,250,255,.96));
+  border: 1px solid #dbe7f5;
+  border-radius: 26px;
+  box-shadow: 0 18px 42px rgba(37, 74, 120, .10);
+  overflow: hidden
+}
+.session-card-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  min-height: 182px
+}
+.session-card-main {
+  padding: 22px 22px 16px
 }
 .session-card-top {
   display: flex;
   justify-content: space-between;
-  gap: 14px
+  gap: 18px;
+  align-items: flex-start
+}
+.session-card-heading {
+  max-width: 760px
 }
 .session-card-top h3 {
-  margin: 6px 0 4px;
-  font-size: 17px
+  margin: 8px 0 8px;
+  font-size: 32px;
+  line-height: 1.05;
+  color: #0f2443;
+  letter-spacing: -.03em
+}
+.session-card-top h3 span {
+  color: #7f8ea3;
+  font-weight: 600;
+  margin: 0 6px
 }
 .session-card-top p, .session-card-meta {
-  font-size: 11px;
-  color: #7c8796
+  font-size: 13px;
+  color: #6a7a91
 }
 .session-program {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .08em
+  letter-spacing: .18em;
+  color: #30598d
 }
 .session-card-meta {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
-  margin: 13px 0
+  margin: 16px 0 0
+}
+.session-meta-grid span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(232, 240, 251, .9);
+  color: #5d6f88
+}
+.session-meta-grid span b {
+  color: #294971;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase
+}
+.session-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px
+}
+.session-status-stack small {
+  color: #7a8799;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase
+}
+.session-card-actions {
+  margin-top: 18px
+}
+.session-card-accent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 16px;
+  background: linear-gradient(180deg, rgba(251,252,255,.92), rgba(242,247,255,.95));
+  border-left: 1px solid #e5eef9;
+  position: relative
+}
+.session-card-accent::before {
+  content: "";
+  position: absolute;
+  inset: 18px 16px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, .10)
+}
+.session-card-accent span {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: #6b7280;
+  text-align: center
+}
+.session-card-accent.open::before {
+  background: rgba(34, 197, 94, .15)
+}
+.session-card-accent.open span {
+  color: #0f8a43
+}
+.session-card-accent.late::before {
+  background: rgba(245, 158, 11, .16)
+}
+.session-card-accent.late span {
+  color: #b45309
+}
+.session-card-accent.closed::before {
+  background: rgba(248, 113, 113, .18)
+}
+.session-card-accent.closed span {
+  color: #b42318
+}
+.session-card-accent.scheduled::before {
+  background: rgba(96, 165, 250, .18)
+}
+.session-card-accent.scheduled span {
+  color: #295da8
 }
 .attendance-status-badge {
   display: inline-flex;
-  padding: 5px 9px;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 9px 14px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  text-transform: uppercase
+  text-transform: uppercase;
+  letter-spacing: .08em
 }
 .attendance-status-badge.success {
   background: #dcfce7;
@@ -335,92 +456,175 @@
   background: #e0e7ff;
   color: #3730a3
 }
-.attendance-modal {
-  position: fixed;
-  inset: 0;
+.attendance-records-dialog {
   z-index: 1000;
-  display: grid;
-  place-items: center
 }
-.attendance-modal.hidden {
-  display: none
+.attendance-records-card {
+  width: min(1280px, 97vw);
+  max-height: 94vh;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  border-radius: 28px;
+  border: 1px solid rgba(219, 231, 245, .9);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .30)
 }
-.attendance-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, .48)
-}
-.attendance-modal-card {
-  position: relative;
-  width: min(1080px, 94vw);
-  max-height: 88vh;
-  overflow: auto;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 25px 60px rgba(15, 23, 42, .3)
-}
-.attendance-modal-head {
+.attendance-dialog-head {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
-  border-bottom: 1px solid #eef2f7
+  padding: 28px 28px 22px;
+  border-bottom: 1px solid #e8eff8
 }
-.attendance-modal-head h2 {
-  margin: 2px 0
+.attendance-dialog-head h2 {
+  margin: 4px 0;
+  font-size: 28px;
+  color: #102747
 }
-.attendance-modal-head p {
+.attendance-dialog-head p {
   margin: 0;
-  color: #64748b;
-  font-size: 12px
+  color: #607089;
+  font-size: 15px
 }
-.attendance-modal-head button {
+.attendance-dialog-head button {
   border: 0;
-  background: transparent;
-  font-size: 28px
+  background: #fff;
+  border-radius: 14px;
+  width: 52px;
+  height: 52px;
+  font-size: 32px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08)
+}
+.attendance-record-overview {
+  padding: 0 24px 24px
 }
 .attendance-record-stats, .attendance-summary-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  padding: 16px
+  gap: 16px;
+  padding: 22px 0 18px
 }
 .attendance-record-stats>div, .attendance-stat-card {
-  border: 1px solid #e8eef5;
-  border-radius: 14px;
-  padding: 12px;
-  background: #fff;
-  text-align: center
+  border: 1px solid #dfe8f3;
+  border-radius: 18px;
+  padding: 18px 14px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7)
 }
 .attendance-record-stats span, .attendance-stat-card span {
   display: block;
   font-size: 10px;
   color: #64748b;
   text-transform: uppercase;
-  font-weight: 700
+  font-weight: 800;
+  letter-spacing: .08em
 }
 .attendance-record-stats strong, .attendance-stat-card strong {
-  font-size: 21px
+  font-size: 42px;
+  color: #102747;
+  line-height: 1.1
 }
 .attendance-record-stats .present, .attendance-stat-card.present {
-  background: #f0fdf4
+  background: linear-gradient(180deg, #f4fff7, #ecfbf2)
 }
 .attendance-record-stats .late, .attendance-stat-card.late {
-  background: #fffbeb
+  background: linear-gradient(180deg, #fffdf3, #fff7dc)
 }
 .attendance-record-stats .absent, .attendance-stat-card.absent {
-  background: #fef2f2
+  background: linear-gradient(180deg, #fff5f5, #feebeb)
 }
 .attendance-stat-card.unmarked {
-  background: #f8fafc
+  background: linear-gradient(180deg, #fcfdff, #f4f8fc)
 }
 .attendance-record-search {
-  padding: 0 16px 12px
+  padding: 0
+}
+.attendance-record-tools {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+.attendance-record-filter {
+  display: grid;
+  gap: 8px;
+}
+.attendance-record-filter span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.attendance-record-filter select {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid #d2ddec;
+  border-radius: 14px;
+  background: #fff;
+  color: #102747;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .03);
+  font-size: 16px;
 }
 .attendance-record-search input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #dce5ef;
-  border-radius: 11px
+  min-height: 56px;
+  padding: 16px 18px;
+  border: 1px solid #d2ddec;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 16px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .03)
+}
+.attendance-record-table-wrap {
+  padding: 0 24px 28px
+}
+.attendance-record-table-wrap .table-wrap,
+.attendance-record-table-wrap table {
+  margin-bottom: 0
+}
+.attendance-record-table-wrap .table-wrap {
+  border-radius: 18px;
+  overflow: hidden;
+}
+.attendance-record-table-wrap th {
+  padding: 18px 14px;
+  font-size: 12px;
+}
+.attendance-record-table-wrap td {
+  padding: 20px 14px;
+  font-size: 15px;
+}
+.attendance-record-table-wrap td strong {
+  font-size: 16px;
+}
+.attendance-record-table-wrap td small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.attendance-record-table-wrap .btn.small {
+  min-height: 40px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.attendance-empty-polished {
+  border: 1px dashed #c6d6eb;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(244,249,255,.96));
+  padding: 44px 20px;
+  text-align: center;
+  color: #61738f
+}
+.attendance-empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  color: #4b78b4;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #dfeeff)
 }
 .student-attendance-column {
   max-width: 640px
@@ -604,9 +808,135 @@
   .summary-actions {
     flex-wrap: wrap;
   }
+  .session-card-shell {
+    grid-template-columns: 1fr;
+  }
+  .session-card-accent {
+    border-left: 0;
+    border-top: 1px solid #e5eef9;
+    min-height: 68px;
+    align-items: center;
+    padding: 0 18px 14px;
+    justify-content: flex-end;
+  }
+  .session-card-accent::before {
+    inset: 12px 16px;
+    height: auto;
+  }
+  .session-card-top {
+    flex-direction: column;
+  }
+  .session-card-top h3 {
+    font-size: 24px;
+  }
+  .session-status-stack {
+    align-items: flex-start;
+  }
+  .attendance-record-tools {
+    grid-template-columns: 1fr;
+  }
+  .attendance-session-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .attendance-records-card {
+    width: min(100vw, 100vw);
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .attendance-dialog-head {
+    padding: 20px 18px 16px;
+  }
+  .attendance-dialog-head h2 {
+    font-size: 22px;
+  }
 }
 .attendance-update-modal {
   max-width: 480px
+}
+.app-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1201;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.app-dialog.hidden {
+  display: none;
+}
+.app-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(2px);
+}
+.app-dialog-card {
+  position: relative;
+  width: min(650px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+  border: 1px solid #e5e7eb;
+}
+.record-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #eef2f7;
+}
+.record-modal-head h2 {
+  margin: 4px 0;
+  color: #1e293b;
+  font-size: 22px;
+}
+.record-modal-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+.record-modal-head > div > span:first-child {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #3b82f6;
+}
+.modal-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 22px;
+  cursor: pointer;
+}
+.record-modal-scroll {
+  padding: 18px 22px 8px;
+}
+.record-section {
+  margin: 0 0 14px;
+}
+.record-section h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #334155;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 22px 22px;
 }
 .attendance-status-choice {
   display: grid;
@@ -637,3 +967,4 @@
   border-color: #fca5a5;
   color: #b91c1c
 }
+
