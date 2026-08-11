@@ -1,8 +1,29 @@
-document.addEventListener("DOMContentLoaded", () => {
-  bootstrapPortalPage({
-    expectedPortal: "rotc-admin",
-    shellRole: "rotc",
-    moduleSrc: "/assets/js/common/admin-offenses.js",
-    render: async (content, auth) => renderAdminOffenses("ROTC", content, auth),
-  });
-});
+﻿function offenseName(row){return `${row.last_name||''}, ${row.first_name||''}${row.middle_name?` ${String(row.middle_name).charAt(0)}.`:''}${row.suffix?` ${row.suffix}`:''}`.trim()}
+function offenseStatus(row){if(Number(row.offend||0)<2)return '<span class="muted">-</span>';return Number(row.settled)?'<span class="badge success">Settled</span>':'<span class="badge danger">Not Yet Settled</span>'}
+function offenseLevel(row){return Number(row.offend||0)>=2?'<span class="badge danger">Not following instructions</span>':'<span class="badge warning">Warning</span>'}
+
+async function renderAdminOffenses(_program, content, auth){
+  const program='ROTC';
+  const apiProgram='rotc';
+  const prefix='MS';
+  shell(apiProgram, 'Attendance Offenses', `${program} students with attendance violations.`, auth);
+  const rows=await API.get(`/api/admin/${apiProgram}/offenses`);
+  const years=[...new Set(rows.map(r=>r.school_year).filter(Boolean))].sort().reverse();
+  content.innerHTML=`
+    <section class="page-intro-banner ${program==='CWTS'?'emerald':'sky'}"><div><div class="page-intro-kicker">${program} ADMIN</div><h2>Attendance Offenses</h2><p>Review warnings and second-offense settlement records created during NSTP Director attendance verification.</p></div></section>
+    <section class="summary-grid three" id="offenseStats"></section>
+    <section class="panel"><div class="offense-filter-row">
+      <div class="status-tabs" id="offenseTabs"><button class="status-tab active" data-filter="">All</button><button class="status-tab" data-filter="warning">Warning</button><button class="status-tab" data-filter="settlement">Not following instructions</button></div>
+      <select id="offenseLevel"><option value="">All ${prefix} Levels</option><option value="1">${prefix} 1</option><option value="2">${prefix} 2</option></select>
+      <select id="offenseSY"><option value="">All School Years</option>${years.map(y=>`<option value="${esc(y)}">SY ${esc(y)}</option>`).join('')}</select>
+      <input id="offenseSearch" type="search" placeholder="Search by name, student ID, or course...">
+    </div><div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Course</th><th>Offense</th><th>Status</th><th>Action</th></tr></thead><tbody id="offenseRows"></tbody></table></div><div class="table-footer" id="offenseFooter"></div></section>
+    <div class="app-dialog hidden" id="offenseModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card"><div id="offenseModalBody"></div></div></div>`;
+
+  let type='';
+  function filtered(){const q=$('#offenseSearch').value.trim().toLowerCase(),lv=$('#offenseLevel').value,sy=$('#offenseSY').value;return rows.filter(r=>{if(type==='warning'&&Number(r.offend)!==1)return false;if(type==='settlement'&&Number(r.offend)<2)return false;if(lv&&String(r.ms_level||'')!==lv)return false;if(sy&&String(r.school_year||'')!==sy)return false;if(q&&!`${offenseName(r)} ${r.student_no||''} ${r.course||''}`.toLowerCase().includes(q))return false;return true})}
+  function draw(){const data=filtered(),warnings=data.filter(r=>Number(r.offend)===1).length,settlement=data.filter(r=>Number(r.offend)>=2&&!Number(r.settled)).length;$('#offenseStats').innerHTML=`<div class="stat-card"><div class="dash-label">Total</div><div class="value">${data.length}</div></div><div class="stat-card warning"><div class="dash-label">Warning</div><div class="value">${warnings}</div></div><div class="stat-card danger"><div class="dash-label">Need Settlement</div><div class="value">${settlement}</div></div>`;$('#offenseRows').innerHTML=data.length?data.map((r,i)=>`<tr class="${Number(r.offend)>=2&&!Number(r.settled)?'offense-row-alert':''}"><td>${i+1}</td><td><strong>${esc(r.student_no)}</strong></td><td><strong>${esc(offenseName(r))}</strong><br><span class="muted">${esc(r.year_level||'')}</span></td><td>${esc(r.course||'-')}</td><td>${offenseLevel(r)}</td><td>${offenseStatus(r)}</td><td><button class="btn small" data-view-offense="${r.student_id}">View Detail</button></td></tr>`).join(''):'<tr><td colspan="7"><div class="empty">No offenses match your filters.</div></td></tr>';$('#offenseFooter').textContent=`${data.length} of ${rows.length} record(s) shown`;$$('[data-view-offense]').forEach(b=>b.onclick=()=>openDetail(Number(b.dataset.viewOffense)))}
+  function openDetail(id){const r=rows.find(x=>Number(x.student_id)===id);if(!r)return;const modal=$('#offenseModal'),body=$('#offenseModalBody'),second=Number(r.offend)>=2;body.innerHTML=`<div class="record-modal-head"><div><span>Attendance Offense Detail</span><h2>${esc(offenseName(r))}</h2><p>${esc(r.student_no)} - ${esc(r.course||'-')} ${esc(r.year_level||'')}</p></div><button class="modal-close" id="offenseClose">x</button></div><div class="record-modal-scroll"><section class="record-section"><div class="record-info-grid"><div class="record-info-item"><small>Offense Level</small><strong>${second?'2nd Offense - Not following instructions':'1st Offense - Warning'}</strong></div><div class="record-info-item"><small>Settlement Status</small><strong>${second?(Number(r.settled)?'Settled':'Not Yet Settled'):'-'}</strong></div><div class="record-info-item"><small>Warning Acknowledged</small><strong>${r.warning_acknowledged_at?new Date(r.warning_acknowledged_at).toLocaleString():'Not yet acknowledged'}</strong></div><div class="record-info-item"><small>Date Recorded</small><strong>${r.created_at?new Date(r.created_at).toLocaleString():'-'}</strong></div></div>${second&&!Number(r.settled)?'<div class="warning-banner reject-note"><div><strong>Action Required</strong><span>The student is restricted from normal system use until this second offense is settled.</span></div></div>':''}</section></div><div class="app-dialog-actions">${second&&!Number(r.settled)?`<button class="btn success" id="settleOffense">Mark as Settled</button>`:''}<button class="btn" id="offenseCloseBottom">Close</button></div>`;modal.classList.remove('hidden');const close=()=>modal.classList.add('hidden');$('#offenseClose').onclick=close;$('#offenseCloseBottom').onclick=close;$('.app-dialog-backdrop',modal).onclick=close;if($('#settleOffense'))$('#settleOffense').onclick=async()=>{try{const out=await API.post(`/api/admin/${apiProgram}/offenses`,{student_id:r.student_id,action:'settle'});r.settled=1;toast(out.message);close();draw()}catch(e){toast(e.message,true)}}}
+  $$('#offenseTabs .status-tab').forEach(b=>b.onclick=()=>{$$('#offenseTabs .status-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');type=b.dataset.filter;draw()});$('#offenseLevel').onchange=draw;$('#offenseSY').onchange=draw;$('#offenseSearch').oninput=draw;draw();
+}
+
