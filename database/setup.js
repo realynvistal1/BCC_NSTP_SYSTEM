@@ -4,7 +4,7 @@ const path = require("path");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 
-const DB_NAME = process.env.DB_NAME || "bcc_nstp_system";
+const DB_NAME = process.env.DB_NAME || "bcc_nstp_database";
 const config = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),

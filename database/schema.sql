@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS `admins` (
   KEY `idx_admin_program` (`program`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 -- ============================================================
 -- 1. students (was: account_reservations)
 -- ============================================================
