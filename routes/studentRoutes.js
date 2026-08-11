@@ -19,6 +19,7 @@ router.post('/attendance-offense/acknowledge', controller.acknowledgeAttendanceW
 router.get('/attendance', controller.attendance);
 router.get('/attendance/sessions', controller.openSessions);
 router.post('/attendance/mark', controller.markAttendance);
+router.get('/re-enroll', controller.reEnrollForm);
 router.post('/re-enroll', controller.reEnroll);
 router.get('/withdrawal', controller.withdrawal);
 router.post('/withdrawal', controller.withdrawal);
