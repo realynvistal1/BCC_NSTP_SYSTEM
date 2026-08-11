@@ -1,11 +1,12 @@
-const shared = require("./sharedAdminController");
+const shared = require('./sharedAdminController');
+
 function withProgram(handler) {
   return (req, res, next) => {
-    req.params.program = "rotc";
+    req.params.program = 'rotc';
     return handler(req, res, next);
-  }
-  ;
+  };
 }
+
 module.exports = {
   dashboard: withProgram(shared.dashboard),
   schedules: withProgram(shared.schedules),
@@ -26,5 +27,4 @@ module.exports = {
   attendanceSummary: withProgram(shared.attendanceSummary),
   verifyAttendance: withProgram(shared.verifyAttendance),
   withdrawals: shared.withdrawals,
-}
-;
+};
