@@ -554,3 +554,75 @@
     height: 104px
   }
 }
+.forgot-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px
+}
+.forgot-modal.hidden {
+  display: none
+}
+.forgot-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 18, 31, .62);
+  backdrop-filter: blur(6px)
+}
+.forgot-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  background: #fff;
+  border-radius: 24px;
+  padding: 26px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, .3)
+}
+.forgot-close {
+  position: absolute;
+  right: 16px;
+  top: 14px;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer
+}
+.forgot-header {
+  margin-bottom: 18px
+}
+.forgot-header h3 {
+  margin: 0;
+  font-size: 22px;
+  color: #111827
+}
+.forgot-header p {
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #64748b
+}
+.forgot-form {
+  gap: 15px
+}
+.forgot-action-row {
+  display: flex
+}
+.forgot-action-row .auth-submit {
+  width: 100%
+}
+.forgot-form .input-shell input {
+  padding-left: 40px;
+  padding-right: 14px
+}
+.forgot-form .field-icon {
+  font-size: 13px
+}
+@media(max-width: 640px) {
+  .forgot-modal-card {
+    padding: 22px 18px
+  }
+}
