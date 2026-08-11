@@ -1,17 +1,149 @@
 ﻿/* Table-specific overrides can be placed here. Main shared styles are in global.css. */
 .offense-filter-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 16px;
-  border-bottom: 1px solid #e5e7eb
+  display: grid;
+  grid-template-columns: auto minmax(150px, 180px) minmax(170px, 210px) minmax(280px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
 }
 .offense-filter-row input {
-  min-width: 260px;
-  flex: 1
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+}
+.offense-filter-row select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+}
+.offense-filter-row .status-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px;
+  border-radius: 16px;
+  background: #edf4ff;
+  border: 1px solid #dbe7fb;
+}
+.offense-filter-row .status-tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #5b6f91;
+  background: transparent;
+  border: 0;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.offense-filter-row .status-tab.active {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, .24);
+}
+.offense-filter-row .status-tab:not(.active):hover {
+  background: rgba(255, 255, 255, .85);
+  color: #1d4ed8;
 }
 .offense-row-alert {
   background: #fff5f5
+}
+.offense-detail-card {
+  display: flex;
+  flex-direction: column;
+}
+.offense-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e6edf7;
+  background: linear-gradient(180deg, #fcfdff 0%, #f7fbff 100%);
+}
+.offense-detail-head h2 {
+  margin: 4px 0 6px;
+  font-size: 22px;
+  line-height: 1.15;
+  color: #1e293b;
+}
+.offense-detail-head p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+.offense-detail-body {
+  padding: 20px 24px 14px;
+}
+.offense-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.offense-detail-item {
+  padding: 16px 18px;
+  border: 1px solid #e5edf7;
+  border-radius: 16px;
+  background: #f8fbff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85);
+}
+.offense-detail-item small {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.offense-detail-item strong {
+  display: block;
+  font-size: 16px;
+  line-height: 1.35;
+  color: #1e293b;
+}
+.offense-detail-item.accent-warning {
+  background: #fff8eb;
+  border-color: #f7d78d;
+}
+.offense-detail-item.accent-warning strong {
+  color: #b45309;
+}
+.offense-detail-item.accent-danger {
+  background: #fff2f2;
+  border-color: #fecaca;
+}
+.offense-detail-item.accent-danger strong {
+  color: #b91c1c;
+}
+.offense-detail-item.accent-success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.offense-detail-item.accent-success strong {
+  color: #047857;
+}
+.offense-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 24px 22px;
+}
+.offense-detail-modal .modal-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 24px;
 }
 .summary-grid.three {
   grid-template-columns: repeat(3, minmax(0, 1fr))
@@ -26,8 +158,21 @@
   .summary-grid.three {
     grid-template-columns: 1fr
   }
+  .offense-filter-row {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
   .offense-filter-row>* {
-    width: 100%
+    width: 100%;
+  }
+  .offense-detail-summary {
+    grid-template-columns: 1fr;
+  }
+  .offense-detail-head,
+  .offense-detail-body,
+  .offense-detail-actions {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 }
 
