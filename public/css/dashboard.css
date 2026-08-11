@@ -1,4 +1,4 @@
-/* ===== Dashboard UI matched to the original BCC NSTP project ===== */
+﻿/* ===== Dashboard UI matched to the original BCC NSTP project ===== */
 .main {
   padding: 24px 26px 38px
 }
@@ -8,7 +8,7 @@
 .intro h1 {
   font-size: 24px
 }
-.old-dashboard-grid {
+.portal-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px
@@ -360,7 +360,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr))
   }
-  .old-dashboard-grid {
+  .portal-dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr))
   }
   .admin-analytics {
@@ -371,7 +371,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   }
 }
 @media(max-width: 700px) {
-  .summary-grid, .old-dashboard-grid, .distribution-insights {
+  .summary-grid, .portal-dashboard-grid, .distribution-insights {
     grid-template-columns: 1fr
   }
   .main {
@@ -384,8 +384,8 @@ body[data-portal-theme="officer"] .progress-meta span {
     min-height: 160px
   }
 }
-/* ===== Old-system Enrollment Schedule + Enrollment List ===== */
-.old-page-intro {
+/* ===== Enrollment Schedule + Enrollment List ===== */
+.page-intro-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -397,40 +397,40 @@ body[data-portal-theme="officer"] .progress-meta span {
   box-shadow: 0 8px 24px rgba(15, 76, 117, .07);
   margin-bottom: 18px
 }
-.old-page-intro.cwts {
+.page-intro-banner.cwts {
   background: linear-gradient(135deg, #eafbf3 0%, #f5fdf9 55%, #fff 100%);
   border-color: #d6f2e4
 }
-.old-page-intro h2 {
+.page-intro-banner h2 {
   font-size: 24px;
   margin: 2px 0 5px;
   color: #19324b
 }
-.old-page-intro p {
+.page-intro-banner p {
   margin: 0;
   color: #64748b;
   font-size: 13px
 }
-.old-page-intro .intro-kicker {
+.page-intro-banner .intro-kicker {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .15em;
   font-weight: 800;
   color: #3b82f6
 }
-.old-page-intro.cwts .intro-kicker {
+.page-intro-banner.cwts .intro-kicker {
   color: #059669
 }
-.old-create-btn {
+.page-intro-action {
   display: inline-flex!important;
   align-items: center;
   gap: 7px
 }
-.old-create-btn svg {
+.page-intro-action svg {
   width: 17px;
   height: 17px
 }
-.old-create-btn:disabled {
+.page-intro-action:disabled {
   background: #e5e7eb!important;
   color: #9ca3af!important;
   cursor: not-allowed!important;
@@ -449,7 +449,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   font-size: 22px;
   color: #1d4ed8
 }
-.old-page-intro.cwts .intro-total strong {
+.page-intro-banner.cwts .intro-total strong {
   color: #047857
 }
 .intro-total span {
@@ -461,7 +461,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   letter-spacing: .05em;
   font-weight: 700
 }
-.old-warning-banner {
+.warning-banner {
   display: flex;
   align-items: flex-start;
   gap: 11px;
@@ -472,21 +472,21 @@ body[data-portal-theme="officer"] .progress-meta span {
   background: #fffbeb;
   color: #92400e
 }
-.old-warning-banner>svg {
+.warning-banner>svg {
   width: 18px;
   height: 18px;
   flex: none;
   margin-top: 1px
 }
-.old-warning-banner div {
+.warning-banner div {
   display: flex;
   flex-direction: column;
   gap: 2px
 }
-.old-warning-banner strong {
+.warning-banner strong {
   font-size: 12px
 }
-.old-warning-banner span {
+.warning-banner span {
   font-size: 11px;
   color: #a16207
 }
@@ -547,17 +547,17 @@ body[data-portal-theme="officer"] .progress-meta span {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px
 }
-.old-schedule-card {
+.schedule-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 17px;
   padding: 18px;
   box-shadow: 0 5px 18px rgba(15, 23, 42, .05)
 }
-.old-schedule-card.open {
+.schedule-card.open {
   border-color: #bbf7d0
 }
-.old-schedule-card.upcoming {
+.schedule-card.upcoming {
   border-color: #bfdbfe
 }
 .schedule-card-top {
@@ -665,11 +665,11 @@ body[data-portal-theme="officer"] .progress-meta span {
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(15, 23, 42, .04)
 }
-.old-table {
+.data-table {
   width: 100%;
   border-collapse: collapse
 }
-.old-table th {
+.data-table th {
   background: #f8fafc;
   color: #64748b;
   font-size: 9px;
@@ -679,17 +679,17 @@ body[data-portal-theme="officer"] .progress-meta span {
   padding: 11px 14px;
   border-bottom: 1px solid #e5e7eb
 }
-.old-table td {
+.data-table td {
   padding: 12px 14px;
   border-bottom: 1px solid #f1f5f9;
   color: #475569;
   font-size: 11px;
   vertical-align: middle
 }
-.old-table tbody tr:last-child td {
+.data-table tbody tr:last-child td {
   border-bottom: 0
 }
-.old-table tbody tr:hover {
+.data-table tbody tr:hover {
   background: #fbfdff
 }
 .level-pill {
@@ -717,7 +717,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   border-color: #fecaca;
   color: #b91c1c
 }
-.old-empty-state {
+.empty-state-card {
   min-height: 150px;
   border: 1px dashed #cbd5e1;
   border-radius: 16px;
@@ -730,22 +730,22 @@ body[data-portal-theme="officer"] .progress-meta span {
   gap: 6px;
   color: #94a3b8
 }
-.old-empty-state svg {
+.empty-state-card svg {
   width: 34px;
   height: 34px;
   color: #cbd5e1
 }
-.old-empty-state strong {
+.empty-state-card strong {
   color: #64748b;
   font-size: 12px
 }
-.old-empty-state span {
+.empty-state-card span {
   font-size: 10px
 }
-.old-empty-state.compact {
+.empty-state-card.compact {
   min-height: 84px
 }
-.old-modal {
+.app-dialog {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -754,16 +754,16 @@ body[data-portal-theme="officer"] .progress-meta span {
   justify-content: center;
   padding: 18px
 }
-.old-modal.hidden {
+.app-dialog.hidden {
   display: none
 }
-.old-modal-backdrop {
+.app-dialog-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, .48);
   backdrop-filter: blur(2px)
 }
-.old-modal-card {
+.app-dialog-card {
   position: relative;
   width: min(650px, 96vw);
   max-height: 90vh;
@@ -776,7 +776,7 @@ body[data-portal-theme="officer"] .progress-meta span {
 .schedule-modal-card {
   width: min(650px, 96vw)
 }
-.old-modal-head {
+.app-dialog-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -784,12 +784,12 @@ body[data-portal-theme="officer"] .progress-meta span {
   padding: 20px 22px;
   border-bottom: 1px solid #eef2f7
 }
-.old-modal-head h3 {
+.app-dialog-head h3 {
   font-size: 18px;
   margin: 3px 0;
   color: #1e293b
 }
-.old-modal-head p {
+.app-dialog-head p {
   font-size: 11px;
   color: #94a3b8;
   margin: 0
@@ -843,14 +843,14 @@ body[data-portal-theme="officer"] .progress-meta span {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 7px
 }
-.old-modal-actions {
+.app-dialog-actions {
   grid-column: 1/-1;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   padding-top: 6px
 }
-.old-enrollment-controls {
+.enrollment-controls-panel {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
@@ -863,11 +863,11 @@ body[data-portal-theme="officer"] .progress-meta span {
   gap: 12px;
   align-items: center
 }
-.old-search-box {
+.search-box-panel {
   position: relative;
   flex: 1
 }
-.old-search-box svg {
+.search-box-panel svg {
   position: absolute;
   left: 12px;
   top: 50%;
@@ -876,7 +876,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   height: 16px;
   color: #94a3b8
 }
-.old-search-box input {
+.search-box-panel input {
   width: 100%;
   padding: 9px 12px 9px 36px;
   border: 1px solid #e2e8f0;
@@ -884,7 +884,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   font-size: 11px;
   outline: none
 }
-.old-search-box input:focus {
+.search-box-panel input:focus {
   border-color: #60a5fa;
   box-shadow: 0 0 0 3px rgba(96, 165, 250, .10)
 }
@@ -966,13 +966,13 @@ body[data-portal-theme="officer"] .progress-meta span {
 .table-scroll {
   overflow: auto
 }
-.enrollment-old-table {
+.enrollment-data-table {
   min-width: 960px
 }
-.enrollment-old-table .medical-row {
+.enrollment-data-table .medical-row {
   background: #fff7f7
 }
-.enrollment-old-table .medical-row td:first-child {
+.enrollment-data-table .medical-row td:first-child {
   border-left: 3px solid #ef4444
 }
 .student-cell {
@@ -1204,11 +1204,11 @@ body[data-portal-theme="officer"] .progress-meta span {
   }
 }
 @media(max-width: 600px) {
-  .old-page-intro {
+  .page-intro-banner {
     align-items: flex-start;
     flex-direction: column
   }
-  .old-page-intro .old-create-btn {
+  .page-intro-banner .page-intro-action {
     width: 100%;
     justify-content: center
   }
@@ -1237,7 +1237,7 @@ body[data-portal-theme="officer"] .progress-meta span {
     flex: 1 1 45%
   }
 }
-/* ===== Platoon / Company roster matched to the old system ===== */
+/* ===== Platoon / Company roster matched to the system ===== */
 .roster-ms-select {
   border: 1px solid #dbe5f0;
   background: #fff;
@@ -1609,38 +1609,38 @@ body[data-portal-theme="officer"] .progress-meta span {
   color: #94a3b8;
   font-size: 9.5px
 }
-.old-page-intro.emerald {
+.page-intro-banner.emerald {
   background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
   border-color: #d1fae5
 }
-.old-page-intro.sky {
+.page-intro-banner.sky {
   background: linear-gradient(135deg, #dbeafe, #eff6ff);
   border-color: #bfdbfe
 }
-.old-page-intro.rose {
+.page-intro-banner.rose {
   background: linear-gradient(135deg, #fff1f2, #fff7f7);
   border-color: #ffe4e6
 }
-.old-create-btn.emerald {
+.page-intro-action.emerald {
   background: #059669
 }
-.old-create-btn.emerald:hover {
+.page-intro-action.emerald:hover {
   background: #047857
 }
-body[data-portal-theme="rotc"] .old-page-intro.sky {
+body[data-portal-theme="rotc"] .page-intro-banner.sky {
   background:
     radial-gradient(circle at top right, rgba(147, 197, 253, .28), transparent 30%),
     linear-gradient(135deg, #dbeafe, #eff6ff 55%, #f8fbff);
   border-color: #93c5fd;
   box-shadow: 0 20px 36px rgba(37, 99, 235, .08)
 }
-body[data-portal-theme="rotc"] .old-page-intro.sky .old-intro-kicker {
+body[data-portal-theme="rotc"] .page-intro-banner.sky .page-intro-kicker {
   color: #1d4ed8
 }
-body[data-portal-theme="rotc"] .old-page-intro.sky h2 {
+body[data-portal-theme="rotc"] .page-intro-banner.sky h2 {
   color: #0f172a
 }
-body[data-portal-theme="rotc"] .old-page-intro.sky p {
+body[data-portal-theme="rotc"] .page-intro-banner.sky p {
   color: #4f6b95
 }
 body[data-portal-theme="rotc"] .roster-summary-grid .roster-stat {
@@ -1713,17 +1713,17 @@ body[data-portal-theme="rotc"] .roster-progress i.purple,
 body[data-portal-theme="rotc"] .roster-progress i.rose {
   background: linear-gradient(90deg, #7c3aed, #f43f5e)
 }
-body[data-portal-theme="cwts"] .old-page-intro.emerald {
+body[data-portal-theme="cwts"] .page-intro-banner.emerald {
   background:
     radial-gradient(circle at top right, rgba(74, 222, 128, .18), transparent 32%),
     linear-gradient(135deg, #ecfdf5, #f0fdf4 55%, #f7fff9);
   border-color: #86efac;
   box-shadow: 0 20px 36px rgba(5, 150, 105, .08)
 }
-body[data-portal-theme="cwts"] .old-page-intro.emerald .old-intro-kicker {
+body[data-portal-theme="cwts"] .page-intro-banner.emerald .page-intro-kicker {
   color: #047857
 }
-body[data-portal-theme="cwts"] .old-page-intro.emerald p {
+body[data-portal-theme="cwts"] .page-intro-banner.emerald p {
   color: #4d7667
 }
 body[data-portal-theme="cwts"] .roster-summary-grid .roster-stat {
@@ -1767,7 +1767,7 @@ body[data-portal-theme="cwts"] .roster-progress {
   .roster-section-title {
     flex-wrap: wrap
   }
-  .old-page-intro .roster-ms-select {
+  .page-intro-banner .roster-ms-select {
     width: 100%
   }
 }
@@ -1788,7 +1788,7 @@ body[data-portal-theme="cwts"] .roster-progress {
     padding: 9px
   }
 }
-/* NSTP Director dashboard + enrolled-student list matched to the old system */
+/* NSTP Director dashboard + enrolled-student list matched to the system */
 .director-enrollment-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1861,7 +1861,7 @@ body[data-portal-theme="cwts"] .roster-progress {
     text-align: center
   }
 }
-/* NSTP Director dashboard — matched to the old Officer dashboard */
+/* NSTP Director dashboard â€” matched to the old Officer dashboard */
 .director-dashboard-title, .director-enrollment-header {
   display: flex;
   align-items: flex-end;
@@ -1904,7 +1904,7 @@ body[data-portal-theme="cwts"] .roster-progress {
   background: #34d399;
   box-shadow: 0 0 0 4px #e8faf2
 }
-.old-officer-card {
+.officer-shortcut-card {
   min-height: 190px
 }
 .officer-card-head {
@@ -1933,13 +1933,13 @@ body[data-portal-theme="cwts"] .roster-progress {
   font-weight: 850;
   color: #2563eb
 }
-.old-officer-card:nth-child(2) .officer-card-number strong {
+.officer-shortcut-card:nth-child(2) .officer-card-number strong {
   color: #7c3aed
 }
-.old-officer-card:nth-child(3) .officer-card-number strong {
+.officer-shortcut-card:nth-child(3) .officer-card-number strong {
   color: #d97706
 }
-.old-officer-card:nth-child(4) .officer-card-number strong {
+.officer-shortcut-card:nth-child(4) .officer-card-number strong {
   color: #16a34a
 }
 .officer-card-number span {
@@ -1984,7 +1984,7 @@ body[data-portal-theme="cwts"] .roster-progress {
   font-size: 11px;
   font-weight: 700
 }
-.old-officer-card:hover .officer-view {
+.officer-shortcut-card:hover .officer-view {
   color: #4b8fd0
 }
 .director-enrollment-header {
@@ -2102,3 +2102,6 @@ body[data-portal-theme="cwts"] .roster-progress {
     overflow-x: auto
   }
 }
+
+
+
