@@ -1,4 +1,4 @@
-/* Table-specific overrides can be placed here. Main legacy-compatible styles are in global.css. */
+﻿/* Table-specific overrides can be placed here. Main shared styles are in global.css. */
 .offense-filter-row {
   display: flex;
   gap: 10px;
@@ -30,3 +30,4 @@
     width: 100%
   }
 }
+
