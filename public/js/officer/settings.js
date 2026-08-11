@@ -1,8 +1,0 @@
-document.addEventListener("DOMContentLoaded", () =>
-  bootstrapPortalPage({
-    expectedPortal: "officer",
-    shellRole: "officer",
-    moduleSrc: "/assets/js/common/settings-page.js",
-    render: async (content) => renderSettingsPage(content, "account"),
-  })
-);
