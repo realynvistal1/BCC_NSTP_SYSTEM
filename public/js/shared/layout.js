@@ -241,12 +241,216 @@ function statCard(label, value, ico = 'dashboard') {
   `;
 }
 
-function showForgotMessage() {
-  const message = $('#msg');
-  if (!message) return;
+function ensureForgotModal() {
+  let modal = $('#forgotPasswordModal');
+  if (modal) return modal;
 
-  message.textContent = 'Password recovery is available only inside this portal. Please contact the assigned administrator if you cannot access your account.';
-  message.className = 'notice';
+  modal = document.createElement('div');
+  modal.id = 'forgotPasswordModal';
+  modal.className = 'forgot-modal hidden';
+  modal.innerHTML = `
+    <div class="forgot-modal-backdrop" onclick="closeForgotModal()"></div>
+    <div class="forgot-modal-card">
+      <button class="forgot-close" type="button" onclick="closeForgotModal()">x</button>
+      <div class="forgot-modal-body" id="forgotModalBody"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function closeForgotModal() {
+  $('#forgotPasswordModal')?.classList.add('hidden');
+}
+
+async function submitForgotPassword(event) {
+  event.preventDefault();
+  const form = $('#forgotPasswordForm');
+  const message = $('#forgotPasswordMsg');
+  const button = form?.querySelector('button[type="submit"]');
+  if (!form || !message || !button) return;
+
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Resetting...';
+  message.className = 'notice hidden';
+  message.textContent = '';
+
+  try {
+    const payload = formToObject(form);
+    const result = await API.post('/api/auth/forgot-password', payload);
+    message.textContent = result.message;
+    message.className = 'notice';
+    form.reset();
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'notice error';
+  } finally {
+    button.disabled = false;
+    button.textContent = previous;
+  }
+}
+
+async function requestAdminResetCode(event) {
+  event.preventDefault();
+  const form = $('#adminForgotPasswordForm');
+  const message = $('#forgotPasswordMsg');
+  const button = $('#sendResetCodeBtn');
+  if (!form || !message || !button) return;
+
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Sending...';
+  message.className = 'notice hidden';
+  message.textContent = '';
+
+  try {
+    const payload = formToObject(form);
+    const result = await API.post('/api/auth/forgot-password/request-code', payload);
+    message.textContent = result.message;
+    message.className = 'notice';
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'notice error';
+  } finally {
+    button.disabled = false;
+    button.textContent = previous;
+  }
+}
+
+async function submitAdminForgotPassword(event) {
+  event.preventDefault();
+  const form = $('#adminForgotPasswordForm');
+  const message = $('#forgotPasswordMsg');
+  const button = $('#resetAdminPasswordBtn');
+  if (!form || !message || !button) return;
+
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Resetting...';
+  message.className = 'notice hidden';
+  message.textContent = '';
+
+  try {
+    const payload = formToObject(form);
+    const result = await API.post('/api/auth/forgot-password/reset-admin', payload);
+    message.textContent = result.message;
+    message.className = 'notice';
+    form.reset();
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'notice error';
+  } finally {
+    button.disabled = false;
+    button.textContent = previous;
+  }
+}
+
+function showForgotMessage() {
+  const loginForm = $('#loginForm');
+  const portal = loginForm?.dataset?.portal || 'student';
+  const body = $('#forgotModalBody');
+  const modal = ensureForgotModal();
+  if (!body) return;
+
+  if (portal !== 'student') {
+    body.innerHTML = `
+      <div class="forgot-header">
+        <h3>Reset Admin Password</h3>
+        <p>Request a verification code through Gmail, then enter the code to create a new password.</p>
+      </div>
+      <div class="notice hidden" id="forgotPasswordMsg"></div>
+      <form class="auth-form forgot-form" id="adminForgotPasswordForm">
+        <input type="hidden" name="portal" value="${portal}">
+        <label>
+          Email Address
+          <div class="input-shell">
+            <span class="field-icon">@</span>
+            <input name="email" placeholder="Enter your admin email" required type="email">
+          </div>
+        </label>
+        <div class="forgot-action-row">
+          <button class="auth-submit ${portal === 'cwts-admin' ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="sendResetCodeBtn" type="button">Send Code</button>
+        </div>
+        <label>
+          Verification Code
+          <div class="input-shell">
+            <span class="field-icon">#</span>
+            <input name="verification_code" placeholder="Enter 6-digit code" required type="text">
+          </div>
+        </label>
+        <label>
+          New Password
+          <div class="input-shell">
+            <span class="field-icon">*</span>
+            <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
+          </div>
+        </label>
+        <label>
+          Confirm New Password
+          <div class="input-shell">
+            <span class="field-icon">*</span>
+            <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
+          </div>
+        </label>
+        <button class="auth-submit ${portal === 'cwts-admin' ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="resetAdminPasswordBtn" type="submit">Reset Password</button>
+      </form>
+    `;
+    $('#sendResetCodeBtn')?.addEventListener('click', requestAdminResetCode);
+    $('#adminForgotPasswordForm')?.addEventListener('submit', submitAdminForgotPassword);
+    modal.classList.remove('hidden');
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="forgot-header">
+      <h3>Reset Student Password</h3>
+      <p>Enter your Student ID, registered email, and birthdate to set a new password.</p>
+    </div>
+    <div class="notice hidden" id="forgotPasswordMsg"></div>
+    <form class="auth-form forgot-form" id="forgotPasswordForm">
+      <input type="hidden" name="portal" value="student">
+      <label>
+        Student ID
+        <div class="input-shell">
+          <span class="field-icon">#</span>
+          <input name="student_id" placeholder="000000-0000" required type="text">
+        </div>
+      </label>
+      <label>
+        Registered Email
+        <div class="input-shell">
+          <span class="field-icon">@</span>
+          <input name="email" placeholder="Enter your email" required type="email">
+        </div>
+      </label>
+      <label>
+        Birthdate
+        <div class="input-shell">
+          <span class="field-icon">*</span>
+          <input name="birthdate" required type="date">
+        </div>
+      </label>
+      <label>
+        New Password
+        <div class="input-shell">
+          <span class="field-icon">*</span>
+          <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
+        </div>
+      </label>
+      <label>
+        Confirm New Password
+        <div class="input-shell">
+          <span class="field-icon">*</span>
+          <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
+        </div>
+      </label>
+      <button class="auth-submit student-submit" type="submit">Reset Password</button>
+    </form>
+  `;
+
+  $('#forgotPasswordForm')?.addEventListener('submit', submitForgotPassword);
+  modal.classList.remove('hidden');
 }
 
 function initPasswordToggles() {
