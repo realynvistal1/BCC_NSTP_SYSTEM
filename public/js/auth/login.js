@@ -1,5 +1,40 @@
-async function initLogin(){
-  const form=$('#loginForm');
-  form?.addEventListener('submit',async e=>{e.preventDefault();const btn=form.querySelector('button[type="submit"],button');const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Signing in...'}try{const d=await API.post('/api/auth/login',{email:form.email.value,password:form.password.value});await API.get('/api/auth/me');location.assign(d.redirect||'/student/dashboard')}catch(err){$('#msg').textContent=err.message==='Please log in again.'?'Login succeeded but the browser did not keep the session cookie. Try using localhost, allow cookies for this site, then refresh and log in again.':err.message;$('#msg').className='notice error'}finally{if(btn){btn.disabled=false;btn.textContent=old}}})
+async function initLogin() {
+  const form = $('#loginForm');
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const button = form.querySelector('button[type="submit"],button');
+    const previousText = button?.textContent;
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Signing in...';
+    }
+
+    try {
+      const data = await API.post('/api/auth/login', {
+        email: form.email.value,
+        password: form.password.value,
+      });
+
+      await API.get('/api/auth/me');
+      location.assign(data.redirect || '/student/dashboard');
+    } catch (error) {
+      $('#msg').textContent = error.message === 'Please log in again.'
+        ? 'Login succeeded but the browser did not keep the session cookie. Try using localhost, allow cookies for this site, then refresh and log in again.'
+        : error.message;
+      $('#msg').className = 'notice error';
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    }
+  });
 }
-document.addEventListener("DOMContentLoaded", () => { initPasswordToggles(); initLogin(); });
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPasswordToggles();
+  initLogin();
+});
