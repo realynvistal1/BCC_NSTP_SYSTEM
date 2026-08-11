@@ -5,10 +5,43 @@
   </div>`:meta?`<div class="officer-meta">${
     esc(meta)
   }
-  </div>`:''}<div class="officer-view">View <span>â†’</span></div></a>`
+  </div>`:''}<div class="officer-view">View <span>></span></div></a>`
 }
-function officerStudentRows(rows){
-  return rows.map((x,i)=>`<tr data-status="${esc((x.status||'pending').toLowerCase())}" data-search="${esc((x.student_id+' '+x.first_name+' '+(x.middle_name||'')+' '+x.last_name+' '+x.course+' '+(x.assignment||'')).toLowerCase())}"><td>${i+1}</td><td><strong>${esc(x.student_id)}</strong></td><td><strong>${esc(x.last_name+', '+x.first_name+(x.middle_name?` ${x.middle_name[0]}.`:''))}</strong></td><td>${esc(x.course)}</td><td>${esc(x.year_level)}</td><td>${x.ms_level?`${x.program==='CWTS'?'CWTS':'MS'} ${esc(x.ms_level)}`:'-'}</td><td>${badge(x.status||'pending')}</td><td>${esc(x.assignment||'-')}</td></tr>`)
+function officerStudentRows(rows) {
+  return rows.map((x, i) => {
+    const status = esc((x.status || 'pending').toLowerCase());
+    const search = esc(
+      (
+        x.student_id +
+        ' ' +
+        x.first_name +
+        ' ' +
+        (x.middle_name || '') +
+        ' ' +
+        x.last_name +
+        ' ' +
+        x.course +
+        ' ' +
+        (x.assignment || '')
+      ).toLowerCase()
+    );
+    const level = x.ms_level
+      ? `${x.program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(x.ms_level)}`
+      : '-';
+    const name = x.last_name + ', ' + x.first_name + (x.middle_name ? ` ${x.middle_name[0]}.` : '');
+
+    return `
+      <tr data-status="${status}" data-search="${search}">
+        <td>${i + 1}</td>
+        <td><strong>${esc(x.student_id)}</strong></td>
+        <td><strong>${esc(name)}</strong></td>
+        <td>${esc(x.course)}</td>
+        <td>${esc(x.year_level)}</td>
+        <td>${level}</td>
+        <td>${badge(x.status || 'pending')}</td>
+        <td>${esc(x.assignment || '-')}</td>
+      </tr>`;
+  });
 }
 function officerEnrollmentPanel(program,rows,tone){
   const approved=rows.filter(x=>x.status==='approved').length,pending=rows.filter(x=>x.status==='pending').length,rejected=rows.filter(x=>x.status==='rejected').length,correction=rows.filter(x=>String(x.status).toLowerCase().includes('correction')).length;
@@ -18,8 +51,48 @@ function officerEnrollmentPanel(program,rows,tone){
   }
   </b></button>`:''}</div></div><div class="director-table" data-list-table="${key}">${table(['#','Student ID','Name','Course','Year','Level','Status','Assignment'],officerStudentRows(rows))}</div><p class="director-list-note" data-list-count="${key}">Showing ${rows.length} of ${rows.length} enrolled students.</p></section>`
 }
-function bindOfficerEnrollmentLists(){
-  document.querySelectorAll('[data-enrollment-list]').forEach(section=>{const key=section.dataset.enrollmentList,input=section.querySelector(`[data-list-search="${key}"]`),tabs=section.querySelector(`[data-list-tabs="${key}"]`),count=section.querySelector(`[data-list-count="${key}"]`);let status='all';const apply=()=>{const q=(input?.value||'').trim().toLowerCase();const rows=[...section.querySelectorAll('tbody tr[data-status]')];let shown=0;rows.forEach(row=>{const okStatus=status==='all'||row.dataset.status===status||row.dataset.status.includes(status);const okSearch=!q||(row.dataset.search||'').includes(q);const show=okStatus&&okSearch;row.style.display=show?'':'none';if(show)shown++});if(count)count.textContent=`Showing ${shown} matching enrolled student${shown===1?'':'s'}.`};input?.addEventListener('input',apply);tabs?.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');status=btn.dataset.statusFilter||'all';apply()}));apply()})
+function bindOfficerEnrollmentLists() {
+  document.querySelectorAll('[data-enrollment-list]').forEach(section => {
+    const key = section.dataset.enrollmentList;
+    const input = section.querySelector(`[data-list-search="${key}"]`);
+    const tabs = section.querySelector(`[data-list-tabs="${key}"]`);
+    const count = section.querySelector(`[data-list-count="${key}"]`);
+    let status = 'all';
+
+    const apply = () => {
+      const q = (input?.value || '').trim().toLowerCase();
+      const rows = [...section.querySelectorAll('tbody tr[data-status]')];
+      let shown = 0;
+
+      rows.forEach(row => {
+        const okStatus =
+          status === 'all' ||
+          row.dataset.status === status ||
+          row.dataset.status.includes(status);
+        const okSearch = !q || (row.dataset.search || '').includes(q);
+        const show = okStatus && okSearch;
+
+        row.style.display = show ? '' : 'none';
+        if (show) shown += 1;
+      });
+
+      if (count) {
+        count.textContent = `Showing ${shown} matching enrolled student${shown === 1 ? '' : 's'}.`;
+      }
+    };
+
+    input?.addEventListener('input', apply);
+    tabs?.querySelectorAll('button').forEach(btn =>
+      btn.addEventListener('click', () => {
+        tabs.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        status = btn.dataset.statusFilter || 'all';
+        apply();
+      })
+    );
+
+    apply();
+  });
 }
 function rosterRowsOfficer(rows){
   if(!rows.length)return '<div class="roster-empty">No students assigned yet.</div>';
@@ -45,7 +118,7 @@ function officerExpander(key,label,rows,limit,tone='blue'){
   return `<div class="roster-expand-card" data-roster-key="${key}"><button class="roster-expand-head" type="button"><span class="roster-letter ${tone}">${esc(label[0])}</span><span class="roster-expand-copy"><span class="roster-expand-title">${esc(label)}</span>${Number.isFinite(limit)?`<span class="roster-progress"><i class="${tone}" style="width:${pct}%"></i></span>`:''}</span><span class="roster-count">${rows.length}${Number.isFinite(limit)?`/${
     limit
   }
-  `:''}</span><span class="roster-chevron">âŒ„</span></button><div class="roster-expand-body">${rosterRowsOfficer(rows)}</div></div>`
+  `:''}</span><span class="roster-chevron">v</span></button><div class="roster-expand-body">${rosterRowsOfficer(rows)}</div></div>`
 }
 function bindOfficerExpanders(){
   $$('.roster-expand-card').forEach(card=>card.querySelector('.roster-expand-head')?.addEventListener('click',()=>card.classList.toggle('open')))
@@ -200,54 +273,71 @@ async function officerPage(page,c){
     return
   }
 }
-async function viewSession(id){
-  try{
-    const rows=await API.get(`/api/officer/attendance/sessions/${id}/records`);
-    $('#sessionRecords').innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Session #${id} Student Records</h2><p class="panel-subtitle">Students who have not marked attendance appear as â€œNot recordedâ€.</p></div></div>${table(['Student','Program','Status','Update'],rows.map(x=>`<tr><td><strong>${
-      esc(x.student_no)
-    }
-    </strong><br>${
-      esc(x.last_name+', '+x.first_name)
-    }
-    </td><td>${
-      esc(x.nstp_component)
-    }
-    </td><td>${
-      x.status?badge(x.status):badge('Not recorded')
-    }
-    </td><td><select onchange="setAttendance(${id},${x.student_id},this.value)"><option value="">Select status</option><option value="present" ${
-      x.status==='present'?'selected':''
-    }
-    >Present</option><option value="late" ${
-      x.status==='late'?'selected':''
-    }
-    >Late</option><option value="absent" ${
-      x.status==='absent'?'selected':''
-    }
-    >Absent</option></select></td></tr>`))}</div>`
-  }   catch(e){
-    toast(e.message,true)
+async function viewSession(id) {
+  try {
+    const rows = await API.get(`/api/officer/attendance/sessions/${id}/records`);
+    const tableRows = rows.map(x => {
+      const status = x.status ? badge(x.status) : badge('Not recorded');
+
+      return `
+        <tr>
+          <td>
+            <strong>${esc(x.student_no)}</strong><br>
+            ${esc(x.last_name + ', ' + x.first_name)}
+          </td>
+          <td>${esc(x.nstp_component)}</td>
+          <td>${status}</td>
+          <td>
+            <select onchange="setAttendance(${id},${x.student_id},this.value)">
+              <option value="">Select status</option>
+              <option value="present" ${x.status === 'present' ? 'selected' : ''}>Present</option>
+              <option value="late" ${x.status === 'late' ? 'selected' : ''}>Late</option>
+              <option value="absent" ${x.status === 'absent' ? 'selected' : ''}>Absent</option>
+            </select>
+          </td>
+        </tr>`;
+    });
+
+    $('#sessionRecords').innerHTML = `
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Session #${id} Student Records</h2>
+            <p class="panel-subtitle">
+              Students who have not marked attendance appear as "Not recorded".
+            </p>
+          </div>
+        </div>
+        ${table(['Student', 'Program', 'Status', 'Update'], tableRows)}
+      </div>`;
+  } catch (e) {
+    toast(e.message, true);
   }
 }
-async function setAttendance(sessionId,studentId,status){
-  if(!status)return;
-  try{
-    const x=await API.post(`/api/officer/attendance/sessions/${sessionId}/records`,{student_id:studentId,status});
+
+async function setAttendance(sessionId, studentId, status) {
+  if (!status) return;
+
+  try {
+    const x = await API.post(`/api/officer/attendance/sessions/${sessionId}/records`, {
+      student_id: studentId,
+      status
+    });
     toast(x.message);
-    viewSession(sessionId)
-  }   catch(e){
-    toast(e.message,true)
+    viewSession(sessionId);
+  } catch (e) {
+    toast(e.message, true);
   }
 }
 
 // Override only the dashboard markup so the Director portal matches the ROTC/CWTS dashboard structure.
 const officerPageBase = officerPage;
-officerPage = async function(page,c){
-  if(page!=='dashboard'){
+officerPage = async function(page, c) {
+  if (page !== 'dashboard') {
     return officerPageBase(page,c);
   }
 
-  const [d,b1,b2,adv,special,cwts,enroll]=await Promise.all([
+  const [d, b1, b2, adv, special, cwts, enroll] = await Promise.all([
     API.get('/api/officer/dashboard'),
     API.get('/api/officer/roster/battalion-1'),
     API.get('/api/officer/roster/battalion-2'),
@@ -257,70 +347,116 @@ officerPage = async function(page,c){
     API.get('/api/officer/enrollments')
   ]);
 
-  const battalionCap=4*4*37,cwtsCap=6*60;
-  const rotcTotal=Number(d.rotc||0),cwtsTotal=Number(d.cwts||0),allStudents=rotcTotal+cwtsTotal;
-  const assignedTotal=b1.length+b2.length+adv.length+special.length+cwts.length;
-  const assignmentRate=allStudents?Math.round((assignedTotal/allStudents)*100):0;
-  const b1Pct=Math.round((b1.length/battalionCap)*100),b2Pct=Math.round((b2.length/battalionCap)*100),cwtsPct=Math.round((cwts.length/cwtsCap)*100);
-  const advMale=adv.filter(x=>String(x.sex).toLowerCase()==='male').length,advFemale=adv.filter(x=>String(x.sex).toLowerCase()==='female').length;
-  const specialLabel=special.length===1?'member':'members';
+  const battalionCap = 4 * 4 * 37;
+  const cwtsCap = 6 * 60;
+  const rotcTotal = Number(d.rotc || 0);
+  const cwtsTotal = Number(d.cwts || 0);
+  const allStudents = rotcTotal + cwtsTotal;
+  const assignedTotal = b1.length + b2.length + adv.length + special.length + cwts.length;
+  const b1Pct = Math.round((b1.length / battalionCap) * 100);
+  const b2Pct = Math.round((b2.length / battalionCap) * 100);
+  const cwtsPct = Math.round((cwts.length / cwtsCap) * 100);
+  const activeSessions = Number(d.open_sessions || 0);
+  const recordedAttendance = Number(d.attendance_records || 0);
+  const advMale = adv.filter(x => String(x.sex).toLowerCase() === 'male').length;
+  const advFemale = adv.filter(x => String(x.sex).toLowerCase() === 'female').length;
+  const specialLabel = special.length === 1 ? 'member' : 'members';
 
-  const intro=document.querySelector('.intro-copy');
-  if(intro){
-    intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>NSTP Director Dashboard</h1><p>Monitor ROTC and CWTS students, rosters, attendance, and records from one overview.</p>`;
+  const intro = document.querySelector('.intro-copy');
+  if (intro) {
+    intro.innerHTML = `
+      <div class="intro-kicker">BCC NSTP Management System</div>
+      <h1>NSTP Director Dashboard</h1>
+      <p>Monitor ROTC and CWTS students, rosters, attendance, and records from one overview.</p>`;
   }
 
-  c.innerHTML=`<div class="summary-grid">${summaryTile('ROTC Students',rotcTotal,'Students currently tracked under ROTC','blue')}${summaryTile('CWTS Students',cwtsTotal,'Students currently tracked under CWTS','green')}${summaryTile('Active Attendance',Number(d.open_sessions||0),`Live session${
-    Number(d.open_sessions||0)===1?'':'s'
-  }
-  being monitored`,'orange')}${summaryTile('Recorded Attendance',Number(d.attendance_records||0),'All saved attendance entries across sessions','red')}</div><section class="section-card distribution-card"><div class="section-heading"><h2>Roster Capacity Snapshot</h2><p>Monitor how ROTC battalions, CWTS companies, and special ROTC groups are filling up.</p></div>${progressRow('Battalion 1',b1.length,battalionCap,'blue')}${progressRow('Battalion 2',b2.length,battalionCap,'purple')}${progressRow('CWTS Companies',cwts.length,cwtsCap,'green')}${progressRow('Advance Course',adv.length,Math.max(rotcTotal,adv.length||1),'orange')}${progressRow('Special Platoon',special.length,Math.max(rotcTotal,special.length||1),'red')}</section><section class="section-card"><div class="section-heading"><h2>Director Shortcuts</h2><p>Keep your most-used Director pages one click away.</p></div><div class="portal-dashboard-grid officer-dashboard-grid">${directorCard('ROTC - Battalion 1','Male cadets battalion',b1.length,`/ ${
-    battalionCap
-  }
-  slots`,'/officer/rotc/battalion-1','users','blue','4 companies - 4 platoons each',b1Pct)}${directorCard('ROTC - Battalion 2','Female cadettes battalion',b2.length,`/ ${
-    battalionCap
-  }
-  slots`,'/officer/rotc/battalion-2','users','purple','4 companies - 4 platoons each',b2Pct)}${directorCard('Advance Course','Cadets for advance ROTC',adv.length,'cadets','/officer/rotc/advance-course','platoon','orange',`Male: ${
-    advMale
-  }
-  } - Female: ${
-    advFemale
-  }
-  `)}${directorCard('Special Platoon','Medics, HQ, and MP roster',special.length,specialLabel,'/officer/rotc/special-platoon','platoon','green','Special ROTC unit assignments')}${directorCard('CWTS','Company roster overview',cwts.length,`/ ${
-    cwtsCap
-  }
-  slots`,'/officer/cwts','users','green','6 companies - 60 slots each',cwtsPct)}${dashCard('Create Attendance','Set Location & Time','Record attendance for ROTC or CWTS.','/officer/create-attendance','location','indigo')}${dashCard('View Attendance','Review Sessions','Review sessions and student records.','/officer/view-attendance','attendance','green')}${dashCard('View Student Records','ROTC & CWTS','View complete student records.','/officer/view-records','records','indigo')}${dashCard('Settings','Account Security','Manage account settings and password.','/officer/settings','settings','indigo')}</div></section>`;
+  const summaryMarkup = `
+    <div class="summary-grid">
+      ${summaryTile('ROTC Students', rotcTotal, 'Students currently tracked under ROTC', 'blue')}
+      ${summaryTile('CWTS Students', cwtsTotal, 'Students currently tracked under CWTS', 'green')}
+      ${summaryTile('Active Attendance', activeSessions, `Live session${activeSessions === 1 ? '' : 's'} being monitored`, 'orange')}
+      ${summaryTile('Recorded Attendance', recordedAttendance, 'All saved attendance entries across sessions', 'red')}
+    </div>`;
+  const capacityMarkup = `
+    <section class="section-card distribution-card">
+      <div class="section-heading">
+        <h2>Roster Capacity Snapshot</h2>
+        <p>Monitor how ROTC battalions, CWTS companies, and special ROTC groups are filling up.</p>
+      </div>
+      ${progressRow('Battalion 1', b1.length, battalionCap, 'blue')}
+      ${progressRow('Battalion 2', b2.length, battalionCap, 'purple')}
+      ${progressRow('CWTS Companies', cwts.length, cwtsCap, 'green')}
+      ${progressRow('Advance Course', adv.length, Math.max(rotcTotal, adv.length || 1), 'orange')}
+      ${progressRow('Special Platoon', special.length, Math.max(rotcTotal, special.length || 1), 'red')}
+    </section>`;
+  const shortcutMarkup = `
+    <section class="section-card">
+      <div class="section-heading">
+        <h2>Director Shortcuts</h2>
+        <p>Keep your most-used Director pages one click away.</p>
+      </div>
+      <div class="portal-dashboard-grid officer-dashboard-grid">
+        ${directorCard('ROTC - Battalion 1', 'Male cadets battalion', b1.length, `/ ${battalionCap} slots`, '/officer/rotc/battalion-1', 'users', 'blue', '4 companies - 4 platoons each', b1Pct)}
+        ${directorCard('ROTC - Battalion 2', 'Female cadettes battalion', b2.length, `/ ${battalionCap} slots`, '/officer/rotc/battalion-2', 'users', 'purple', '4 companies - 4 platoons each', b2Pct)}
+        ${directorCard('Advance Course', 'Cadets for advance ROTC', adv.length, 'cadets', '/officer/rotc/advance-course', 'platoon', 'orange', `Male: ${advMale} - Female: ${advFemale}`)}
+        ${directorCard('Special Platoon', 'Medics, HQ, and MP roster', special.length, specialLabel, '/officer/rotc/special-platoon', 'platoon', 'green', 'Special ROTC unit assignments')}
+        ${directorCard('CWTS', 'Company roster overview', cwts.length, `/ ${cwtsCap} slots`, '/officer/cwts', 'users', 'green', '6 companies - 60 slots each', cwtsPct)}
+        ${dashCard('Create Attendance', 'Set Location & Time', 'Record attendance for ROTC or CWTS.', '/officer/create-attendance', 'location', 'indigo')}
+        ${dashCard('View Attendance', 'Review Sessions', 'Review sessions and student records.', '/officer/view-attendance', 'attendance', 'green')}
+        ${dashCard('View Student Records', 'ROTC & CWTS', 'View complete student records.', '/officer/view-records', 'records', 'indigo')}
+        ${dashCard('Settings', 'Account Security', 'Manage account settings and password.', '/officer/settings', 'settings', 'indigo')}
+      </div>
+    </section>`;
+
+  c.innerHTML = `${summaryMarkup}${capacityMarkup}${shortcutMarkup}`;
   bindOfficerEnrollmentLists();
 };
 
 // Override the current officer attendance modal helpers with the current API shape.
-async function viewSession(id){
-  try{
-    const payload=await API.get(`/api/officer/attendance/sessions/${id}/records`);
-    const rows=Array.isArray(payload.students)?payload.students:[];
-    $('#sessionRecords').innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Session #${id} Student Records</h2><p class="panel-subtitle">Students who have not marked attendance appear as "Not recorded".</p></div></div>${table(['Student','Program','Status','Update'],rows.map(x=>`<tr><td><strong>${
-      esc(x.student_id)
-    }
-    </strong><br>${
-      esc(x.last_name+', '+x.first_name)
-    }
-    </td><td>${
-      esc(x.nstp_component)
-    }
-    </td><td>${
-      x.attendance_status&&x.attendance_status!=='unmarked'?badge(x.attendance_status):badge('Not recorded')
-    }
-    </td><td><select onchange="setAttendance(${id},${x.id||x.student_id},this.value)"><option value="">Select status</option><option value="present" ${
-      x.attendance_status==='present'?'selected':''
-    }
-    >Present</option><option value="late" ${
-      x.attendance_status==='late'?'selected':''
-    }
-    >Late</option><option value="absent" ${
-      x.attendance_status==='absent'?'selected':''
-    }
-    >Absent</option></select></td></tr>`))}</div>`;
-  }catch(e){
-    toast(e.message,true)
+async function viewSession(id) {
+  try {
+    const payload = await API.get(`/api/officer/attendance/sessions/${id}/records`);
+    const rows = Array.isArray(payload.students) ? payload.students : [];
+    const tableRows = rows.map(x => {
+      const status =
+        x.attendance_status && x.attendance_status !== 'unmarked'
+          ? badge(x.attendance_status)
+          : badge('Not recorded');
+      const selectedId = x.id || x.student_id;
+
+      return `
+        <tr>
+          <td>
+            <strong>${esc(x.student_id)}</strong><br>
+            ${esc(x.last_name + ', ' + x.first_name)}
+          </td>
+          <td>${esc(x.nstp_component)}</td>
+          <td>${status}</td>
+          <td>
+            <select onchange="setAttendance(${id},${selectedId},this.value)">
+              <option value="">Select status</option>
+              <option value="present" ${x.attendance_status === 'present' ? 'selected' : ''}>Present</option>
+              <option value="late" ${x.attendance_status === 'late' ? 'selected' : ''}>Late</option>
+              <option value="absent" ${x.attendance_status === 'absent' ? 'selected' : ''}>Absent</option>
+            </select>
+          </td>
+        </tr>`;
+    });
+
+    $('#sessionRecords').innerHTML = `
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Session #${id} Student Records</h2>
+            <p class="panel-subtitle">
+              Students who have not marked attendance appear as "Not recorded".
+            </p>
+          </div>
+        </div>
+        ${table(['Student', 'Program', 'Status', 'Update'], tableRows)}
+      </div>`;
+  } catch (e) {
+    toast(e.message, true);
   }
 }
 
