@@ -1,12 +1,12 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const MIN_PASSWORD_LENGTH = 8;
 
 function portalFor(row) {
-  if (row.role === "student") return "student";
-  if (row.role === "officer") return "officer";
-  return /cwts/i.test(row.username || row.email) ? "cwts-admin" : "rotc-admin";
+  if (row.role === 'student') return 'student';
+  if (row.role === 'officer') return 'officer';
+  return /cwts/i.test(row.username || row.email) ? 'cwts-admin' : 'rotc-admin';
 }
 
 function passwordValidationMessage(password) {
@@ -35,7 +35,7 @@ function signLoginToken(user, portal) {
   return jwt.sign(
     { id: user.id, role: user.role, portal, email: user.email },
     process.env.JWT_SECRET,
-    { expiresIn: "12h" }
+    { expiresIn: '12h' }
   );
 }
 
