@@ -15,18 +15,22 @@ function lateDeadline(closeDate) {
 function getEffectiveStatus(session, now = new Date()) {
   const open = toDate(session.open_date || session.openDate);
   const close = toDate(session.close_date || session.closeDate);
-  if (!open || !close) return "closed";
+
+  if (!open || !close) return 'closed';
+
   const lateUntil = new Date(close.getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000);
-  if (now < open) return "scheduled";
-  if (now < close) return "open";
-  if (now < lateUntil) return "late";
-  return "closed";
+
+  if (now < open) return 'scheduled';
+  if (now < close) return 'open';
+  if (now < lateUntil) return 'late';
+  return 'closed';
 }
 
 function attendanceStatusForMark(session, now = new Date()) {
   const status = getEffectiveStatus(session, now);
-  if (status === "open") return "present";
-  if (status === "late") return "late";
+
+  if (status === 'open') return 'present';
+  if (status === 'late') return 'late';
   return null;
 }
 
