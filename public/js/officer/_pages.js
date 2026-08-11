@@ -1,11 +1,11 @@
-function directorCard(label,subtitle,value,suffix,href,ico,tone,meta='',pct=null){
-  return `<a class="dashboard-card director-card old-officer-card" href="${href}"><div class="officer-card-head"><span class="dash-icon ${tone}">${icon(ico)}</span><div><h3>${esc(label)}</h3><p class="director-subtitle">${esc(subtitle)}</p></div></div><div class="officer-card-number"><strong>${esc(value)}</strong><span>${esc(suffix)}</span></div>${pct!==null?`<div class="officer-capacity"><div class="officer-progress"><i class="${tone}" style="width:${Math.min(Number(pct)||0,100)}%"></i></div>${
+﻿function directorCard(label,subtitle,value,suffix,href,ico,tone,meta='',pct=null){
+  return `<a class="dashboard-card director-card officer-shortcut-card" href="${href}"><div class="officer-card-head"><span class="dash-icon ${tone}">${icon(ico)}</span><div><h3>${esc(label)}</h3><p class="director-subtitle">${esc(subtitle)}</p></div></div><div class="officer-card-number"><strong>${esc(value)}</strong><span>${esc(suffix)}</span></div>${pct!==null?`<div class="officer-capacity"><div class="officer-progress"><i class="${tone}" style="width:${Math.min(Number(pct)||0,100)}%"></i></div>${
     meta?`<small>${esc(meta)}</small>`:''
   }
   </div>`:meta?`<div class="officer-meta">${
     esc(meta)
   }
-  </div>`:''}<div class="officer-view">View <span>→</span></div></a>`
+  </div>`:''}<div class="officer-view">View <span>â†’</span></div></a>`
 }
 function officerStudentRows(rows){
   return rows.map((x,i)=>`<tr data-status="${esc((x.status||'pending').toLowerCase())}" data-search="${esc((x.student_id+' '+x.first_name+' '+(x.middle_name||'')+' '+x.last_name+' '+x.course+' '+(x.assignment||'')).toLowerCase())}"><td>${i+1}</td><td><strong>${esc(x.student_id)}</strong></td><td><strong>${esc(x.last_name+', '+x.first_name+(x.middle_name?` ${x.middle_name[0]}.`:''))}</strong></td><td>${esc(x.course)}</td><td>${esc(x.year_level)}</td><td>${x.ms_level?`${x.program==='CWTS'?'CWTS':'MS'} ${esc(x.ms_level)}`:'-'}</td><td>${badge(x.status||'pending')}</td><td>${esc(x.assignment||'-')}</td></tr>`)
@@ -45,7 +45,7 @@ function officerExpander(key,label,rows,limit,tone='blue'){
   return `<div class="roster-expand-card" data-roster-key="${key}"><button class="roster-expand-head" type="button"><span class="roster-letter ${tone}">${esc(label[0])}</span><span class="roster-expand-copy"><span class="roster-expand-title">${esc(label)}</span>${Number.isFinite(limit)?`<span class="roster-progress"><i class="${tone}" style="width:${pct}%"></i></span>`:''}</span><span class="roster-count">${rows.length}${Number.isFinite(limit)?`/${
     limit
   }
-  `:''}</span><span class="roster-chevron">⌄</span></button><div class="roster-expand-body">${rosterRowsOfficer(rows)}</div></div>`
+  `:''}</span><span class="roster-chevron">âŒ„</span></button><div class="roster-expand-body">${rosterRowsOfficer(rows)}</div></div>`
 }
 function bindOfficerExpanders(){
   $$('.roster-expand-card').forEach(card=>card.querySelector('.roster-expand-head')?.addEventListener('click',()=>card.classList.toggle('open')))
@@ -56,27 +56,27 @@ async function officerPage(page,c){
     const battalionCap=4*4*37,cwtsCap=6*60;
     const b1Pct=Math.round((b1.length/battalionCap)*100),b2Pct=Math.round((b2.length/battalionCap)*100),cwtsPct=Math.round((cwts.length/cwtsCap)*100);
     const advMale=adv.filter(x=>String(x.sex).toLowerCase()==='male').length,advFemale=adv.filter(x=>String(x.sex).toLowerCase()==='female').length;
-    c.innerHTML=`<div class="director-dashboard-title"><div><span>NSTP DIRECTOR DASHBOARD</span><h2>ROTC & CWTS Overview</h2><p>Manage battalions, CWTS companies, attendance operations, and student records.</p></div><div class="director-live"><i></i>${Number(d.open_sessions||0)} active attendance session${Number(d.open_sessions||0)===1?'':'s'}</div></div><div class="old-dashboard-grid officer-dashboard-grid">${directorCard('ROTC - Battalion 1','Male cadets battalion',b1.length,`/ ${
+    c.innerHTML=`<div class="director-dashboard-title"><div><span>NSTP DIRECTOR DASHBOARD</span><h2>ROTC & CWTS Overview</h2><p>Manage battalions, CWTS companies, attendance operations, and student records.</p></div><div class="director-live"><i></i>${Number(d.open_sessions||0)} active attendance session${Number(d.open_sessions||0)===1?'':'s'}</div></div><div class="portal-dashboard-grid officer-dashboard-grid">${directorCard('ROTC - Battalion 1','Male cadets battalion',b1.length,`/ ${
       battalionCap
     }
-    slots`,'/officer/rotc/battalion-1','users','blue','4 companies • 4 platoons each',b1Pct)}${directorCard('ROTC - Battalion 2','Female cadettes battalion',b2.length,`/ ${
+    slots`,'/officer/rotc/battalion-1','users','blue','4 companies - 4 platoons each',b1Pct)}${directorCard('ROTC - Battalion 2','Female cadettes battalion',b2.length,`/ ${
       battalionCap
     }
-    slots`,'/officer/rotc/battalion-2','users','purple','4 companies • 4 platoons each',b2Pct)}${directorCard('Advance Course','Cadets for advance ROTC',adv.length,'cadets','/officer/rotc/advance-course','platoon','orange',`Male: ${
+    slots`,'/officer/rotc/battalion-2','users','purple','4 companies - 4 platoons each',b2Pct)}${directorCard('Advance Course','Cadets for advance ROTC',adv.length,'cadets','/officer/rotc/advance-course','platoon','orange',`Male: ${
       advMale
     }
-    • Female: ${
+    } - Female: ${
       advFemale
     }
     `)}${directorCard('CWTS','Company roster overview',cwts.length,`/ ${
       cwtsCap
     }
-    slots`,'/officer/cwts','users','green','6 companies • 60 slots each',cwtsPct)}${dashCard('Create Attendance','Set Location & Time','Record attendance for ROTC or CWTS.','/officer/create-attendance','location','indigo')}${dashCard('View Attendance','Review Sessions','Review sessions and student records.','/officer/view-attendance','attendance','green')}${dashCard('View Student Records','ROTC & CWTS','View complete student records.','/officer/view-records','records','indigo')}${dashCard('Settings','Account Security','Manage account settings and password.','/officer/settings','settings','indigo')}</div><div class="director-enrollment-header"><div><span>ENROLLMENT MONITORING</span><h2>ROTC & CWTS Enrolled Students</h2><p>Monitor submitted enrollments from both components without changing the Admin-controlled status.</p></div></div><div class="director-enrollment-grid">${officerEnrollmentPanel('ROTC',enroll.rotc||[],'blue')}${officerEnrollmentPanel('CWTS',enroll.cwts||[],'green')}</div>`;
+    slots`,'/officer/cwts','users','green','6 companies - 60 slots each',cwtsPct)}${dashCard('Create Attendance','Set Location & Time','Record attendance for ROTC or CWTS.','/officer/create-attendance','location','indigo')}${dashCard('View Attendance','Review Sessions','Review sessions and student records.','/officer/view-attendance','attendance','green')}${dashCard('View Student Records','ROTC & CWTS','View complete student records.','/officer/view-records','records','indigo')}${dashCard('Settings','Account Security','Manage account settings and password.','/officer/settings','settings','indigo')}</div><div class="director-enrollment-header"><div><span>ENROLLMENT MONITORING</span><h2>ROTC & CWTS Enrolled Students</h2><p>Monitor submitted enrollments from both components without changing the Admin-controlled status.</p></div></div><div class="director-enrollment-grid">${officerEnrollmentPanel('ROTC',enroll.rotc||[],'blue')}${officerEnrollmentPanel('CWTS',enroll.cwts||[],'green')}</div>`;
     bindOfficerEnrollmentLists();
     return
   }
   if(page==='create-attendance'){
-    c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>Create Attendance</h2><p>Set the attendance location and schedule. The attendance radius stays fixed at 100 meters.</p></div></div><div class="panel"><form id="attForm" class="form-grid"><div class="field"><label>Program</label><select name="program"><option>ROTC</option><option>CWTS</option></select></div><div class="field"><label>MS Level</label><select name="ms_level"><option value="1">MS 1</option><option value="2">MS 2</option></select></div><div class="field"><label>School Year</label><input name="school_year" placeholder="2026-2027"></div><div class="field"><label>MI Number</label><input name="mi_number" type="number" min="1" required></div><div class="field checkbox-field"><label><input name="is_advance_course" type="checkbox" value="1"> Advance Course session</label><small>Use only for ROTC Advance Course attendance.</small></div><div class="field"><label>MI Type</label><select name="mi_type"><option value="in">IN</option><option value="out">OUT</option></select></div><div class="field"><label>Radius</label><input value="100 meters" disabled></div><div class="field"><label>Open Date / Time</label><input name="open_date" type="datetime-local" required></div><div class="field"><label>Close Date / Time</label><input name="close_date" type="datetime-local" required></div><div class="field"><label>Latitude</label><input name="latitude" id="lat" readonly required></div><div class="field"><label>Longitude</label><input name="longitude" id="lng" readonly required></div><div class="field full"><div class="notice">Set the approved attendance area while you are physically at the activity location.</div><div class="actions"><button type="button" class="btn" id="useLoc">Use My Current Location</button><button class="btn primary">Save / Activate Attendance</button></div></div></form></div>`;
+    c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Create Attendance</h2><p>Set the attendance location and schedule. The attendance radius stays fixed at 100 meters.</p></div></div><div class="panel"><form id="attForm" class="form-grid"><div class="field"><label>Program</label><select name="program"><option>ROTC</option><option>CWTS</option></select></div><div class="field"><label>MS Level</label><select name="ms_level"><option value="1">MS 1</option><option value="2">MS 2</option></select></div><div class="field"><label>School Year</label><input name="school_year" placeholder="2026-2027"></div><div class="field"><label>MI Number</label><input name="mi_number" type="number" min="1" required></div><div class="field checkbox-field"><label><input name="is_advance_course" type="checkbox" value="1"> Advance Course session</label><small>Use only for ROTC Advance Course attendance.</small></div><div class="field"><label>MI Type</label><select name="mi_type"><option value="in">IN</option><option value="out">OUT</option></select></div><div class="field"><label>Radius</label><input value="100 meters" disabled></div><div class="field"><label>Open Date / Time</label><input name="open_date" type="datetime-local" required></div><div class="field"><label>Close Date / Time</label><input name="close_date" type="datetime-local" required></div><div class="field"><label>Latitude</label><input name="latitude" id="lat" readonly required></div><div class="field"><label>Longitude</label><input name="longitude" id="lng" readonly required></div><div class="field full"><div class="notice">Set the approved attendance area while you are physically at the activity location.</div><div class="actions"><button type="button" class="btn" id="useLoc">Use My Current Location</button><button class="btn primary">Save / Activate Attendance</button></div></div></form></div>`;
     $('#useLoc').onclick=()=>navigator.geolocation?.getCurrentPosition(p=>{$('#lat').value=p.coords.latitude.toFixed(7);$('#lng').value=p.coords.longitude.toFixed(7);toast('Current location added.')},()=>toast('Could not get your location.',true),{enableHighAccuracy:true});
     $('#attForm').onsubmit=async e=>{
       e.preventDefault();
@@ -95,7 +95,7 @@ async function officerPage(page,c){
   }
   if(page==='view-attendance'){
     const rows=await API.get('/api/officer/attendance/sessions');
-    c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>View Attendance</h2><p>Monitor ROTC and CWTS attendance sessions and update student attendance status.</p></div></div><div class="panel">${table(['ID','Program','MI','Open','Close','Radius','Status','Records'],rows.map(x=>`<tr><td>#${
+    c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>View Attendance</h2><p>Monitor ROTC and CWTS attendance sessions and update student attendance status.</p></div></div><div class="panel">${table(['ID','Program','MI','Open','Close','Radius','Status','Records'],rows.map(x=>`<tr><td>#${
       x.id
     }
     </td><td><strong>${
@@ -124,7 +124,7 @@ async function officerPage(page,c){
   }
   if(page==='view-records'){
     const rows=await API.get('/api/officer/records');
-    c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>View Student Records</h2><p>View ROTC and CWTS student records in one organized list.</p></div></div><div class="panel">${recordsTable(rows)}</div>`;
+    c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>View Student Records</h2><p>View ROTC and CWTS student records in one organized list.</p></div></div><div class="panel">${recordsTable(rows)}</div>`;
     return
   }
   if(page==='battalion-1'||page==='battalion-2'){
@@ -134,7 +134,7 @@ async function officerPage(page,c){
     ;
     companies.forEach(co=>{grouped[co]={1:[],2:[],3:[],4:[]}});
     rows.forEach(x=>{if(grouped[x.rotc_company]&&grouped[x.rotc_company][x.rotc_platoon])grouped[x.rotc_company][x.rotc_platoon].push(x)});
-    c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>Battalion ${bn} - ${label}</h2><p>View all approved ROTC ${label.toLowerCase()} cadets assigned to Battalion ${bn} companies and platoons.</p></div></div><div class="roster-summary-grid four">${rosterSummary(`Total ${
+    c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Battalion ${bn} - ${label}</h2><p>View all approved ROTC ${label.toLowerCase()} cadets assigned to Battalion ${bn} companies and platoons.</p></div></div><div class="roster-summary-grid four">${rosterSummary(`Total ${
       bn===1?'Cadets':'Cadettes'
     }
     `,rows.length,'','slate')}${rosterSummary('Capacity',`${
@@ -166,7 +166,7 @@ async function officerPage(page,c){
     companies.forEach(x=>grouped[x]=[]);
     rows.forEach(x=>{if(grouped[x.company])grouped[x.company].push(x)});
     const cap=companies.length*60;
-    c.innerHTML=`<div class="old-page-intro emerald"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Assigned',rows.length,'students','slate')}${rosterSummary('Total Capacity',cap,'6 companies','slate')}${rosterSummary('Available Slots',cap-rows.length,'remaining','green')}${rosterSummary('Companies',companies.length,'60 slots each','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${
+    c.innerHTML=`<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Assigned',rows.length,'students','slate')}${rosterSummary('Total Capacity',cap,'6 companies','slate')}${rosterSummary('Available Slots',cap-rows.length,'remaining','green')}${rosterSummary('Companies',companies.length,'60 slots each','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${
       co
     }
     `,co,grouped[co],60,['blue','green','amber','purple','rose','cyan'][i])).join('')}</div>`;
@@ -180,7 +180,7 @@ async function officerPage(page,c){
       const female=rows.filter(x=>String(x.sex).toLowerCase()==='female').length;
       const maleRows=rows.filter(x=>String(x.sex).toLowerCase()==='male');
       const femaleRows=rows.filter(x=>String(x.sex).toLowerCase()==='female');
-      c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>Advance Course</h2><p>View approved ROTC students under the Advance Course.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Cadets',rows.length,'approved advance-course students','slate')}${rosterSummary('Male',male,'male cadets','blue')}${rosterSummary('Female',female,'female cadets','rose')}${rosterSummary('Program','ROTC','advance course roster','green')}</div><div class="roster-stack">${officerExpander('advance-course-male','Male',maleRows,Infinity,'blue')}${officerExpander('advance-course-female','Female',femaleRows,Infinity,'rose')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Advance Course</h2><p>View approved ROTC students under the Advance Course.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Cadets',rows.length,'approved advance-course students','slate')}${rosterSummary('Male',male,'male cadets','blue')}${rosterSummary('Female',female,'female cadets','rose')}${rosterSummary('Program','ROTC','advance course roster','green')}</div><div class="roster-stack">${officerExpander('advance-course-male','Male',maleRows,Infinity,'blue')}${officerExpander('advance-course-female','Female',femaleRows,Infinity,'rose')}</div>`;
       bindOfficerExpanders();
       return
     }
@@ -190,7 +190,7 @@ async function officerPage(page,c){
     const medicsRows=rows.filter(x=>x.special_unit==='Medics');
     const hqRows=rows.filter(x=>x.special_unit==='HQ');
     const mpRows=rows.filter(x=>x.special_unit==='MP');
-    c.innerHTML=`<div class="old-page-intro sky"><div><div class="old-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Members',rows.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,Infinity,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,Infinity,'green')}</div>`;
+    c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div><div class="roster-summary-grid four">${rosterSummary('Total Members',rows.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,Infinity,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,Infinity,'green')}</div>`;
     bindOfficerExpanders();
     return
   }
@@ -203,7 +203,7 @@ async function officerPage(page,c){
 async function viewSession(id){
   try{
     const rows=await API.get(`/api/officer/attendance/sessions/${id}/records`);
-    $('#sessionRecords').innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Session #${id} Student Records</h2><p class="panel-subtitle">Students who have not marked attendance appear as “Not recorded”.</p></div></div>${table(['Student','Program','Status','Update'],rows.map(x=>`<tr><td><strong>${
+    $('#sessionRecords').innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Session #${id} Student Records</h2><p class="panel-subtitle">Students who have not marked attendance appear as â€œNot recordedâ€.</p></div></div>${table(['Student','Program','Status','Update'],rows.map(x=>`<tr><td><strong>${
       esc(x.student_no)
     }
     </strong><br>${
@@ -273,26 +273,26 @@ officerPage = async function(page,c){
   c.innerHTML=`<div class="summary-grid">${summaryTile('ROTC Students',rotcTotal,'Students currently tracked under ROTC','blue')}${summaryTile('CWTS Students',cwtsTotal,'Students currently tracked under CWTS','green')}${summaryTile('Active Attendance',Number(d.open_sessions||0),`Live session${
     Number(d.open_sessions||0)===1?'':'s'
   }
-  being monitored`,'orange')}${summaryTile('Recorded Attendance',Number(d.attendance_records||0),'All saved attendance entries across sessions','red')}</div><section class="section-card distribution-card"><div class="section-heading"><h2>Roster Capacity Snapshot</h2><p>Monitor how ROTC battalions, CWTS companies, and special ROTC groups are filling up.</p></div>${progressRow('Battalion 1',b1.length,battalionCap,'blue')}${progressRow('Battalion 2',b2.length,battalionCap,'purple')}${progressRow('CWTS Companies',cwts.length,cwtsCap,'green')}${progressRow('Advance Course',adv.length,Math.max(rotcTotal,adv.length||1),'orange')}${progressRow('Special Platoon',special.length,Math.max(rotcTotal,special.length||1),'red')}</section><section class="section-card"><div class="section-heading"><h2>Director Shortcuts</h2><p>Keep your most-used Director pages one click away.</p></div><div class="old-dashboard-grid officer-dashboard-grid">${directorCard('ROTC - Battalion 1','Male cadets battalion',b1.length,`/ ${
+  being monitored`,'orange')}${summaryTile('Recorded Attendance',Number(d.attendance_records||0),'All saved attendance entries across sessions','red')}</div><section class="section-card distribution-card"><div class="section-heading"><h2>Roster Capacity Snapshot</h2><p>Monitor how ROTC battalions, CWTS companies, and special ROTC groups are filling up.</p></div>${progressRow('Battalion 1',b1.length,battalionCap,'blue')}${progressRow('Battalion 2',b2.length,battalionCap,'purple')}${progressRow('CWTS Companies',cwts.length,cwtsCap,'green')}${progressRow('Advance Course',adv.length,Math.max(rotcTotal,adv.length||1),'orange')}${progressRow('Special Platoon',special.length,Math.max(rotcTotal,special.length||1),'red')}</section><section class="section-card"><div class="section-heading"><h2>Director Shortcuts</h2><p>Keep your most-used Director pages one click away.</p></div><div class="portal-dashboard-grid officer-dashboard-grid">${directorCard('ROTC - Battalion 1','Male cadets battalion',b1.length,`/ ${
     battalionCap
   }
-  slots`,'/officer/rotc/battalion-1','users','blue','4 companies • 4 platoons each',b1Pct)}${directorCard('ROTC - Battalion 2','Female cadettes battalion',b2.length,`/ ${
+  slots`,'/officer/rotc/battalion-1','users','blue','4 companies - 4 platoons each',b1Pct)}${directorCard('ROTC - Battalion 2','Female cadettes battalion',b2.length,`/ ${
     battalionCap
   }
-  slots`,'/officer/rotc/battalion-2','users','purple','4 companies • 4 platoons each',b2Pct)}${directorCard('Advance Course','Cadets for advance ROTC',adv.length,'cadets','/officer/rotc/advance-course','platoon','orange',`Male: ${
+  slots`,'/officer/rotc/battalion-2','users','purple','4 companies - 4 platoons each',b2Pct)}${directorCard('Advance Course','Cadets for advance ROTC',adv.length,'cadets','/officer/rotc/advance-course','platoon','orange',`Male: ${
     advMale
   }
-  • Female: ${
+  } - Female: ${
     advFemale
   }
   `)}${directorCard('Special Platoon','Medics, HQ, and MP roster',special.length,specialLabel,'/officer/rotc/special-platoon','platoon','green','Special ROTC unit assignments')}${directorCard('CWTS','Company roster overview',cwts.length,`/ ${
     cwtsCap
   }
-  slots`,'/officer/cwts','users','green','6 companies • 60 slots each',cwtsPct)}${dashCard('Create Attendance','Set Location & Time','Record attendance for ROTC or CWTS.','/officer/create-attendance','location','indigo')}${dashCard('View Attendance','Review Sessions','Review sessions and student records.','/officer/view-attendance','attendance','green')}${dashCard('View Student Records','ROTC & CWTS','View complete student records.','/officer/view-records','records','indigo')}${dashCard('Settings','Account Security','Manage account settings and password.','/officer/settings','settings','indigo')}</div></section>`;
+  slots`,'/officer/cwts','users','green','6 companies - 60 slots each',cwtsPct)}${dashCard('Create Attendance','Set Location & Time','Record attendance for ROTC or CWTS.','/officer/create-attendance','location','indigo')}${dashCard('View Attendance','Review Sessions','Review sessions and student records.','/officer/view-attendance','attendance','green')}${dashCard('View Student Records','ROTC & CWTS','View complete student records.','/officer/view-records','records','indigo')}${dashCard('Settings','Account Security','Manage account settings and password.','/officer/settings','settings','indigo')}</div></section>`;
   bindOfficerEnrollmentLists();
 };
 
-// Override the older officer attendance modal helpers with the current API shape.
+// Override the current officer attendance modal helpers with the current API shape.
 async function viewSession(id){
   try{
     const payload=await API.get(`/api/officer/attendance/sessions/${id}/records`);
@@ -309,7 +309,7 @@ async function viewSession(id){
     </td><td>${
       x.attendance_status&&x.attendance_status!=='unmarked'?badge(x.attendance_status):badge('Not recorded')
     }
-    </td><td><select onchange="setAttendance(${id},${x.id},this.value)"><option value="">Select status</option><option value="present" ${
+    </td><td><select onchange="setAttendance(${id},${x.id||x.student_id},this.value)"><option value="">Select status</option><option value="present" ${
       x.attendance_status==='present'?'selected':''
     }
     >Present</option><option value="late" ${
@@ -323,3 +323,6 @@ async function viewSession(id){
     toast(e.message,true)
   }
 }
+
+
+
