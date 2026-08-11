@@ -1,12 +1,12 @@
-async function initEnrollment(){
+﻿async function initEnrollment(){
   let step=0;
   const labels=['Academic Info','Personal Info','Physical & Health','Account Setup'];
-  const sections=$$('.enroll-step'),progress=$$('.old-progress-item'),f=$('#enrollmentForm'),msg=$('#enrollMsg');
+  const sections=$$('.enroll-step'),progress=$$('.enrollment-progress-item'),f=$('#enrollmentForm'),msg=$('#enrollMsg');
   const MAX_FILE=5*1024*1024;
   const fmt=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
   const showError=text=>{
     msg.textContent=text;
-    msg.className='old-form-error';
+    msg.className='enrollment-form-error';
     msg.classList.remove('hidden');
     msg.scrollIntoView({behavior:'smooth',block:'nearest'})
   }
@@ -29,7 +29,7 @@ async function initEnrollment(){
     if(course()==='BS Criminology'&&value==='CWTS')return;
     f.nstp_component.value=value;
     f.ms_level.value='1';
-    $$('.old-program-btn').forEach(b=>b.classList.toggle('selected',b.dataset.program===value));
+    $$('.enrollment-program-btn').forEach(b=>b.classList.toggle('selected',b.dataset.program===value));
     $('#levelLabel').textContent=value==='CWTS'?'CWTS Level':'MS Level';
     $('#levelDisplay').textContent=value==='CWTS'?'CWTS 1':'MS 1';
     $('#scheduleHint').classList.add('hidden');
@@ -60,7 +60,7 @@ async function initEnrollment(){
   }
   function show(){
     sections.forEach((x,i)=>x.classList.toggle('hidden',i!==step));
-    progress.forEach((x,i)=>{x.classList.toggle('active',i===step);x.classList.toggle('complete',i<step);const c=x.querySelector('.old-progress-circle');if(c)c.innerHTML=i<step?'<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:3"><path d="M5 13l4 4L19 7"/></svg>':String(i+1)});
+    progress.forEach((x,i)=>{x.classList.toggle('active',i===step);x.classList.toggle('complete',i<step);const c=x.querySelector('.enrollment-progress-circle');if(c)c.innerHTML=i<step?'<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:3"><path d="M5 13l4 4L19 7"/></svg>':String(i+1)});
     $('#backBtn').classList.toggle('hidden',step===0);
     $('#nextBtn').textContent=step===sections.length-1?'Submit Enrollment':'Next';
     $('#stepHeading').textContent=`Step ${step+1} - ${labels[step]}`;
@@ -102,10 +102,10 @@ async function initEnrollment(){
     }
     return '';
   }
-  $$('.old-program-btn').forEach(b=>b.addEventListener('click',()=>setProgram(b.dataset.program)));
+  $$('.enrollment-program-btn').forEach(b=>b.addEventListener('click',()=>setProgram(b.dataset.program)));
   f.course.addEventListener('change',()=>{
   const crim=course()==='BS Criminology';
-  const cwtsBtn=$('.old-program-btn[data-program="CWTS"]');
+  const cwtsBtn=$('.enrollment-program-btn[data-program="CWTS"]');
   cwtsBtn.disabled=crim;
   $('#rotcOnlyHint').classList.toggle('hidden',!crim);
   if(crim)setProgram('ROTC');
@@ -185,8 +185,8 @@ async function initEnrollment(){
       btn.disabled=true;
       btn.textContent='Submitting...';
       await API.post('/api/student/register',data);
-      $('#enrollWrap').innerHTML=`<div class="old-success-page"><div class="old-success-card"><div class="old-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Successfully Enrolled!</h2><p>Login to check your Enrollment status</p><a href="/student/login">Login</a></div></div>`;
-      $('.old-signin-note')?.classList.add('hidden');
+      $('#enrollWrap').innerHTML=`<div class="enrollment-success-page"><div class="enrollment-success-card"><div class="enrollment-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Successfully Enrolled!</h2><p>Login to check your Enrollment status</p><a href="/student/login">Login</a></div></div>`;
+      $('.enrollment-signin-note')?.classList.add('hidden');
     }  catch(e){
       const btn=$('#nextBtn');
       if(btn){
@@ -201,3 +201,4 @@ async function initEnrollment(){
   show();
 }
 document.addEventListener("DOMContentLoaded", () => { initEnrollment(); });
+
