@@ -346,9 +346,7 @@ exports.setAttendance = async (req, res) => {
     );
 
     let offense = null;
-    // Old-system rule: an offense is recorded only when the Director verifies a student
-    // who was previously Present/Late and manually changes that attendance to Absent.
-    if (status === 'absent' && ['present', 'late'].includes(previousStatus)) {
+    if (status === 'absent' && previousStatus !== 'absent') {
       offense = await offenseService.record(studentId);
     }
 
@@ -374,7 +372,7 @@ exports.updateAttendance = async (req, res) => {
     if (!before) return res.status(404).json({ message: 'Attendance record not found.' });
     await db.execute("UPDATE attendance_records SET status=?,verified_by=?,verified_at=NOW(),updated_at=NOW() WHERE id=?", [status, req.user.email, req.params.id]);
     let offense = null;
-    if (status === 'absent' && ['present', 'late'].includes(before.status)) offense = await offenseService.record(before.student_id);
+    if (status === 'absent' && before.status !== 'absent') offense = await offenseService.record(before.student_id);
     res.json({
       message: offense
         ? (Number(offense.offend) >= 2 ? 'Attendance updated. Second offense recorded; settlement is required.' : 'Attendance updated. First-offense warning recorded.')
