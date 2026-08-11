@@ -1,25 +1,26 @@
-const r=require('express').Router();
-const c=require('../controllers/studentController');
-const {
-  requireAuth,requireRole
-}
-=require('../middleware/authMiddleware');
-r.get('/enrollment-schedule',c.checkSchedule);
-r.get('/check-student-id',c.checkStudentId);
-r.post('/register',c.register);
-r.use(requireAuth,requireRole('student'));
-r.get('/dashboard',c.dashboard);
-r.get('/profile',c.profile);
-r.get('/grades',c.grades);
-r.get('/serial-number',c.serial);
-r.get('/certificate-settings',c.certificateSettings);
-r.get('/certificate',c.certificate);
-r.get('/attendance-offense',c.attendanceOffense);
-r.post('/attendance-offense/acknowledge',c.acknowledgeAttendanceWarning);
-r.get('/attendance',c.attendance);
-r.get('/attendance/sessions',c.openSessions);
-r.post('/attendance/mark',c.markAttendance);
-r.post('/re-enroll',c.reEnroll);
-r.get('/withdrawal',c.withdrawal);
-r.post('/withdrawal',c.withdrawal);
-module.exports=r;
+const router = require('express').Router();
+const controller = require('../controllers/studentController');
+const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+
+router.get('/enrollment-schedule', controller.checkSchedule);
+router.get('/check-student-id', controller.checkStudentId);
+router.post('/register', controller.register);
+
+router.use(requireAuth, requireRole('student'));
+
+router.get('/dashboard', controller.dashboard);
+router.get('/profile', controller.profile);
+router.get('/grades', controller.grades);
+router.get('/serial-number', controller.serial);
+router.get('/certificate-settings', controller.certificateSettings);
+router.get('/certificate', controller.certificate);
+router.get('/attendance-offense', controller.attendanceOffense);
+router.post('/attendance-offense/acknowledge', controller.acknowledgeAttendanceWarning);
+router.get('/attendance', controller.attendance);
+router.get('/attendance/sessions', controller.openSessions);
+router.post('/attendance/mark', controller.markAttendance);
+router.post('/re-enroll', controller.reEnroll);
+router.get('/withdrawal', controller.withdrawal);
+router.post('/withdrawal', controller.withdrawal);
+
+module.exports = router;
