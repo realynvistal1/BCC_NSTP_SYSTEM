@@ -1,10 +1,12 @@
 function makeAttendanceSummary(_programKey) {
-  const program = 'ROTC';
-  const apiProgram = 'rotc';
-  const unit = 'MI';
+  const isCwts = String(_programKey || '').toUpperCase() === 'CWTS';
+  const program = isCwts ? 'CWTS' : 'ROTC';
+  const apiProgram = isCwts ? 'cwts' : 'rotc';
+  const unit = isCwts ? 'CS' : 'MI';
 
   let sessions = [];
   let current = null;
+  let currentSessions = [];
   let allStudents = [];
   let currentSummary = null;
 
@@ -66,28 +68,77 @@ function makeAttendanceSummary(_programKey) {
         .filter(Boolean)
     )].sort((a, b) => a - b);
 
-    $('#summaryMI').innerHTML = `<option value="">Select ${unit}</option>`
+    $('#summaryMI').innerHTML = `<option value="">All ${unit}</option>`
       + numbers.map((number) => `<option value="${number}">${unit} ${number}</option>`).join('');
-
-    if (numbers.length) $('#summaryMI').value = String(numbers[0]);
     loadSelected();
+  }
+
+  async function fetchSummary(session, group) {
+    const data = await API.get(
+      `/api/admin/${apiProgram}/attendance-summary?session_id=${session.id}&group=${encodeURIComponent(group)}`
+    );
+
+    return {
+      ...data,
+      session,
+    };
+  }
+
+  function buildAggregateSummary(summaries) {
+    const counts = { present: 0, late: 0, absent: 0, unmarked: 0 };
+    const students = [];
+
+    summaries.forEach((summary) => {
+      (summary.students || []).forEach((student) => {
+        const attendanceStatus = student.attendance_status || 'unmarked';
+        counts[attendanceStatus] = (counts[attendanceStatus] || 0) + 1;
+        students.push({
+          ...student,
+          attendance_status: attendanceStatus,
+          session_id: summary.session.id,
+          mi_number: summary.session.mi_number,
+          mi_type: summary.session.mi_type,
+          session_school_year: summary.session.school_year,
+          session_ms_level: summary.session.ms_level,
+          summary_key: `${summary.session.id}-${student.id}`,
+        });
+      });
+    });
+
+    return {
+      aggregate: true,
+      sessions: summaries.map((summary) => summary.session),
+      students,
+      counts,
+      total: students.length,
+    };
   }
 
   async function loadSelected() {
     const matches = filteredSessions();
-    current = matches[0] || null;
+    const selectedMI = $('#summaryMI').value;
+    const group = $('#summaryGroup').value || 'overall';
 
-    if (!current) {
+    currentSessions = matches;
+    current = selectedMI ? (matches[0] || null) : null;
+
+    if (!matches.length) {
       currentSummary = null;
       allStudents = [];
       renderEmpty();
       return;
     }
 
-    const group = $('#summaryGroup').value || 'overall';
-    const data = await API.get(
-      `/api/admin/${apiProgram}/attendance-summary?session_id=${current.id}&group=${encodeURIComponent(group)}`
-    );
+    if (!selectedMI) {
+      const summaries = await Promise.all(matches.map((session) => fetchSummary(session, group)));
+      const aggregate = buildAggregateSummary(summaries);
+      currentSummary = aggregate;
+      allStudents = aggregate.students || [];
+      render(aggregate);
+      return;
+    }
+
+    const data = await fetchSummary(current, group);
 
     currentSummary = data;
     allStudents = data.students || [];
@@ -128,6 +179,110 @@ function makeAttendanceSummary(_programKey) {
       student.rotc_company,
       student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
     ].filter(Boolean).join(' • ') || 'Unassigned';
+  }
+
+  function summaryStudentCompany(student) {
+    if (program === 'CWTS') {
+      return String(student.company || '').trim();
+    }
+
+    if (student.special_unit) return '';
+    return String(student.rotc_company || '').trim();
+  }
+
+  function summaryStudentPlatoon(student) {
+    if (program === 'CWTS') {
+      return '';
+    }
+
+    if (student.special_unit) {
+      return String(student.special_unit || '').trim();
+    }
+
+    return String(student.rotc_platoon || '').trim();
+  }
+
+  function summaryCompanyOptions(group, students) {
+    if (program === 'CWTS') {
+      return [...new Set(
+        students.map((student) => summaryStudentCompany(student)).filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b));
+    }
+
+    if (group === 'battalion-1') return ['Alpha', 'Bravo', 'Charlie', 'Delta'];
+    if (group === 'battalion-2') return ['Echo', 'Foxtrot', 'Golf', 'Hotel'];
+    if (group === 'special-platoon') return [];
+
+    return [...new Set(
+      students.map((student) => summaryStudentCompany(student)).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+  }
+
+  function sortPlatoonValues(values) {
+    return [...values].sort((a, b) => {
+      const aNum = Number(a);
+      const bNum = Number(b);
+
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+        return aNum - bNum;
+      }
+
+      return String(a).localeCompare(String(b));
+    });
+  }
+
+  function syncSummaryRosterFilters() {
+    const companySelect = $('#summaryCompany');
+    const platoonSelect = $('#summaryPlatoon');
+    if (!companySelect || !platoonSelect) return;
+
+    const group = $('#summaryGroup').value || 'overall';
+    const previousCompany = companySelect.value || '';
+    const previousPlatoon = platoonSelect.value || '';
+
+    const groupStudents = allStudents.filter((student) => {
+      if (group === 'overall') return true;
+      if (group === 'battalion-1') return Number(student.battalion || 0) === 1 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1;
+      if (group === 'battalion-2') return Number(student.battalion || 0) === 2 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1;
+      if (group === 'advance-course') return Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit;
+      if (group === 'special-platoon') return Boolean(student.special_unit);
+      return true;
+    });
+
+    const companyOptions = summaryCompanyOptions(group, groupStudents);
+    companySelect.innerHTML = '<option value="">All Company</option>'
+      + companyOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+    companySelect.value = companyOptions.includes(previousCompany) ? previousCompany : '';
+    companySelect.disabled = companyOptions.length === 0;
+
+    const selectedCompany = companySelect.value || '';
+    const platoonOptions = sortPlatoonValues(new Set(
+      groupStudents
+        .filter((student) => !selectedCompany || summaryStudentCompany(student) === selectedCompany)
+        .map((student) => summaryStudentPlatoon(student))
+        .filter(Boolean)
+    ));
+
+    platoonSelect.innerHTML = `<option value="">All ${group === 'special-platoon' ? 'Unit' : 'Platoon'}</option>`
+      + platoonOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+    platoonSelect.value = platoonOptions.includes(previousPlatoon) ? previousPlatoon : '';
+    platoonSelect.disabled = platoonOptions.length === 0;
+  }
+
+  function renderVisibleStats(students) {
+    const counts = { present: 0, late: 0, absent: 0, unmarked: 0 };
+
+    students.forEach((student) => {
+      const key = student.attendance_status || 'unmarked';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    $('#attendanceSummaryStats').innerHTML =
+      stat('Total Students', students.length)
+      + stat('Present', counts.present || 0, 'present')
+      + stat('Late', counts.late || 0, 'late')
+      + stat('Absent', counts.absent || 0, 'absent')
+      + stat('Not Yet Marked', counts.unmarked || 0, 'unmarked');
   }
 
   function render(data) {
@@ -213,6 +368,133 @@ function makeAttendanceSummary(_programKey) {
     });
   }
 
+  function render(data) {
+    const counts = data.counts || {};
+    const aggregateMode = Boolean(data.aggregate);
+    const selectedType = $('#summaryType').value;
+    const cycleLabel = $('#summaryCycle').selectedOptions[0]?.textContent || 'Selected Cycle';
+
+    $('#attendanceSummaryStats').innerHTML =
+      stat('Total Students', data.total || 0)
+      + stat('Present', counts.present || 0, 'present')
+      + stat('Late', counts.late || 0, 'late')
+      + stat('Absent', counts.absent || 0, 'absent')
+      + stat('Not Yet Marked', counts.unmarked || 0, 'unmarked');
+
+    if (aggregateMode) {
+      const typeLabel = selectedType ? String(selectedType).toUpperCase() : 'ALL';
+      $('#attendanceSummaryTitle').textContent = `All ${unit} ${typeLabel} - ${program}`;
+      $('#attendanceSummaryMeta').textContent = `${cycleLabel} - ${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'} included`;
+    } else {
+      $('#attendanceSummaryTitle').textContent = `${unit} ${data.session.mi_number} ${(data.session.mi_type || '').toUpperCase()} - ${program}`;
+      $('#attendanceSummaryMeta').textContent = `SY ${data.session.school_year || '-'} - ${program === 'CWTS' ? 'CWTS' : 'MS'} ${data.session.ms_level || '-'} - ${fmtTime(data.session.open_date)} - ${fmtTime(data.session.close_date)} - 15-minute late window`;
+    }
+
+    setExportDisabled(false);
+    syncSummaryRosterFilters();
+    renderRows();
+  }
+
+  function visibleStudents() {
+    const query = $('#summarySearch').value.toLowerCase().trim();
+    const group = $('#summaryGroup')?.value || 'overall';
+    const status = $('#summaryStatus').value;
+    const company = $('#summaryCompany')?.value || '';
+    const platoon = $('#summaryPlatoon')?.value || '';
+
+    const filtered = allStudents.filter((student) => (
+      (
+        group === 'overall'
+        || (group === 'battalion-1' && Number(student.battalion || 0) === 1 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1)
+        || (group === 'battalion-2' && Number(student.battalion || 0) === 2 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1)
+        || (group === 'advance-course' && Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit)
+        || (group === 'special-platoon' && Boolean(student.special_unit))
+      )
+      (!status || student.attendance_status === status)
+      && (!company || summaryStudentCompany(student) === company)
+      && (!platoon || summaryStudentPlatoon(student) === platoon)
+      && (!query || `${student.last_name} ${student.first_name} ${student.student_id} ${student.course} ${assignment(student)} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase().includes(query))
+    ));
+
+    filtered.sort((a, b) => {
+      if (Number(a.mi_number || 0) !== Number(b.mi_number || 0)) {
+        return Number(a.mi_number || 0) - Number(b.mi_number || 0);
+      }
+
+      if (String(a.mi_type || '') !== String(b.mi_type || '')) {
+        return String(a.mi_type || '').localeCompare(String(b.mi_type || ''));
+      }
+
+      const assignmentA = assignment(a);
+      const assignmentB = assignment(b);
+      return assignmentA.localeCompare(assignmentB) || a.last_name.localeCompare(b.last_name);
+    });
+
+    return filtered;
+  }
+
+  function renderRows() {
+    const students = visibleStudents();
+    const aggregateMode = Boolean(currentSummary?.aggregate);
+
+    renderVisibleStats(students);
+
+    const rows = students.map((student) => `
+      <tr>
+        ${aggregateMode ? `<td>${esc(`${unit} ${student.mi_number} ${String(student.mi_type || '').toUpperCase()}`)}</td>` : ''}
+        <td>
+          <strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong>
+          <small>${esc(student.student_id)}</small>
+        </td>
+        <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
+        <td>${esc(assignment(student))}</td>
+        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
+        <td>${badge(student.attendance_status)}</td>
+        ${aggregateMode
+    ? '<td><small>Single-session verify only</small></td>'
+    : `
+          <td>
+            <select class="admin-attendance-status" data-student="${student.id}">
+              <option value="present" ${student.attendance_status === 'present' ? 'selected' : ''}>Present</option>
+              <option value="late" ${student.attendance_status === 'late' ? 'selected' : ''}>Late</option>
+              <option value="absent" ${student.attendance_status === 'absent' ? 'selected' : ''}>Absent</option>
+            </select>
+          </td>
+        `}
+      </tr>
+    `);
+
+    $('#attendanceSummaryContent').innerHTML = table(
+      aggregateMode
+        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Distance', 'Status', 'Verify']
+        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Distance', 'Status', 'Verify'],
+      rows
+    );
+
+    if (aggregateMode) {
+      return;
+    }
+
+    $$('.admin-attendance-status', $('#attendanceSummaryContent')).forEach((select) => {
+      select.onchange = async () => {
+        try {
+          const result = await API.patch(
+            `/api/admin/${apiProgram}/attendance-summary/${current.id}/verify`,
+            {
+              student_id: Number(select.dataset.student),
+              status: select.value,
+            }
+          );
+          toast(result.message);
+          await loadSelected();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      };
+    });
+  }
+
   function setExportDisabled(disabled) {
     const pdfButton = $('#downloadAttendancePdf');
     const excelButton = $('#downloadAttendanceExcel');
@@ -220,10 +502,38 @@ function makeAttendanceSummary(_programKey) {
     if (excelButton) excelButton.disabled = disabled;
   }
 
-  function exportMetadata() {
-    if (!currentSummary || !currentSummary.session) return null;
+  function renderRows() {
+    const students = visibleStudents();
+    const aggregateMode = Boolean(currentSummary?.aggregate);
 
-    const session = currentSummary.session;
+    const rows = students.map((student) => `
+      <tr>
+        ${aggregateMode ? `<td>${esc(`${unit} ${student.mi_number} ${String(student.mi_type || '').toUpperCase()}`)}</td>` : ''}
+        <td>
+          <strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong>
+          <small>${esc(student.student_id)}</small>
+        </td>
+        <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
+        <td>${esc(assignment(student))}</td>
+        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${badge(student.attendance_status)}</td>
+      </tr>
+    `);
+
+    $('#attendanceSummaryContent').innerHTML = table(
+      aggregateMode
+        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Status']
+        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Status'],
+      rows
+    );
+  }
+
+  function exportMetadata() {
+    if (!currentSummary) return null;
+
+    const aggregateMode = Boolean(currentSummary.aggregate);
+    const session = currentSummary.session || currentSummary.sessions?.[0] || null;
+    if (!session) return null;
     const groupSelect = $('#summaryGroup');
     const groupText = groupSelect && groupSelect.selectedIndex >= 0
       ? groupSelect.options[groupSelect.selectedIndex].text
@@ -236,6 +546,8 @@ function makeAttendanceSummary(_programKey) {
 
     return {
       session,
+      sessions: currentSummary.sessions || (session ? [session] : []),
+      aggregateMode,
       groupText,
       statusText,
       searchText: $('#summarySearch').value.trim(),
@@ -671,6 +983,211 @@ function makeAttendanceSummary(_programKey) {
     toast(`PDF attendance report downloaded. ${sections.length} page${sections.length === 1 ? '' : 's'} created.`);
   }
 
+  function exportWord() {
+    const meta = exportMetadata();
+    if (!meta) {
+      toast('Select an attendance session first.', true);
+      return;
+    }
+
+    const { session, students } = meta;
+    const selectedGroup = $('#summaryGroup').value || 'overall';
+    const selectedCompany = $('#summaryCompany')?.value || '';
+    const selectedPlatoon = $('#summaryPlatoon')?.value || '';
+
+    function summarize(sectionStudents) {
+      return sectionStudents.reduce((result, student) => {
+        const key = student.attendance_status || 'unmarked';
+        result[key] = (result[key] || 0) + 1;
+        return result;
+      }, { present: 0, late: 0, absent: 0, unmarked: 0 });
+    }
+
+    function compareStudents(a, b) {
+      return `${a.last_name || ''}`.localeCompare(`${b.last_name || ''}`)
+        || `${a.first_name || ''}`.localeCompare(`${b.first_name || ''}`)
+        || `${a.student_id || ''}`.localeCompare(`${b.student_id || ''}`);
+    }
+
+    function statusText(student) {
+      if (student.attendance_status === 'unmarked') return 'Not Yet Marked';
+      return String(student.attendance_status || '').replace(/^\w/, (char) => char.toUpperCase());
+    }
+
+    function rowHtml(student, index) {
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${esc(`${student.last_name || ''}, ${student.first_name || ''} ${student.middle_name || ''}`.trim())}</td>
+          <td>${esc(student.student_id || '')}</td>
+          <td>${esc(statusText(student))}</td>
+          <td>${esc(student.attendance_time ? fmtTime(student.attendance_time) : '—')}</td>
+        </tr>
+      `;
+    }
+
+    function makeSection(heading, subheading, tableTitle, sectionStudents) {
+      const stats = summarize(sectionStudents);
+      return `
+        <div class="word-section">
+          <div class="word-heading">${esc(heading)}</div>
+          ${subheading ? `<div class="word-subheading">${esc(subheading)}</div>` : ''}
+          ${tableTitle ? `<div class="word-table-title">${esc(tableTitle)}</div>` : ''}
+          <table class="word-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Name</th>
+                <th>ID Number</th>
+                <th>Status</th>
+                <th>Time In</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sectionStudents.map((student, index) => rowHtml(student, index)).join('')}
+            </tbody>
+          </table>
+          <div class="word-section-summary">
+            <span>Total: ${sectionStudents.length}</span>
+            <span>Present: ${stats.present || 0}</span>
+            <span>Late: ${stats.late || 0}</span>
+            <span>Absent: ${stats.absent || 0}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildRotcSections() {
+      if (selectedGroup === 'advance-course') {
+        const sectionStudents = students.slice().sort(compareStudents);
+        return sectionStudents.length
+          ? [makeSection('ADVANCE COURSE', selectedCompany || '', selectedPlatoon || '', sectionStudents)]
+          : [];
+      }
+
+      if (selectedGroup === 'special-platoon') {
+        const units = selectedPlatoon ? [selectedPlatoon] : ['Medics', 'HQ', 'MP'];
+        return units.map((unitName) => {
+          const sectionStudents = students
+            .filter((student) => String(student.special_unit || '') === unitName)
+            .sort(compareStudents);
+          return sectionStudents.length
+            ? makeSection('SPECIAL PLATOON', unitName.toUpperCase(), '', sectionStudents)
+            : '';
+        }).filter(Boolean);
+      }
+
+      const battalions = selectedGroup === 'battalion-1'
+        ? [1]
+        : selectedGroup === 'battalion-2'
+          ? [2]
+          : [1, 2];
+
+      const sections = [];
+      battalions.forEach((battalion) => {
+        const battalionStudents = students.filter((student) => Number(student.battalion || 0) === battalion);
+        const companies = selectedCompany
+          ? [selectedCompany]
+          : [...new Set(battalionStudents.map((student) => student.rotc_company).filter(Boolean))].sort();
+
+        companies.forEach((company) => {
+          const companyStudents = battalionStudents.filter((student) => student.rotc_company === company);
+          const platoons = selectedPlatoon
+            ? [selectedPlatoon]
+            : [...new Set(companyStudents.map((student) => String(student.rotc_platoon || '')).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+
+          platoons.forEach((platoon) => {
+            const sectionStudents = companyStudents
+              .filter((student) => String(student.rotc_platoon || '') === String(platoon))
+              .sort(compareStudents);
+
+            if (!sectionStudents.length) return;
+            sections.push(makeSection(`BATTALION ${battalion}`, `${String(company).toUpperCase()} COMPANY`, `PLATOON ${platoon}`, sectionStudents));
+          });
+        });
+      });
+
+      return sections;
+    }
+
+    const totals = summarize(students);
+    const sections = buildRotcSections();
+    const title = selectedGroup === 'overall'
+      ? 'ROTC OVERALL ATTENDANCE SUMMARY'
+      : `ROTC ${meta.groupText.toUpperCase()} ATTENDANCE SUMMARY`;
+
+    const documentHtml = `
+      <!DOCTYPE html>
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <title>${esc(title)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; color:#17345f; margin:32px; }
+          .word-doc { max-width: 980px; margin: 0 auto; }
+          .word-title { text-align:center; font-size: 20px; font-weight:700; color:#183f93; margin-bottom:24px; }
+          .word-meta { width:100%; border-collapse:collapse; margin-bottom:18px; }
+          .word-meta td { border:1px solid #9aa9bf; padding:6px 8px; font-size:14px; }
+          .word-meta .label { background:#dbe8f7; font-weight:700; width:20%; }
+          .word-totals { width:100%; border-collapse:collapse; margin-bottom:24px; }
+          .word-totals td { border:1px solid #9aa9bf; padding:7px 10px; font-weight:700; text-align:center; font-size:14px; }
+          .tone-present { background:#e4f7e8; color:#167a2d; }
+          .tone-late { background:#fff4d6; color:#b86d00; }
+          .tone-absent { background:#ffe1de; color:#c1281f; }
+          .word-section { margin: 18px 0 26px; }
+          .word-heading { background:#1f4297; color:#fff; text-align:center; font-weight:700; padding:6px 10px; font-size:16px; margin-bottom:10px; }
+          .word-subheading { background:#dbe8f7; color:#1f4297; text-align:center; font-weight:700; padding:6px 10px; font-size:15px; margin-bottom:10px; }
+          .word-table-title { display:inline-block; min-width:110px; border:1px solid #9aa9bf; padding:4px 10px; font-weight:700; font-size:14px; margin-bottom:0; }
+          .word-table { width:100%; border-collapse:collapse; margin-top:0; }
+          .word-table th { background:#1f2937; color:#fff; font-size:12px; padding:5px 6px; text-align:left; border:1px solid #9aa9bf; }
+          .word-table td { font-size:12px; padding:5px 6px; border:1px solid #9aa9bf; color:#111827; }
+          .word-section-summary { margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; font-size:12px; font-weight:700; color:#334155; }
+        </style>
+      </head>
+      <body>
+        <div class="word-doc">
+          <div class="word-title">${esc(title)}</div>
+          <table class="word-meta">
+            <tr>
+              <td class="label">${esc(unit)} / Type</td>
+              <td>${esc(`${unit} ${session.mi_number} - ${String(session.mi_type || '').toUpperCase()}`)}</td>
+              <td class="label">Session Date</td>
+              <td>${esc(fmtDate(session.open_date))}</td>
+            </tr>
+            <tr>
+              <td class="label">Time Window</td>
+              <td>${esc(`${fmtTime(session.open_date)} - ${fmtTime(session.close_date)}`)}</td>
+              <td class="label">NSTP Component</td>
+              <td>${esc(program)}</td>
+            </tr>
+            <tr>
+              <td class="label">School Year</td>
+              <td>${esc(session.school_year || '')}</td>
+              <td class="label">${esc(program === 'CWTS' ? 'CWTS Level' : 'MS Level')}</td>
+              <td>${esc(session.ms_level || '')}</td>
+            </tr>
+          </table>
+          <table class="word-totals">
+            <tr>
+              <td>TOTAL: ${students.length}</td>
+              <td class="tone-present">PRESENT: ${totals.present || 0}</td>
+              <td class="tone-late">LATE: ${totals.late || 0}</td>
+              <td class="tone-absent">ABSENT: ${totals.absent || 0}</td>
+            </tr>
+          </table>
+          ${sections.join('')}
+        </div>
+      </body>
+      </html>
+    `;
+
+    const filename = `${safeFilename(program)}-${safeFilename(unit + '-' + session.mi_number)}-${safeFilename(session.mi_type)}-attendance-summary.doc`;
+    downloadBlob(new Blob(['\ufeff', documentHtml], { type: 'application/msword;charset=utf-8' }), filename);
+    toast('Word attendance report downloaded.');
+  }
+
   async function init() {
     const auth = await guard(program === 'CWTS' ? 'cwts-admin' : 'rotc-admin');
     if (!auth) return;
@@ -697,13 +1214,22 @@ function makeAttendanceSummary(_programKey) {
     $('#summaryCycle').onchange = populateMI;
     $('#summaryMI').onchange = loadSelected;
     $('#summaryType').onchange = loadSelected;
-    $('#summaryGroup').onchange = loadSelected;
+    $('#summaryGroup').onchange = async () => {
+      await loadSelected();
+      syncSummaryRosterFilters();
+      renderRows();
+    };
     $('#summarySearch').oninput = renderRows;
+    $('#summaryCompany').onchange = () => {
+      syncSummaryRosterFilters();
+      renderRows();
+    };
+    $('#summaryPlatoon').onchange = renderRows;
     $('#summaryStatus').onchange = renderRows;
 
     const pdfButton = $('#downloadAttendancePdf');
     const excelButton = $('#downloadAttendanceExcel');
-    if (pdfButton) pdfButton.onclick = exportStructuredPdf;
+    if (pdfButton) pdfButton.onclick = exportWord;
     if (excelButton) excelButton.onclick = exportExcel;
   }
 
