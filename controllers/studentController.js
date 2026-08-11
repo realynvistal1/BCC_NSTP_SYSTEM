@@ -13,6 +13,111 @@ function levelLabelFor(program, level) {
   return program === 'ROTC' ? `MS ${level}` : `CWTS ${level}`;
 }
 
+async function resolveReEnrollContext(studentId) {
+  const student = await studentById(studentId);
+  const latest = await latestRecord(studentId);
+
+  if (!student) {
+    return { status: 404, message: 'Student record not found.' };
+  }
+
+  if (latest && latest.status === 'rejected') {
+    const retryLevel = String(latest.ms_level || '1');
+    const [pendingRetry] = await db.execute(
+      "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level=? AND status='pending' LIMIT 1",
+      [studentId, retryLevel]
+    );
+
+    if (pendingRetry.length) {
+      return {
+        status: 409,
+        message: 'You already have a pending enrollment request for review.',
+      };
+    }
+
+    const [retryScheduleRows] = await db.execute(
+      'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',
+      [student.nstp_component, retryLevel]
+    );
+
+    const retrySchedule = retryScheduleRows[0];
+    if (!retrySchedule || !enrollmentService.nowWithin(retrySchedule)) {
+      return {
+        status: 400,
+        message: `${levelLabelFor(student.nstp_component, retryLevel)} enrollment is not open at this time.`,
+      };
+    }
+
+    return {
+      status: 200,
+      mode: 'retry',
+      student,
+      latest,
+      targetLevel: retryLevel,
+      schedule: retrySchedule,
+      message: `Review your saved information and submit your ${levelLabelFor(student.nstp_component, retryLevel)} enrollment again.`,
+    };
+  }
+
+  const [ms1Grades] = await db.execute(
+    "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? LIMIT 1",
+    [studentId, student.nstp_component]
+  );
+
+  if (!latest || String(latest.ms_level) !== '1' || latest.status !== 'approved') {
+    return {
+      status: 400,
+      message: `You can apply for ${levelLabelFor(student.nstp_component, '2')} only after your level 1 enrollment is approved.`,
+    };
+  }
+
+  if (ms1Grades[0] && ms1Grades[0].status === 'Failed') {
+    return {
+      status: 400,
+      message: 'You cannot proceed to level 2 because your level 1 grade is Failed.',
+    };
+  }
+
+  const [duplicates] = await db.execute(
+    "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",
+    [studentId]
+  );
+
+  if (duplicates.length) {
+    return {
+      status: 409,
+      message: 'You already have a level 2 enrollment request.',
+    };
+  }
+
+  const [scheduleRows] = await db.execute(
+    "SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='2' ORDER BY id DESC LIMIT 1",
+    [student.nstp_component]
+  );
+
+  const schedule = scheduleRows[0];
+  if (!schedule || !enrollmentService.nowWithin(schedule)) {
+    return {
+      status: 400,
+      message: `${levelLabelFor(student.nstp_component, '2')} enrollment is not open at this time.`,
+    };
+  }
+
+  return {
+    status: 200,
+    mode: 'next-level',
+    student,
+    latest,
+    targetLevel: '2',
+    schedule,
+    message: `Review your saved information and submit your ${levelLabelFor(student.nstp_component, '2')} enrollment.`,
+  };
+}
+
+function normalizeBooleanFlag(value) {
+  return Number(value === true || value === '1' || value === 1 || value === 'true');
+}
+
 exports.checkSchedule = async (req, res) => {
   try {
     const program = String(req.query.program || '').toUpperCase();
@@ -297,6 +402,45 @@ exports.profile = async (req, res) => {
   }
 };
 
+exports.reEnrollForm = async (req, res) => {
+  try {
+    const context = await resolveReEnrollContext(req.user.id);
+    if (context.status !== 200) {
+      return res.status(context.status).json({ message: context.message });
+    }
+
+    const { student, latest, targetLevel, schedule, mode, message } = context;
+    const safeStudent = studentPublic(student);
+
+    delete safeStudent.password;
+    delete safeStudent.medical_certificate;
+    delete safeStudent.xray_file;
+    delete safeStudent.photo;
+    delete safeStudent.cor_file;
+
+    return res.json({
+      mode,
+      message,
+      target_level: targetLevel,
+      level_label: levelLabelFor(student.nstp_component, targetLevel),
+      student: safeStudent,
+      latest_record: latest,
+      schedule: schedule
+        ? {
+          id: schedule.id,
+          program: schedule.program,
+          ms_level: String(schedule.ms_level),
+          year: schedule.year,
+          open_date: schedule.open_date,
+          deadline: schedule.deadline,
+        }
+        : null,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 exports.grades = async (req, res) => {
   const [rows] = await db.execute(
     'SELECT * FROM student_grades WHERE student_id=? ORDER BY ms_level',
@@ -495,95 +639,129 @@ exports.markAttendance = async (req, res) => {
 };
 
 exports.reEnroll = async (req, res) => {
+  const connection = await db.getConnection();
+
   try {
-    const student = await studentById(req.user.id);
-    const latest = await latestRecord(req.user.id);
+    const context = await resolveReEnrollContext(req.user.id);
+    if (context.status !== 200) {
+      return res.status(context.status).json({ message: context.message });
+    }
 
-    if (latest && latest.status === 'rejected') {
-      const retryLevel = String(latest.ms_level || '1');
-      const [pendingRetry] = await db.execute(
-        "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level=? AND status='pending' LIMIT 1",
-        [req.user.id, retryLevel]
-      );
+    const { student, schedule, targetLevel, mode } = context;
+    const body = req.body || {};
+    const required = [
+      'contact_number',
+      'religion',
+      'temporary_barangay',
+      'temporary_municipality',
+      'temporary_province',
+      'permanent_barangay',
+      'permanent_municipality',
+      'permanent_province',
+      'emergency_contact_name',
+      'emergency_contact_address',
+      'emergency_contact_relationship',
+      'emergency_contact_contact_number',
+      'year_level',
+      'height',
+      'weight',
+      'blood_type',
+      'complexion',
+      'course',
+    ];
 
-      if (pendingRetry.length) {
-        return res.status(409).json({
-          message: 'You already have a pending enrollment request for review.',
-        });
+    for (const key of required) {
+      if (!String(body[key] || '').trim()) {
+        return res.status(400).json({ message: `${key.replaceAll('_', ' ')} is required.` });
       }
-
-      const [retryScheduleRows] = await db.execute(
-        'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',
-        [student.nstp_component, retryLevel]
-      );
-
-      const retrySchedule = retryScheduleRows[0];
-      if (!retrySchedule || !enrollmentService.nowWithin(retrySchedule)) {
-        return res.status(400).json({
-          message: `${levelLabelFor(student.nstp_component, retryLevel)} enrollment is not open at this time.`,
-        });
-      }
-
-      await db.execute(
-        "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",
-        [req.user.id, String(retrySchedule.id), retryLevel, student.nstp_component]
-      );
-
-      return res.json({
-        message: `Your ${levelLabelFor(student.nstp_component, retryLevel)} enrollment has been submitted again for administrator review.`,
-      });
     }
 
-    const [ms1Grades] = await db.execute(
-      "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? LIMIT 1",
-      [req.user.id, student.nstp_component]
+    if (
+      String(body.contact_number).length !== 11
+      || String(body.emergency_contact_contact_number).length !== 11
+    ) {
+      return res.status(400).json({ message: 'Contact numbers must contain 11 digits.' });
+    }
+
+    if (String(body.course).trim() !== String(student.course).trim()) {
+      return res.status(400).json({ message: 'Course cannot be changed during re-enrollment.' });
+    }
+
+    const allowedYearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+    if (!allowedYearLevels.includes(String(body.year_level))) {
+      return res.status(400).json({ message: 'Select a valid year level.' });
+    }
+
+    if (student.nstp_component === 'ROTC' && !String(body.xray_file || student.xray_file || '').trim()) {
+      return res.status(400).json({ message: 'X-ray is required for ROTC re-enrollment.' });
+    }
+
+    const hasMedicalCondition = enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
+
+    await connection.beginTransaction();
+
+    await connection.execute(
+      `UPDATE students SET
+        religion=?,contact_number=?,temporary_barangay=?,temporary_municipality=?,temporary_province=?,
+        permanent_barangay=?,permanent_municipality=?,permanent_province=?,emergency_contact_name=?,
+        emergency_contact_address=?,emergency_contact_relationship=?,emergency_contact_contact_number=?,
+        course=?,year_level=?,height=?,weight=?,blood_type=?,complexion=?,has_medical_condition=?,
+        medical_condition=?,medical_certificate=?,xray_file=?,cor_file=?,
+        willing_to_take_advance_course=?,willing_to_be_medics=?,willing_to_be_military_police=?
+       WHERE id=?`,
+      [
+        body.religion,
+        body.contact_number,
+        body.temporary_barangay,
+        body.temporary_municipality,
+        body.temporary_province,
+        body.permanent_barangay,
+        body.permanent_municipality,
+        body.permanent_province,
+        body.emergency_contact_name,
+        body.emergency_contact_address,
+        body.emergency_contact_relationship,
+        body.emergency_contact_contact_number,
+        body.course,
+        body.year_level,
+        body.height,
+        body.weight,
+        body.blood_type,
+        body.complexion,
+        hasMedicalCondition,
+        hasMedicalCondition ? (body.medical_condition || '') : '',
+        body.medical_certificate || student.medical_certificate || null,
+        body.xray_file || student.xray_file || null,
+        body.cor_file || student.cor_file || null,
+        normalizeBooleanFlag(body.willing_to_take_advance_course ?? student.willing_to_take_advance_course),
+        normalizeBooleanFlag(body.willing_to_be_medics ?? student.willing_to_be_medics),
+        normalizeBooleanFlag(body.willing_to_be_military_police ?? student.willing_to_be_military_police),
+        req.user.id,
+      ]
     );
 
-    if (!latest || String(latest.ms_level) !== '1' || latest.status !== 'approved') {
-      return res.status(400).json({
-        message: `You can apply for ${levelLabelFor(student.nstp_component, '2')} only after your level 1 enrollment is approved.`,
-      });
-    }
-
-    if (ms1Grades[0] && ms1Grades[0].status === 'Failed') {
-      return res.status(400).json({
-        message: 'You cannot proceed to level 2 because your level 1 grade is Failed.',
-      });
-    }
-
-    const [duplicates] = await db.execute(
-      "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",
-      [req.user.id]
+    await connection.execute(
+      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",
+      [req.user.id, String(schedule.id), targetLevel, student.nstp_component]
     );
 
-    if (duplicates.length) {
-      return res.status(409).json({
-        message: 'You already have a level 2 enrollment request.',
-      });
-    }
-
-    const [scheduleRows] = await db.execute(
-      "SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='2' ORDER BY id DESC LIMIT 1",
-      [student.nstp_component]
-    );
-
-    const schedule = scheduleRows[0];
-    if (!schedule || !enrollmentService.nowWithin(schedule)) {
-      return res.status(400).json({
-        message: `${levelLabelFor(student.nstp_component, '2')} enrollment is not open at this time.`,
-      });
-    }
-
-    await db.execute(
-      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program) VALUES(?,?, '2','pending',?)",
-      [req.user.id, String(schedule.id), student.nstp_component]
-    );
+    await connection.commit();
 
     return res.json({
-      message: `${levelLabelFor(student.nstp_component, '2')} enrollment submitted successfully.`,
+      message: mode === 'retry'
+        ? `Your ${levelLabelFor(student.nstp_component, targetLevel)} enrollment has been submitted again for administrator review.`
+        : `${levelLabelFor(student.nstp_component, targetLevel)} enrollment submitted successfully and is now pending administrator review.`,
     });
   } catch (error) {
+    try {
+      await connection.rollback();
+    } catch {
+      // Ignore rollback errors after the main failure.
+    }
+
     return res.status(500).json({ message: error.message });
+  } finally {
+    connection.release();
   }
 };
 
