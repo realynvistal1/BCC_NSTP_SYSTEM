@@ -1,4 +1,4 @@
-const db=require('../config/database');
+﻿const db=require('../config/database');
 const gradesService=require('../services/gradesService');
 const platoonService=require('../services/platoonService');
 function program(req){
@@ -36,7 +36,7 @@ exports.schedules=async(req,res)=>{
     const blocking=existing.find(x=>now.getTime()<=new Date(x.deadline).getTime());
     if(blocking) return res.status(409).json({message:`A current or upcoming ${p} enrollment schedule already exists. Wait until it closes before creating a new schedule.`});
 
-    // Old-system sequence: Level 1 must exist first, then Level 2 in the same school year.
+    // Required sequence: Level 1 must exist first, then Level 2 in the same school year.
     // After Level 2, the next schedule starts again at Level 1 for the next school year.
     const currentYear=new Date().getFullYear();
     let expectedLevel='1';
@@ -113,7 +113,7 @@ exports.updateEnrollment=async(req,res)=>{
     if(!rec)return res.status(404).json({message:'Enrollment record not found.'});
     await db.execute('UPDATE student_ms_records SET status=?,rejection_reason=? WHERE id=?',[status,status==='rejected'?(rejection_reason||'Please contact your NSTP administrator.'):null,req.params.id]);
     if(status==='approved'){
-      // Old-system behavior: re-enrollment approval keeps the existing assignment.
+      // Expected behavior: re-enrollment approval keeps the existing assignment.
       if(String(rec.ms_level)==='2'&&(rec.company||rec.battalion||rec.rotc_company||rec.special_unit)) return res.json({message:'Enrollment approved. Existing assignment retained.'});
       if(p==='CWTS'){
         const companies=['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot'];
@@ -257,7 +257,7 @@ exports.roster=async(req,res)=>{
 exports.autoAssign=async(req,res)=>{
   try{
     const p=program(req);
-    if(p==='CWTS')return res.status(400).json({message:'CWTS company assignment happens automatically during approval, matching the old system.'});
+    if(p==='CWTS')return res.status(400).json({message:'CWTS company assignment happens automatically during approval, matching the system.'});
     const ms=String(req.body.ms_level||req.query.ms_level||'1');
     const [sched]=await db.execute('SELECT * FROM enrollment_schedules WHERE program=\'ROTC\' AND ms_level=? ORDER BY id DESC LIMIT 1',[ms]);
     if(sched[0]&&Date.now()<=new Date(sched[0].deadline).getTime())return res.status(400).json({message:`Wait until the MS ${ms} enrollment schedule closes before assigning platoons.`});
@@ -702,7 +702,7 @@ exports.verifyAttendance = async (req, res) => {
       [studentId, sessionId, status, session.mi_number, session.mi_type, req.user.email]
     );
     let offense = null;
-    if (status === 'absent' && ['present', 'late'].includes(previousStatus)) {
+    if (status === 'absent' && previousStatus !== 'absent') {
       offense = await offenseService.record(studentId);
     }
     res.json({
@@ -717,3 +717,5 @@ exports.verifyAttendance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
