@@ -1,4 +1,4 @@
-async function studentPage(page,c){
+﻿async function studentPage(page,c){
   const d=await API.get('/api/student/dashboard');
   const s=d.student||{
   }
@@ -12,7 +12,7 @@ async function studentPage(page,c){
     const att=d.attendance||{
     }
     ;
-    const grade=d.grade?`${esc(d.grade.grade)} • ${esc(d.grade.status)}`:'Not yet released';
+    const grade=d.grade?`${esc(d.grade.grade)} - ${esc(d.grade.status)}`:'Not yet released';
     const serial=esc(d.serial?.serial_number||'Not yet released');
     const welcome=(s.last_name||s.first_name||'Student').trim();
     const intro=document.querySelector('.intro-copy');
@@ -20,7 +20,7 @@ async function studentPage(page,c){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>Welcome back, ${esc(welcome)}</h1><p>${esc([s.student_id,s.course,s.year_level,s.nstp_component].filter(Boolean).join(' - '))}</p>`;
     }
     const eligibleReEnroll=String(r.ms_level||'')==='1'&&String(rawStatus).toLowerCase()==='approved';
-    c.innerHTML=`<div class="old-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
+    c.innerHTML=`<div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
       att.present||0
     }
     Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${eligibleReEnroll?dashCard('Apply Enrollment','MS 2 Enrollment','Tap to enroll for MS 2 when enrollment is open.','/student/re-enrollment','refresh','indigo'):''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
@@ -68,7 +68,7 @@ async function studentPage(page,c){
     return
   }
   if(page==='assigned-platoon'){
-    let assign=s.special_unit?`Special Unit: ${s.special_unit}`:s.nstp_component==='CWTS'?`Company ${s.company||'Not assigned'}`:`${s.battalion?'Battalion '+s.battalion+' • ':''}${s.rotc_company||'Not assigned'}${s.rotc_platoon?' • Platoon '+s.rotc_platoon:''}`;
+    let assign=s.special_unit?`Special Unit: ${s.special_unit}`:s.nstp_component==='CWTS'?`Company ${s.company||'Not assigned'}`:`${s.battalion?'Battalion '+s.battalion+' - ':''}${s.rotc_company||'Not assigned'}${s.rotc_platoon?' - Platoon '+s.rotc_platoon:''}`;
     c.innerHTML=`<div class="hero-assignment"><div class="assignment-icon">${icon('platoon')}</div><div class="dash-label">Current Assignment</div><h2>${esc(assign)}</h2><p class="muted">Your assignment becomes available after your enrollment is approved and the administrator performs automatic assignment.</p>${s.special_unit==='HQ'?`<div class="notice" style="margin-top:16px;text-align:left"><strong>Advance Course:</strong> If you need to leave the advance course, you may submit a withdrawal request for ROTC Admin review.</div><div class="actions" style="justify-content:center"><button class="btn danger" id="withdrawRequest">Request Withdrawal</button></div>`:''}</div>`;
     if($('#withdrawRequest'))$('#withdrawRequest').onclick=async()=>{
       const reason=prompt('Why do you want to withdraw from Advance Course?')||'';
@@ -138,7 +138,7 @@ async function studentPage(page,c){
     </div><p class="muted">${
       esc(x.open_date)
     }
-    → ${
+    â†’ ${
       esc(x.close_date)
     }
     </p><p class="muted">Allowed radius: ${
@@ -198,3 +198,4 @@ function bindSettings(){
     }
   }
 }
+
