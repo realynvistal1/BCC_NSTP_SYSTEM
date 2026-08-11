@@ -1,4 +1,4 @@
-const bcrypt=require('bcryptjs');
+﻿const bcrypt=require('bcryptjs');
 const db=require('../config/database');
 const {
   latestRecord,studentById,studentPublic
@@ -39,7 +39,7 @@ exports.register=async(req,res)=>{
     if(!/^\d{6}-\d{4}$/.test(b.student_id))return res.status(400).json({message:'Student ID must use format 000000-0000.'});
     if(String(b.contact_number).length!==11||String(b.emergency_contact_contact_number).length!==11)return res.status(400).json({message:'Contact numbers must contain 11 digits.'});
     if(!['ROTC','CWTS'].includes(b.nstp_component))return res.status(400).json({message:'Select ROTC or CWTS.'});
-    // Exact old-system rule: first-time enrollment is MS/CWTS 1 only.
+    // Exact system rule: first-time enrollment is MS/CWTS 1 only.
     const msLevel='1';
     const [schRows]=await conn.execute("SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='1' ORDER BY id DESC LIMIT 1",[b.nstp_component]);
     const schedule=schRows[0];
@@ -304,3 +304,5 @@ exports.acknowledgeAttendanceWarning = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
