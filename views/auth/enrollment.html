@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
  <head>
   <meta charset="utf-8"/>
@@ -9,78 +9,78 @@
   <link href="/assets/css/global.css" rel="stylesheet"/>
   <link href="/assets/css/enrollment.css" rel="stylesheet"/>
  </head>
- <body class="old-enrollment-page">
-  <main class="old-enrollment-shell">
-   <header class="old-enrollment-header">
-    <div class="old-enrollment-logo-halo">
-     <div class="old-enrollment-logo-card">
+ <body class="enrollment-page">
+  <main class="enrollment-shell">
+   <header class="enrollment-header">
+    <div class="enrollment-logo-halo">
+     <div class="enrollment-logo-card">
       <img alt="Buenavista Community College Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
      </div>
     </div>
     <h1>
      NSTP ENROLLMENT
     </h1>
-    <div class="old-enrollment-title-line">
+    <div class="enrollment-title-line">
     </div>
    </header>
-   <section aria-label="Enrollment progress" class="old-progress-card">
-    <div class="old-progress-track">
-     <div class="old-progress-item active" data-progress="0">
-      <div class="old-progress-line before">
+   <section aria-label="Enrollment progress" class="enrollment-progress-card">
+    <div class="enrollment-progress-track">
+     <div class="enrollment-progress-item active" data-progress="0">
+      <div class="enrollment-progress-line before">
       </div>
-      <div class="old-progress-circle">
+      <div class="enrollment-progress-circle">
        1
       </div>
-      <div class="old-progress-line after">
+      <div class="enrollment-progress-line after">
       </div>
       <span>
        Academic Info
       </span>
      </div>
-     <div class="old-progress-item" data-progress="1">
-      <div class="old-progress-line before">
+     <div class="enrollment-progress-item" data-progress="1">
+      <div class="enrollment-progress-line before">
       </div>
-      <div class="old-progress-circle">
+      <div class="enrollment-progress-circle">
        2
       </div>
-      <div class="old-progress-line after">
+      <div class="enrollment-progress-line after">
       </div>
       <span>
        Personal Info
       </span>
      </div>
-     <div class="old-progress-item" data-progress="2">
-      <div class="old-progress-line before">
+     <div class="enrollment-progress-item" data-progress="2">
+      <div class="enrollment-progress-line before">
       </div>
-      <div class="old-progress-circle">
+      <div class="enrollment-progress-circle">
        3
       </div>
-      <div class="old-progress-line after">
+      <div class="enrollment-progress-line after">
       </div>
       <span>
        Physical &amp; Health
       </span>
      </div>
-     <div class="old-progress-item" data-progress="3">
-      <div class="old-progress-line before">
+     <div class="enrollment-progress-item" data-progress="3">
+      <div class="enrollment-progress-line before">
       </div>
-      <div class="old-progress-circle">
+      <div class="enrollment-progress-circle">
        4
       </div>
-      <div class="old-progress-line after">
+      <div class="enrollment-progress-line after">
       </div>
       <span>
        Account Setup
       </span>
      </div>
     </div>
-    <p class="old-mobile-step-label" id="mobileStepLabel">
+    <p class="enrollment-mobile-step-label" id="mobileStepLabel">
      Step 1 of 4 - Academic Info
     </p>
    </section>
-   <section class="old-enrollment-card" id="enrollWrap">
-    <div class="old-step-heading">
-     <div aria-hidden="true" class="old-step-icon">
+   <section class="enrollment-card" id="enrollWrap">
+    <div class="enrollment-step-heading">
+     <div aria-hidden="true" class="enrollment-step-icon">
       <svg fill="currentColor" viewbox="0 0 24 24">
        <path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm-7.59 8.47L12 15.53l7.59-4.06L12 7.41 4.41 11.47ZM6 14.78V18c0 1.66 2.69 3 6 3s6-1.34 6-3v-3.22l-6 3.27-6-3.27Z">
        </path>
@@ -91,9 +91,9 @@
      </h2>
     </div>
     <form id="enrollmentForm" novalidate="">
-     <section class="enroll-step old-step-body" data-step="0">
-      <div class="old-field-stack">
-       <div class="old-field">
+     <section class="enroll-step enrollment-step-body" data-step="0">
+      <div class="enrollment-field-stack">
+       <div class="enrollment-field">
         <label for="course">
          Course
         </label>
@@ -127,8 +127,8 @@
          </option>
         </select>
        </div>
-       <div class="old-two-col">
-        <div class="old-field">
+       <div class="enrollment-two-col">
+        <div class="enrollment-field">
          <label for="year_level">
           Year Level
          </label>
@@ -150,91 +150,91 @@
           </option>
          </select>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label id="levelLabel">
           MS Level
          </label>
-         <div class="old-readonly-select" id="levelDisplay">
+         <div class="enrollment-readonly-select" id="levelDisplay">
           Select NSTP first
          </div>
          <input id="ms_level" name="ms_level" type="hidden" value=""/>
-         <p class="old-field-hint hidden" id="scheduleHint">
+         <p class="enrollment-field-hint hidden" id="scheduleHint">
          </p>
         </div>
        </div>
-       <div class="old-field old-component-field">
+       <div class="enrollment-field enrollment-component-field">
         <label>
          NSTP Component
         </label>
-        <div class="old-program-options">
-         <button class="old-program-btn" data-program="ROTC" type="button">
+        <div class="enrollment-program-options">
+         <button class="enrollment-program-btn" data-program="ROTC" type="button">
           ROTC
          </button>
-         <button class="old-program-btn" data-program="CWTS" type="button">
+         <button class="enrollment-program-btn" data-program="CWTS" type="button">
           CWTS
          </button>
         </div>
         <input id="nstp_component" name="nstp_component" required="" type="hidden"/>
-        <p class="old-field-hint old-warning hidden" id="rotcOnlyHint">
+        <p class="enrollment-field-hint warning-text hidden" id="rotcOnlyHint">
          BS Criminology students are required to enroll in ROTC.
         </p>
        </div>
       </div>
      </section>
-     <section class="enroll-step old-step-body hidden" data-step="1">
-      <div class="old-field-stack">
-       <div class="old-field">
+     <section class="enroll-step enrollment-step-body hidden" data-step="1">
+      <div class="enrollment-field-stack">
+       <div class="enrollment-field">
         <label>
          Student ID
         </label>
         <input maxlength="11" name="student_id" placeholder="e.g. 000000-0000" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Last Name
         </label>
         <input name="last_name" placeholder="Last Name" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          First Name
         </label>
         <input name="first_name" placeholder="First Name" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Middle Name
         </label>
         <input name="middle_name" placeholder="Middle Name"/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Suffix (optional)
         </label>
         <input name="suffix" placeholder="e.g. JR., SR., III"/>
        </div>
-       <div class="old-two-col">
-        <div class="old-field">
+       <div class="enrollment-two-col">
+        <div class="enrollment-field">
          <label>
           Contact Number
          </label>
          <input maxlength="11" name="contact_number" placeholder="09XXXXXXXXX" required="" type="tel"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Religion
          </label>
          <input name="religion" placeholder="Religion" required=""/>
         </div>
        </div>
-       <div class="old-two-col">
-        <div class="old-field">
+       <div class="enrollment-two-col">
+        <div class="enrollment-field">
          <label>
           Date of Birth
          </label>
          <input name="birthdate" required="" type="date"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Gender
          </label>
@@ -251,106 +251,106 @@
          </select>
         </div>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Place of Birth
         </label>
         <input name="place_of_birth" placeholder="Place of Birth" required=""/>
        </div>
-       <div class="old-section-label">
+       <div class="enrollment-section-label">
         Temporary Address:
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          No./ St / Vill / Brgy
         </label>
         <input name="temporary_barangay" placeholder="No./ St / Vill / Brgy" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Municipality
         </label>
         <input name="temporary_municipality" placeholder="Municipality" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Province
         </label>
         <input name="temporary_province" placeholder="Province" required=""/>
        </div>
-       <div class="old-section-label">
+       <div class="enrollment-section-label">
         Permament Address:
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          No./ St / Vill / Brgy
         </label>
         <input name="permanent_barangay" placeholder="No./ St / Vill / Brgy" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Municipality
         </label>
         <input name="permanent_municipality" placeholder="Municipality" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Province
         </label>
         <input name="permanent_province" placeholder="Province" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Father Name
         </label>
         <input name="father_name" placeholder="Father Name" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Father Occupation
         </label>
         <input name="father_occupation" placeholder="Father Occupation" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Mother Name
         </label>
         <input name="mother_name" placeholder="Mother Name" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Mother Occupation
         </label>
         <input name="mother_occupation" placeholder="Mother Occupation" required=""/>
        </div>
-       <div class="old-section-label">
+       <div class="enrollment-section-label">
         Person to be notified in case of emergency:
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Name
         </label>
         <input name="emergency_contact_name" placeholder="Emergency Contact Name" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Emergency Contact Address
         </label>
         <input name="emergency_contact_address" placeholder="Emergency Contact Address" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Emergency Contact Relationship
         </label>
         <input name="emergency_contact_relationship" placeholder="Emergency Contact Relationship" required=""/>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Emergency Contact Contact Number
         </label>
         <input maxlength="11" name="emergency_contact_contact_number" placeholder="09XXXXXXXXX" required="" type="tel"/>
        </div>
-       <div class="old-radio-block hidden" id="rotcWillingness">
+       <div class="enrollment-radio-block hidden" id="rotcWillingness">
         <p>
          Select one if applicable:
         </p>
@@ -381,14 +381,14 @@
        </div>
       </div>
      </section>
-     <section class="enroll-step old-step-body hidden" data-step="2">
-      <div class="old-field-stack">
-       <div class="old-three-col">
-        <div class="old-field">
+     <section class="enroll-step enrollment-step-body hidden" data-step="2">
+      <div class="enrollment-field-stack">
+       <div class="enrollment-three-col">
+        <div class="enrollment-field">
          <label>
           Height (ft)
          </label>
-         <div class="old-height-row">
+         <div class="enrollment-height-row">
           <select id="heightFeet" required="">
            <option disabled="" selected="" value="">
             Feet
@@ -453,13 +453,13 @@
          </div>
          <input id="height" name="height" type="hidden"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Weight (kg)
          </label>
          <input name="weight" placeholder="e.g. 60" required="" type="number"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Blood Type
          </label>
@@ -497,17 +497,17 @@
          </select>
         </div>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Complexion
         </label>
         <input name="complexion" placeholder="e.g. Brown, Fair, etc." required=""/>
        </div>
-       <div class="old-medical-question" id="medicalQuestion">
-        <label class="old-main-label">
+       <div class="enrollment-medical-question" id="medicalQuestion">
+        <label class="enrollment-main-label">
          Do you have any medical condition?
         </label>
-        <div class="old-inline-radios">
+        <div class="enrollment-inline-radios">
          <label>
           <input name="has_medical_condition_choice" type="radio" value="yes"/>
           Yes
@@ -519,20 +519,20 @@
         </div>
        </div>
        <input name="has_medical_condition" type="hidden" value="0"/>
-       <div class="old-field old-indent hidden" id="medicalConditionName">
+       <div class="enrollment-field enrollment-indent hidden" id="medicalConditionName">
         <label>
          Medical Condition Name
         </label>
         <input name="medical_condition" placeholder="e.g. Asthma, Hypertension"/>
        </div>
-       <div class="old-upload-area hidden" id="uploadArea">
-        <p class="old-main-label" id="uploadIntro">
+       <div class="enrollment-upload-area hidden" id="uploadArea">
+        <p class="enrollment-main-label" id="uploadIntro">
         </p>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Medical Certificate
          </label>
-         <label class="old-dropzone">
+         <label class="enrollment-dropzone">
           <svg viewbox="0 0 24 24">
            <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
            </path>
@@ -543,11 +543,11 @@
           <input accept=".pdf,image/*" name="medical_certificate_file" required="" type="file"/>
          </label>
         </div>
-        <div class="old-field hidden" id="xrayGroup">
+        <div class="enrollment-field hidden" id="xrayGroup">
          <label>
           X-ray
          </label>
-         <label class="old-dropzone">
+         <label class="enrollment-dropzone">
           <svg viewbox="0 0 24 24">
            <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13">
            </path>
@@ -561,42 +561,42 @@
        </div>
       </div>
      </section>
-     <section class="enroll-step old-step-body hidden" data-step="3">
-      <div class="old-field-stack">
-       <div class="old-two-col">
-        <div class="old-field">
+     <section class="enroll-step enrollment-step-body hidden" data-step="3">
+      <div class="enrollment-field-stack">
+       <div class="enrollment-two-col">
+        <div class="enrollment-field">
          <label>
           Email
          </label>
          <input name="email" placeholder="you@example.com" required="" type="email"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Username
          </label>
          <input name="username" placeholder="e.g. juan.delacruz" required=""/>
         </div>
        </div>
-       <div class="old-two-col">
-        <div class="old-field">
+       <div class="enrollment-two-col">
+        <div class="enrollment-field">
          <label>
           Password
          </label>
          <input minlength="6" name="password" placeholder="Min. 6 characters" required="" type="password"/>
         </div>
-        <div class="old-field">
+        <div class="enrollment-field">
          <label>
           Confirm Password
          </label>
          <input minlength="6" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
         </div>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          2x2 Photo
         </label>
-        <div class="old-photo-upload-row">
-         <label class="old-dropzone old-photo-dropzone">
+        <div class="enrollment-photo-upload-row">
+         <label class="enrollment-dropzone enrollment-photo-dropzone">
           <svg viewbox="0 0 24 24">
            <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2 1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
            </path>
@@ -606,14 +606,14 @@
           </span>
           <input accept="image/*" name="photo_file" required="" type="file"/>
          </label>
-         <img alt="Photo preview" class="old-photo-preview hidden" id="photoPreview"/>
+         <img alt="Photo preview" class="enrollment-photo-preview hidden" id="photoPreview"/>
         </div>
        </div>
-       <div class="old-field">
+       <div class="enrollment-field">
         <label>
          Upload COR highlight NSTP you enrolled in
         </label>
-        <label class="old-dropzone">
+        <label class="enrollment-dropzone">
          <svg viewbox="0 0 24 24">
           <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
           </path>
@@ -627,30 +627,31 @@
       </div>
      </section>
     </form>
-    <div class="old-form-error hidden" id="enrollMsg">
+    <div class="enrollment-form-error hidden" id="enrollMsg">
     </div>
-    <div class="old-enrollment-actions">
-     <button class="old-nav-btn old-back-btn hidden" id="backBtn" type="button">
+    <div class="enrollment-actions">
+     <button class="enrollment-nav-btn enrollment-back-btn hidden" id="backBtn" type="button">
       Back
      </button>
-     <button class="old-nav-btn old-next-btn" id="nextBtn" type="button">
+     <button class="enrollment-nav-btn enrollment-next-btn" id="nextBtn" type="button">
       Next
      </button>
     </div>
    </section>
-   <p class="old-signin-note">
+   <p class="enrollment-signin-note">
     Already have an account?
     <a href="/student/login">
      Sign in
     </a>
    </p>
-   <footer class="old-enrollment-footer">
+   <footer class="enrollment-footer">
     &copy; 2026 Buenavista Community College. All rights reserved.
    </footer>
   </main>
-  <script src="/assets/js/common/api.js"></script>
-  <script src="/assets/js/common/layout.js"></script>
+  <script src="/assets/js/shared/api.js"></script>
+  <script src="/assets/js/shared/layout.js"></script>
   <script src="/assets/js/auth/enrollment.js">
   </script>
  </body>
 </html>
+
