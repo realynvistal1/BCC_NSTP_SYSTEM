@@ -138,7 +138,7 @@
     </div><p class="muted">${
       esc(x.open_date)
     }
-    â†’ ${
+    to ${
       esc(x.close_date)
     }
     </p><p class="muted">Allowed radius: ${
