@@ -7,6 +7,7 @@ router.use(requireAuth, requireRole("officer"));
 router.get("/dashboard", controller.dashboard);
 router.get("/enrollments", controller.enrollments);
 router.get("/records", controller.records);
+router.get("/records/:studentId", controller.recordDetail);
 router.get("/roster/:group", controller.roster);
 
 router.get("/attendance/progress", controller.attendanceProgress);
