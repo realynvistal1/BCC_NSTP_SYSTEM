@@ -1,4 +1,5 @@
 const path = require('path');
+const XLSX = require('xlsx');
 const db = require('../config/database');
 const certificateService = require('../services/certificateService');
 const gradesService = require('../services/gradesService');
@@ -16,6 +17,222 @@ function levelPrefix(programCode) {
 
 function hasSettingValue(value) {
   return String(value || '').trim().length > 0;
+}
+
+function certificateSettingsComplete(settings, programCode) {
+  return programCode === 'ROTC'
+    ? Boolean(
+      hasSettingValue(settings?.academic_year)
+      && hasSettingValue(settings?.ceremony_date)
+      && hasSettingValue(settings?.commandant || settings?.signatory_1_name)
+      && hasSettingValue(settings?.school_registrar || settings?.signatory_2_name)
+    )
+    : Boolean(
+      hasSettingValue(settings?.academic_year)
+      && hasSettingValue(settings?.ceremony_date)
+      && hasSettingValue(settings?.nstp_coordinator || settings?.signatory_1_name)
+      && hasSettingValue(settings?.municipal_mayor || settings?.signatory_3_name)
+      && hasSettingValue(settings?.bcc_president || settings?.signatory_2_name)
+    );
+}
+
+function serialSignatories(settings, programCode) {
+  return {
+    signatoryOneName: programCode === 'ROTC' ? settings.commandant : settings.nstp_coordinator,
+    signatoryOnePosition: programCode === 'ROTC' ? 'Commandant' : 'NSTP Coordinator',
+    signatoryTwoName: programCode === 'ROTC' ? settings.school_registrar : settings.bcc_president,
+    signatoryTwoPosition: programCode === 'ROTC' ? 'School Registrar' : 'BCC President',
+    signatoryThreeName: programCode === 'ROTC' ? null : settings.municipal_mayor,
+    signatoryThreePosition: programCode === 'ROTC' ? null : 'Municipal Mayor',
+  };
+}
+
+function normalizeHeader(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function normalizeText(value) {
+  if (value == null) {
+    return '';
+  }
+
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function normalizeKeyName(value) {
+  return normalizeText(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeSex(value) {
+  const normalized = normalizeText(value).toLowerCase();
+
+  if (normalized === 'male' || normalized === 'm') {
+    return 'Male';
+  }
+
+  if (normalized === 'female' || normalized === 'f') {
+    return 'Female';
+  }
+
+  return '';
+}
+
+function parseWorksheetRows(fileBuffer) {
+  const workbook = XLSX.read(fileBuffer, {
+    type: 'buffer',
+    cellDates: true,
+  });
+  const sheetName = workbook.SheetNames[0];
+
+  if (!sheetName) {
+    return [];
+  }
+
+  const sheet = workbook.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: '',
+    raw: false,
+    blankrows: false,
+  });
+}
+
+function mapImportHeaders(headerRow) {
+  const headerMap = {};
+
+  headerRow.forEach((cell, index) => {
+    const header = normalizeHeader(cell);
+
+    if (!header) {
+      return;
+    }
+
+    if (header.includes('serial number')) {
+      headerMap.serial_number = index;
+      return;
+    }
+
+    if (header === 'surname' || header === 'last name') {
+      headerMap.last_name = index;
+      return;
+    }
+
+    if (header === 'first name' || header === 'firstname') {
+      headerMap.first_name = index;
+      return;
+    }
+
+    if (header === 'middle name' || header === 'middlename') {
+      headerMap.middle_name = index;
+      return;
+    }
+
+    if (header === 'course') {
+      headerMap.course = index;
+      return;
+    }
+
+    if (header === 'platoon') {
+      headerMap.platoon = index;
+      return;
+    }
+
+    if (header === 'id no' || header === 'id no.' || header === 'id number' || header === 'student id') {
+      headerMap.student_id = index;
+      return;
+    }
+
+    if (header === 'birthdate') {
+      headerMap.birthdate = index;
+      return;
+    }
+
+    if (header === 'sex') {
+      headerMap.sex = index;
+      return;
+    }
+
+    if (header === 'barangay') {
+      headerMap.barangay = index;
+      return;
+    }
+
+    if (header === 'present address' || header === 'address') {
+      headerMap.present_address = index;
+      return;
+    }
+  });
+
+  return headerMap;
+}
+
+function extractImportRows(sheetRows) {
+  const headerIndex = sheetRows.findIndex((row) => {
+    const normalized = row.map((cell) => normalizeHeader(cell)).filter(Boolean);
+    return normalized.includes('serial number') && normalized.some((cell) => cell === 'id no' || cell === 'id no.' || cell === 'id number' || cell === 'student id');
+  });
+
+  if (headerIndex < 0) {
+    throw new Error('Excel headers were not recognized. Include Serial Number and ID No. columns.');
+  }
+
+  const headerMap = mapImportHeaders(sheetRows[headerIndex] || []);
+  if (headerMap.serial_number == null || headerMap.student_id == null) {
+    throw new Error('Excel file must include Serial Number and ID No. columns.');
+  }
+
+  return sheetRows.slice(headerIndex + 1).map((row, index) => {
+    const get = (key) => {
+      const columnIndex = headerMap[key];
+      return columnIndex == null ? '' : normalizeText(row[columnIndex]);
+    };
+
+    return {
+      excel_row: headerIndex + index + 2,
+      serial_number: get('serial_number').toUpperCase(),
+      student_id: get('student_id'),
+      last_name: get('last_name'),
+      first_name: get('first_name'),
+      middle_name: get('middle_name'),
+      course: get('course'),
+      platoon: get('platoon'),
+      birthdate: get('birthdate'),
+      sex: normalizeSex(get('sex')),
+      barangay: get('barangay'),
+      present_address: get('present_address'),
+    };
+  }).filter((row) => (
+    row.serial_number
+    || row.student_id
+    || row.last_name
+    || row.first_name
+  ));
+}
+
+function namesMatch(student, row) {
+  const firstMatches = !row.first_name || normalizeKeyName(student.first_name) === normalizeKeyName(row.first_name);
+  const lastMatches = !row.last_name || normalizeKeyName(student.last_name) === normalizeKeyName(row.last_name);
+  const middleMatches = !row.middle_name
+    || !student.middle_name
+    || normalizeKeyName(student.middle_name) === normalizeKeyName(row.middle_name);
+
+  return firstMatches && lastMatches && middleMatches;
+}
+
+function updateStudentFromImport(student, row) {
+  return {
+    first_name: row.first_name || student.first_name,
+    middle_name: row.middle_name || student.middle_name,
+    last_name: row.last_name || student.last_name,
+    course: row.course || student.course,
+    birthdate: row.birthdate || student.birthdate,
+    sex: row.sex || student.sex,
+    temporary_barangay: row.barangay || student.temporary_barangay,
+    platoon: row.platoon || student.platoon,
+  };
 }
 
 function selectDashboardSchedule(schedules) {
@@ -48,6 +265,58 @@ function approvedStudentExistsSql() {
       AND smr.program=?
       AND smr.status='approved'
   )`;
+}
+
+async function approvedRecordRows(programCode, filters = {}) {
+  const params = [programCode];
+  const conditions = ["smr.program=?", "smr.status='approved'", "s.role='student'"];
+
+  if (filters.msLevel) {
+    conditions.push('smr.ms_level=?');
+    params.push(String(filters.msLevel));
+  }
+
+  if (filters.schoolYear) {
+    conditions.push('COALESCE(es.year,?)=?');
+    params.push('');
+    params.push(String(filters.schoolYear));
+  }
+
+  if (String(filters.search || '').trim()) {
+    const query = `%${String(filters.search).trim()}%`;
+    conditions.push(`(
+      s.student_id LIKE ?
+      OR s.first_name LIKE ?
+      OR s.middle_name LIKE ?
+      OR s.last_name LIKE ?
+      OR s.course LIKE ?
+    )`);
+    params.push(query, query, query, query, query);
+  }
+
+  const [rows] = await db.execute(
+    `SELECT smr.id record_id,smr.ms_level,smr.status,smr.created_at,
+            COALESCE(es.year,'') school_year,
+            s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
+            s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,
+            s.place_of_birth,s.religion,s.height,s.weight,s.blood_type,s.complexion,s.photo,
+            s.temporary_barangay,s.temporary_municipality,s.temporary_province,
+            s.permanent_barangay,s.permanent_municipality,s.permanent_province,
+            s.father_name,s.father_occupation,s.mother_name,s.mother_occupation,
+            s.emergency_contact_name,s.emergency_contact_address,s.emergency_contact_relationship,s.emergency_contact_contact_number,
+            s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
+            s.serial_number,
+            g.midterm,g.final_term,g.grade,g.status grade_status
+     FROM student_ms_records smr
+     JOIN students s ON s.id=smr.student_id
+     LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+     LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=smr.program AND g.ms_level=smr.ms_level
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY s.last_name,s.first_name,smr.ms_level`,
+    params
+  );
+
+  return rows;
 }
 
 exports.dashboard = async (req, res) => {
@@ -900,8 +1169,14 @@ exports.serials = async (req, res) => {
 
       return res.json(rows.map((row) => ({
         ...row,
-        eligible: Boolean(row.ms1_grade && row.ms2_grade),
-        eligibility_message: row.ms1_grade && row.ms2_grade ? 'Eligible' : 'Grades Incomplete',
+        eligible: gradesService.isCertificateEligible([
+          { ms_level: '1', grade: row.ms1_grade, status: row.ms1_status },
+          { ms_level: '2', grade: row.ms2_grade, status: row.ms2_status },
+        ]),
+        eligibility_message: gradesService.certificateEligibilityMessage([
+          { ms_level: '1', grade: row.ms1_grade, status: row.ms1_status },
+          { ms_level: '2', grade: row.ms2_grade, status: row.ms2_status },
+        ]),
       })));
     }
 
@@ -923,27 +1198,19 @@ exports.serials = async (req, res) => {
       });
     }
 
+    if (!gradesService.isCertificateEligible(gradeRows)) {
+      return res.status(400).json({
+        message: 'The student is not eligible. Both Level 1 and Level 2 grades must be passed.',
+      });
+    }
+
     const [settingsRows] = await db.execute(
       'SELECT * FROM serial_number_settings WHERE program=?',
       [programCode]
     );
     const settings = settingsRows[0];
-    const complete = programCode === 'ROTC'
-      ? Boolean(
-        hasSettingValue(settings?.academic_year)
-        && hasSettingValue(settings?.ceremony_date)
-        && hasSettingValue(settings?.commandant || settings?.signatory_1_name)
-        && hasSettingValue(settings?.school_registrar || settings?.signatory_2_name)
-      )
-      : Boolean(
-        hasSettingValue(settings?.academic_year)
-        && hasSettingValue(settings?.ceremony_date)
-        && hasSettingValue(settings?.nstp_coordinator || settings?.signatory_1_name)
-        && hasSettingValue(settings?.municipal_mayor || settings?.signatory_3_name)
-        && hasSettingValue(settings?.bcc_president || settings?.signatory_2_name)
-      );
 
-    if (!complete) {
+    if (!certificateSettingsComplete(settings, programCode)) {
       return res.status(400).json({
         message: 'Complete Certificate Settings before assigning a serial number.',
       });
@@ -961,12 +1228,14 @@ exports.serials = async (req, res) => {
       });
     }
 
-    const signatoryOneName = programCode === 'ROTC' ? settings.commandant : settings.nstp_coordinator;
-    const signatoryOnePosition = programCode === 'ROTC' ? 'Commandant' : 'NSTP Coordinator';
-    const signatoryTwoName = programCode === 'ROTC' ? settings.school_registrar : settings.bcc_president;
-    const signatoryTwoPosition = programCode === 'ROTC' ? 'School Registrar' : 'BCC President';
-    const signatoryThreeName = programCode === 'ROTC' ? null : settings.municipal_mayor;
-    const signatoryThreePosition = programCode === 'ROTC' ? null : 'Municipal Mayor';
+    const {
+      signatoryOneName,
+      signatoryOnePosition,
+      signatoryTwoName,
+      signatoryTwoPosition,
+      signatoryThreeName,
+      signatoryThreePosition,
+    } = serialSignatories(settings, programCode);
 
     await db.execute(
       `INSERT INTO serial_numbers(
@@ -1002,6 +1271,223 @@ exports.serials = async (req, res) => {
     return res.json({
       message: 'Serial number assigned and certificate is now available.',
       serial_number: serial,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.bulkImportSerials = async (req, res) => {
+  try {
+    const programCode = program(req);
+
+    if (!req.file?.buffer) {
+      return res.status(400).json({ message: 'Upload an Excel file first.' });
+    }
+
+    const [settingsRows] = await db.execute(
+      'SELECT * FROM serial_number_settings WHERE program=?',
+      [programCode]
+    );
+    const settings = settingsRows[0];
+
+    if (!certificateSettingsComplete(settings, programCode)) {
+      return res.status(400).json({
+        message: 'Complete Certificate Settings before importing serial numbers.',
+      });
+    }
+
+    const sheetRows = parseWorksheetRows(req.file.buffer);
+    const importRows = extractImportRows(sheetRows);
+
+    if (!importRows.length) {
+      return res.status(400).json({
+        message: 'No student rows were found in the uploaded Excel file.',
+      });
+    }
+
+    const seenSerials = new Set();
+    const results = [];
+    let assigned = 0;
+
+    const {
+      signatoryOneName,
+      signatoryOnePosition,
+      signatoryTwoName,
+      signatoryTwoPosition,
+      signatoryThreeName,
+      signatoryThreePosition,
+    } = serialSignatories(settings, programCode);
+
+    for (const row of importRows) {
+      const summary = {
+        excel_row: row.excel_row,
+        student_id: row.student_id,
+        student_name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ').trim(),
+        serial_number: row.serial_number,
+      };
+
+      if (!row.student_id || !row.serial_number) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Missing ID No. or Serial Number.',
+        });
+        continue;
+      }
+
+      if (seenSerials.has(row.serial_number)) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Duplicate serial number found in the uploaded file.',
+        });
+        continue;
+      }
+      seenSerials.add(row.serial_number);
+
+      const [studentRows] = await db.execute(
+        `SELECT id,student_id,first_name,middle_name,last_name,course,birthdate,sex,temporary_barangay,platoon,serial_number
+         FROM students
+         WHERE student_id=? AND nstp_component=? AND role='student'
+         LIMIT 1`,
+        [row.student_id, programCode]
+      );
+      const student = studentRows[0];
+
+      if (!student) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Student not found for this NSTP component.',
+        });
+        continue;
+      }
+
+      if (!namesMatch(student, row)) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Student name does not match the existing record.',
+        });
+        continue;
+      }
+
+      const [gradeRows] = await db.execute(
+        'SELECT ms_level,grade,status FROM student_grades WHERE student_id=? AND program=?',
+        [student.id, programCode]
+      );
+
+      if (!gradesService.hasRequiredGradeLevels(gradeRows)) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Skipped because the student has incomplete grades.',
+        });
+        continue;
+      }
+
+      if (!gradesService.isCertificateEligible(gradeRows)) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Skipped because the student is not eligible for a certificate.',
+        });
+        continue;
+      }
+
+      const [duplicateRows] = await db.execute(
+        'SELECT student_id FROM serial_numbers WHERE serial_number=? AND student_id<>?',
+        [row.serial_number, student.id]
+      );
+
+      if (duplicateRows.length) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Serial number is already assigned to another student.',
+        });
+        continue;
+      }
+
+      if (student.serial_number && String(student.serial_number).trim().toUpperCase() !== row.serial_number) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: 'Student already has a different assigned serial number.',
+        });
+        continue;
+      }
+
+      const studentUpdate = updateStudentFromImport(student, row);
+
+      await db.execute(
+        `UPDATE students
+         SET first_name=?,middle_name=?,last_name=?,course=?,birthdate=?,sex=?,temporary_barangay=?,platoon=?
+         WHERE id=?`,
+        [
+          studentUpdate.first_name,
+          studentUpdate.middle_name,
+          studentUpdate.last_name,
+          studentUpdate.course,
+          studentUpdate.birthdate,
+          studentUpdate.sex,
+          studentUpdate.temporary_barangay,
+          studentUpdate.platoon,
+          student.id,
+        ]
+      );
+
+      await db.execute(
+        `INSERT INTO serial_numbers(
+           student_id,serial_number,program,signatory_1_name,signatory_1_position,
+           signatory_2_name,signatory_2_position,signatory_3_name,signatory_3_position
+         )
+         VALUES(?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+           serial_number=VALUES(serial_number),
+           program=VALUES(program),
+           signatory_1_name=VALUES(signatory_1_name),
+           signatory_1_position=VALUES(signatory_1_position),
+           signatory_2_name=VALUES(signatory_2_name),
+           signatory_2_position=VALUES(signatory_2_position),
+           signatory_3_name=VALUES(signatory_3_name),
+           signatory_3_position=VALUES(signatory_3_position),
+           created_at=CURRENT_TIMESTAMP`,
+        [
+          student.id,
+          row.serial_number,
+          programCode,
+          signatoryOneName,
+          signatoryOnePosition,
+          signatoryTwoName,
+          signatoryTwoPosition,
+          signatoryThreeName,
+          signatoryThreePosition,
+        ]
+      );
+
+      await db.execute(
+        'UPDATE students SET serial_number=? WHERE id=?',
+        [row.serial_number, student.id]
+      );
+
+      assigned += 1;
+      results.push({
+        ...summary,
+        status: 'assigned',
+        message: 'Serial number assigned and certificate released.',
+      });
+    }
+
+    return res.json({
+      message: `Bulk import finished. ${assigned} certificate${assigned === 1 ? '' : 's'} assigned.`,
+      summary: {
+        total: importRows.length,
+        assigned,
+        skipped: results.filter((item) => item.status !== 'assigned').length,
+      },
+      results,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -1116,27 +1602,37 @@ exports.certificate = async (req, res) => {
 exports.records = async (req, res) => {
   try {
     const programCode = program(req);
-    const [rows] = await db.execute(
-      `SELECT smr.id record_id,smr.ms_level,smr.status,smr.created_at,
-              COALESCE(es.year,'') school_year,
-              s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
-              s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,
-              s.permanent_barangay,s.permanent_municipality,s.permanent_province,
-              s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
-              s.serial_number,
-              g.midterm,g.final_term,g.grade,g.status grade_status
-       FROM student_ms_records smr
-       JOIN students s ON s.id=smr.student_id
-       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-       LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=smr.program AND g.ms_level=smr.ms_level
-       WHERE smr.program=? AND smr.status='approved' AND s.role='student'
-       ORDER BY s.last_name,s.first_name,smr.ms_level`,
-      [programCode]
-    );
-
+    const rows = await approvedRecordRows(programCode);
     return res.json(rows);
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.downloadRecordProfiles = async (req, res) => {
+  try {
+    const programCode = program(req);
+    const filters = {
+      msLevel: req.query.ms_level || '',
+      schoolYear: req.query.school_year || '',
+      search: req.query.search || '',
+    };
+
+    const rows = await approvedRecordRows(programCode, filters);
+    if (!rows.length) {
+      return res.status(404).json({ message: 'No approved student records matched the selected filters.' });
+    }
+
+    return certificateService.registrationFormsPdf(res, {
+      records: rows,
+      program: programCode,
+      assets: path.join(__dirname, '../public/images'),
+      filters,
+    });
+  } catch (error) {
+    if (!res.headersSent) {
+      return res.status(500).json({ message: error.message });
+    }
   }
 };
 
