@@ -1,9 +1,12 @@
 .serial-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 18px;
   align-items: center
+}
+.serial-toolbar .search-box {
+  grid-column: span 2;
 }
 .serial-toolbar input, .serial-toolbar select {
   width: 100%
@@ -28,6 +31,13 @@
   border-radius: 20px;
   background: #f9fcff;
   text-align: center
+}
+.serial-banner-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 .serial-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -236,6 +246,29 @@
   font-size: 11px;
   color: #7b8aa0;
 }
+.serial-import-report {
+  margin-bottom: 16px;
+}
+.serial-import-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.serial-import-head h3 {
+  margin: 0 0 6px;
+}
+.serial-import-head p {
+  margin: 0;
+  color: #64748b;
+}
+.serial-import-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
 .panel .data-table td {
   font-size: 13px;
   padding-top: 12px;
@@ -250,15 +283,31 @@
 }
 @media(max-width: 1000px) {
   .serial-toolbar {
-    grid-template-columns: 1fr 1fr
+    grid-template-columns: repeat(2, minmax(0, 1fr))
   }
   .stats-grid {
     grid-template-columns: 1fr 1fr
+  }
+  .serial-import-stats {
+    grid-template-columns: 1fr
   }
 }
 @media(max-width: 650px) {
   .serial-toolbar, .settings-modal .form-grid {
     grid-template-columns: 1fr
+  }
+  .serial-toolbar .search-box {
+    grid-column: span 1;
+  }
+  .serial-import-head {
+    flex-direction: column;
+  }
+  .serial-banner-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .serial-banner-actions .btn {
+    width: 100%;
   }
   .settings-modal .app-dialog-head,
   .settings-modal .record-modal-scroll,
