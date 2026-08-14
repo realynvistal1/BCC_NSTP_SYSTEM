@@ -18,6 +18,13 @@ function serialAssignmentText(student, program) {
   ].filter(Boolean).join(' - ') || '-';
 }
 
+const ROTC_BATTALION_COMPANIES = {
+  '1': ['Alpha', 'Bravo', 'Charlie', 'Delta'],
+  '2': ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
+};
+
+const ROTC_PLATOONS = ['1', '2', '3', '4'];
+
 function serialCourseCode(course) {
   const value = String(course || '').trim();
   const upper = value.toUpperCase();
@@ -82,12 +89,17 @@ async function renderAdminSerial(content, program) {
   const programLabel = program.toUpperCase();
   let rows = await API.get(`/api/admin/${program}/serial-numbers`);
   let settings = await API.get(`/api/admin/${program}/certificate-settings`);
+  let importReport = null;
   let state = {
     q: '',
     elig: 'All',
     level: '',
     sy: '',
-    group: 'All',
+    battalion: '',
+    company: '',
+    platoon: '',
+    special: '',
+    cwtsCompany: '',
   };
 
   const scheduleSY = (row) => {
@@ -103,6 +115,17 @@ async function renderAdminSerial(content, program) {
   window.__openSerialCertificateSettings = () => {
     openSettings();
   };
+  window.__openSerialBulkImport = () => {
+    openImport();
+  };
+
+  function isAdvanceRow(row) {
+    return Number(row.willing_to_take_advance_course) === 1;
+  }
+
+  function isSpecialUnitRow(row) {
+    return Boolean(row.special_unit) || isAdvanceRow(row);
+  }
 
   function filtered() {
     return rows.filter((row) => {
@@ -141,19 +164,164 @@ async function renderAdminSerial(content, program) {
         return false;
       }
 
-      if (program === 'rotc' && state.group !== 'All') {
-        const assignment = serialAssignmentText(row, 'ROTC');
-
-        if (!assignment.toLowerCase().includes(state.group.toLowerCase())) {
+      if (program === 'rotc' && state.special) {
+        if (state.special === 'Advance Course' && !isAdvanceRow(row)) {
           return false;
         }
+
+        if (state.special !== 'Advance Course' && String(row.special_unit || '') !== state.special) {
+          return false;
+        }
+      } else if (program === 'rotc') {
+        if (state.battalion && String(row.battalion || '') !== state.battalion) {
+          return false;
+        }
+
+        if (state.company && String(row.rotc_company || '') !== state.company) {
+          return false;
+        }
+
+        if (state.platoon) {
+          const platoonValue = String(row.rotc_platoon || row.platoon || '');
+          if (platoonValue !== state.platoon) {
+            return false;
+          }
+        }
+      }
+
+      if (program === 'cwts' && state.cwtsCompany && String(row.company || '') !== state.cwtsCompany) {
+        return false;
       }
 
       return true;
     });
   }
 
+  function uniqueSorted(values, mode = 'text') {
+    const list = [...new Set(values.filter(Boolean).map((value) => String(value)))];
+    return list.sort((left, right) => {
+      if (mode === 'number') {
+        const leftNum = Number(left);
+        const rightNum = Number(right);
+        if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) {
+          return leftNum - rightNum;
+        }
+      }
+      return String(left).localeCompare(String(right));
+    });
+  }
+
+  function matchingRows(overrides = {}) {
+    const nextState = { ...state, ...overrides };
+
+    return rows.filter((row) => {
+      if (program === 'rotc' && nextState.special) {
+        if (nextState.special === 'Advance Course' && !isAdvanceRow(row)) {
+          return false;
+        }
+
+        if (nextState.special !== 'Advance Course' && String(row.special_unit || '') !== nextState.special) {
+          return false;
+        }
+      } else if (program === 'rotc') {
+        if (isSpecialUnitRow(row)) {
+          return false;
+        }
+
+        if (nextState.battalion && String(row.battalion || '') !== nextState.battalion) {
+          return false;
+        }
+
+        if (nextState.company && String(row.rotc_company || '') !== nextState.company) {
+          return false;
+        }
+
+        if (nextState.platoon) {
+          const platoonValue = String(row.rotc_platoon || row.platoon || '');
+          if (platoonValue !== nextState.platoon) {
+            return false;
+          }
+        }
+      }
+
+      if (program === 'cwts' && nextState.cwtsCompany && String(row.company || '') !== nextState.cwtsCompany) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  function filterOptions() {
+    const regularRotcRows = rows.filter((row) => !isSpecialUnitRow(row));
+    const storedBattalions = uniqueSorted(regularRotcRows.map((row) => row.battalion), 'number');
+    const battalions = uniqueSorted([
+      ...storedBattalions,
+      ...Object.keys(ROTC_BATTALION_COMPANIES),
+    ], 'number');
+    let rotcCompanies = [];
+    let rotcPlatoons = [];
+
+    if (program === 'rotc') {
+      if (state.special) {
+        rotcCompanies = [];
+        rotcPlatoons = [];
+      } else {
+        const battalionCompanies = state.battalion
+          ? (ROTC_BATTALION_COMPANIES[state.battalion] || [])
+          : uniqueSorted(Object.values(ROTC_BATTALION_COMPANIES).flat());
+
+        const dataCompanies = uniqueSorted(
+          matchingRows({ company: '', platoon: '' }).map((row) => row.rotc_company)
+        );
+
+        rotcCompanies = uniqueSorted([...battalionCompanies, ...dataCompanies]);
+
+        const dataPlatoons = uniqueSorted(
+          matchingRows({ platoon: '' }).map((row) => row.rotc_platoon || row.platoon),
+          'number'
+        );
+
+        rotcPlatoons = uniqueSorted([...ROTC_PLATOONS, ...dataPlatoons], 'number');
+      }
+    }
+
+    const cwtsCompanies = uniqueSorted(rows.map((row) => row.company));
+
+    return {
+      battalions,
+      rotcCompanies,
+      rotcPlatoons,
+      cwtsCompanies,
+    };
+  }
+
+  function syncFilterState() {
+    const options = filterOptions();
+
+    if (program === 'rotc') {
+      if (state.battalion && !options.battalions.includes(state.battalion)) {
+        state.battalion = '';
+      }
+
+      if (state.company && !options.rotcCompanies.includes(state.company)) {
+        state.company = '';
+      }
+
+      if (state.platoon && !options.rotcPlatoons.includes(state.platoon)) {
+        state.platoon = '';
+      }
+    }
+
+    if (program === 'cwts' && state.cwtsCompany && !options.cwtsCompanies.includes(state.cwtsCompany)) {
+      state.cwtsCompany = '';
+    }
+
+    return options;
+  }
+
   function draw() {
+    const options = syncFilterState();
     const list = filtered();
     const assigned = list.filter((row) => row.serial_number).length;
     const eligible = list.filter((row) => row.eligible && !row.serial_number).length;
@@ -166,10 +334,43 @@ async function renderAdminSerial(content, program) {
           <h2>Serial Number & Certificate Generation</h2>
           <p>Assign serial numbers to students who completed NSTP 1 and NSTP 2 grades, then make their certificate available for download.</p>
         </div>
-        <button class="btn primary" id="certSettingsBtn" type="button" onclick="window.__openSerialCertificateSettings()">Certificate Settings</button>
+        <div class="serial-banner-actions">
+          <button class="btn" id="serialImportBtn" type="button" onclick="window.__openSerialBulkImport()">Upload Excel</button>
+          <button class="btn primary" id="certSettingsBtn" type="button" onclick="window.__openSerialCertificateSettings()">Certificate Settings</button>
+        </div>
       </div>
       ${!certSettingsComplete(settings, program)
         ? '<div class="notice warning">Complete Certificate Settings before assigning serial numbers.</div>'
+        : ''}
+      ${importReport
+        ? `
+          <div class="panel serial-import-report">
+            <div class="serial-import-head">
+              <div>
+                <h3>Latest Bulk Import</h3>
+                <p>${esc(importReport.message || 'Bulk import finished.')}</p>
+              </div>
+              <button class="btn small" type="button" id="clearImportReport">Clear</button>
+            </div>
+            <div class="serial-import-stats">
+              <div class="stat-card"><div class="dash-label">Rows</div><div class="value">${Number(importReport.summary?.total || 0)}</div></div>
+              <div class="stat-card"><div class="dash-label">Assigned</div><div class="value">${Number(importReport.summary?.assigned || 0)}</div></div>
+              <div class="stat-card"><div class="dash-label">Skipped</div><div class="value">${Number(importReport.summary?.skipped || 0)}</div></div>
+            </div>
+            ${table(
+              ['Excel Row', 'Student ID', 'Student', 'Serial Number', 'Status'],
+              (importReport.results || []).map((row) => `
+                <tr>
+                  <td>${esc(row.excel_row)}</td>
+                  <td>${esc(row.student_id || '-')}</td>
+                  <td>${esc(row.student_name || '-')}</td>
+                  <td>${esc(row.serial_number || '-')}</td>
+                  <td>${row.status === 'assigned' ? badge('Assigned') : badge('Skipped')}<div class="serial-muted-note">${esc(row.message || '')}</div></td>
+                </tr>
+              `)
+            )}
+          </div>
+        `
         : ''}
       <div class="stats-grid">
         <div class="stat-card"><div class="dash-label">Assigned</div><div class="value">${assigned}</div></div>
@@ -198,16 +399,29 @@ async function renderAdminSerial(content, program) {
             ${years.map((year) => `<option>${esc(year)}</option>`).join('')}
           </select>
           ${program === 'rotc'
-            ? `<select id="serialGroup">
-                <option>All</option>
-                <option>Battalion 1</option>
-                <option>Battalion 2</option>
-                <option>Advance Course</option>
-                <option>HQ</option>
-                <option>Medics</option>
-                <option>MP</option>
+            ? `<select id="serialBattalion">
+                <option value="">All Battalions</option>
+                ${options.battalions.map((value) => `<option value="${esc(value)}">Battalion ${esc(value)}</option>`).join('')}
+              </select>
+              <select id="serialCompany">
+                <option value="">All Companies</option>
+                ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
+              </select>
+              <select id="serialPlatoon">
+                <option value="">All Platoons</option>
+                ${options.rotcPlatoons.map((value) => `<option value="${esc(value)}">Platoon ${esc(value)}</option>`).join('')}
+              </select>
+              <select id="serialSpecial">
+                <option value="">All Special Assignments</option>
+                <option value="Advance Course">Advance Course</option>
+                <option value="HQ">HQ</option>
+                <option value="Medics">Medics</option>
+                <option value="MP">MP</option>
               </select>`
-            : ''}
+            : `<select id="serialCwtsCompany">
+                <option value="">All Companies</option>
+                ${options.cwtsCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
+              </select>`}
         </div>
         ${table(
           ['Student', 'Course / Year', 'Assignment', 'MS 1 Grade', 'MS 2 Grade', 'Eligibility', 'Serial Number', 'Date Assigned'],
@@ -241,8 +455,24 @@ async function renderAdminSerial(content, program) {
     $('#serialLevel').value = state.level;
     $('#serialSY').value = state.sy;
 
-    if ($('#serialGroup')) {
-      $('#serialGroup').value = state.group;
+    if ($('#serialBattalion')) {
+      $('#serialBattalion').value = state.battalion;
+    }
+
+    if ($('#serialCompany')) {
+      $('#serialCompany').value = state.company;
+    }
+
+    if ($('#serialPlatoon')) {
+      $('#serialPlatoon').value = state.platoon;
+    }
+
+    if ($('#serialSpecial')) {
+      $('#serialSpecial').value = state.special;
+    }
+
+    if ($('#serialCwtsCompany')) {
+      $('#serialCwtsCompany').value = state.cwtsCompany;
     }
 
     $('#serialSearch').oninput = (event) => {
@@ -262,9 +492,54 @@ async function renderAdminSerial(content, program) {
       draw();
     };
 
-    if ($('#serialGroup')) {
-      $('#serialGroup').onchange = (event) => {
-        state.group = event.target.value;
+    if ($('#serialBattalion')) {
+      $('#serialBattalion').onchange = (event) => {
+        state.battalion = event.target.value;
+        state.company = '';
+        state.platoon = '';
+        if (state.battalion) {
+          state.special = '';
+        }
+        draw();
+      };
+    }
+
+    if ($('#serialCompany')) {
+      $('#serialCompany').onchange = (event) => {
+        state.company = event.target.value;
+        state.platoon = '';
+        if (state.company) {
+          state.special = '';
+        }
+        draw();
+      };
+    }
+
+    if ($('#serialPlatoon')) {
+      $('#serialPlatoon').onchange = (event) => {
+        state.platoon = event.target.value;
+        if (state.platoon) {
+          state.special = '';
+        }
+        draw();
+      };
+    }
+
+    if ($('#serialSpecial')) {
+      $('#serialSpecial').onchange = (event) => {
+        state.special = event.target.value;
+        if (state.special) {
+          state.battalion = '';
+          state.company = '';
+          state.platoon = '';
+        }
+        draw();
+      };
+    }
+
+    if ($('#serialCwtsCompany')) {
+      $('#serialCwtsCompany').onchange = (event) => {
+        state.cwtsCompany = event.target.value;
         draw();
       };
     }
@@ -272,6 +547,13 @@ async function renderAdminSerial(content, program) {
     $$('.assignSerialBtn').forEach((button) => {
       button.onclick = () => openAssign(button.dataset.id, button.dataset.name);
     });
+
+    if ($('#clearImportReport')) {
+      $('#clearImportReport').onclick = () => {
+        importReport = null;
+        draw();
+      };
+    }
   }
 
   function openAssign(id, name) {
@@ -483,6 +765,78 @@ async function renderAdminSerial(content, program) {
     $('#certificateSettingsForm').onsubmit = async (event) => {
       event.preventDefault();
       await saveSettings();
+    };
+  }
+
+  function openImport() {
+    if (!certSettingsComplete(settings, program)) {
+      return toast('Complete Certificate Settings first.', true);
+    }
+
+    $('#serialModalHost').innerHTML = `
+      <div class="app-dialog">
+        <div class="app-dialog-backdrop" data-close></div>
+        <section class="app-dialog-card settings-modal">
+          <div class="app-dialog-head">
+            <div>
+              <h3>Bulk Upload Serial Numbers</h3>
+              <p>Upload your official Excel sheet and the system will assign certificates only to eligible students.</p>
+            </div>
+            <button class="modal-close" type="button" data-close>x</button>
+          </div>
+          <div class="record-modal-scroll">
+            <div class="field">
+              <label>Excel File</label>
+              <input id="serialImportFile" type="file" accept=".xlsx,.xls" />
+            </div>
+            <div class="certificate-settings-summary">
+              <strong>Expected columns</strong>
+              <p>Include at least <code>Serial Number</code> and <code>ID No.</code>. The importer also recognizes Surname, First Name, Middle Name, Course, Platoon, Birthdate, Sex, Barangay, and Present Address.</p>
+              <p>Students with incomplete grades, failed eligibility, duplicate serial numbers, or mismatched names will be skipped automatically.</p>
+            </div>
+          </div>
+          <div class="app-dialog-actions">
+            <button class="btn" type="button" data-close>Cancel</button>
+            <button class="btn primary" type="button" id="uploadSerialSheetBtn">Upload and Assign</button>
+          </div>
+        </section>
+      </div>
+    `;
+
+    $$('[data-close]').forEach((node) => {
+      node.onclick = () => {
+        $('#serialModalHost').innerHTML = '';
+      };
+    });
+
+    $('#uploadSerialSheetBtn').onclick = async () => {
+      const button = $('#uploadSerialSheetBtn');
+      const file = $('#serialImportFile')?.files?.[0];
+
+      if (!file) {
+        return toast('Choose an Excel file first.', true);
+      }
+
+      const body = new FormData();
+      body.append('file', file);
+
+      try {
+        button.disabled = true;
+        button.textContent = 'Uploading...';
+        const result = await API.post(`/api/admin/${program}/serial-numbers/import`, body);
+        importReport = result;
+        rows = await API.get(`/api/admin/${program}/serial-numbers`);
+        $('#serialModalHost').innerHTML = '';
+        toast(result.message || 'Bulk import completed.');
+        draw();
+      } catch (error) {
+        toast(error.message, true);
+      } finally {
+        if ($('#uploadSerialSheetBtn')) {
+          $('#uploadSerialSheetBtn').disabled = false;
+          $('#uploadSerialSheetBtn').textContent = 'Upload and Assign';
+        }
+      }
     };
   }
 
