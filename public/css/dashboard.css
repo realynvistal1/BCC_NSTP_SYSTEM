@@ -1308,17 +1308,27 @@ body[data-portal-theme="officer"] .progress-meta span {
 }
 .assignment-copy {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 11px
 }
 .assignment-icon {
-  width: 34px;
-  height: 34px;
+  min-width: 60px;
+  min-height: 34px;
+  padding: 0 12px;
   border-radius: 10px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
   font-weight: 900
+}
+.assignment-copy > div {
+  flex: 1;
+  min-width: 0;
 }
 .assignment-box.ready .assignment-icon {
   background: #f0fdf4;
