@@ -245,6 +245,7 @@ async function renderAdminRecords(_program, content) {
         ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
       </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
+      <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
     </section>
     <section class="panel record-list-panel">
       <div class="table-wrap">
@@ -447,6 +448,28 @@ async function renderAdminRecords(_program, content) {
       $('#recordLevel').value,
       $('#recordSY').value
     );
+  };
+
+  $('#downloadProfiles').onclick = () => {
+    const data = filtered();
+
+    if (!data.length) {
+      return toast('No approved student profiles to download.', true);
+    }
+
+    const params = new URLSearchParams();
+    if ($('#recordLevel').value) {
+      params.set('ms_level', $('#recordLevel').value);
+    }
+    if ($('#recordSY').value) {
+      params.set('school_year', $('#recordSY').value);
+    }
+    const search = $('#recordSearch').value.trim();
+    if (search) {
+      params.set('search', search);
+    }
+
+    window.open(`/api/admin/${apiProgram}/records/download/profiles?${params.toString()}`, '_blank');
   };
 
   draw();
