@@ -1,6 +1,13 @@
 const router = require('express').Router();
+const multer = require('multer');
 const controller = require('../controllers/rotcAdminController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024,
+  },
+});
 
 router.use(requireAuth, requireRole('admin'));
 
@@ -20,10 +27,12 @@ router.get('/offenses', controller.offenses);
 router.post('/offenses', controller.offenses);
 router.get('/serial-numbers', controller.serials);
 router.post('/serial-numbers', controller.serials);
+router.post('/serial-numbers/import', excelUpload.single('file'), controller.bulkImportSerials);
 router.get('/certificate-settings', controller.certificateSettings);
 router.post('/certificate-settings', controller.certificateSettings);
 router.get('/certificates/:studentId', controller.certificate);
 router.get('/records', controller.records);
+router.get('/records/download/profiles', controller.downloadRecordProfiles);
 router.get('/records/:studentId', controller.recordDetail);
 router.get('/attendance-summary', controller.attendanceSummary);
 router.patch('/attendance-summary/:sessionId/verify', controller.verifyAttendance);
