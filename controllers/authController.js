@@ -3,6 +3,9 @@ const db = require('../config/database');
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
 
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_LOCK_MINUTES = 5;
+
 function adminPortal(program, storedRole) {
   if (storedRole === 'director' || storedRole === 'officer') return 'officer';
   if (program === 'CWTS') return 'cwts-admin';
@@ -84,6 +87,90 @@ async function ensureStudentResetTable() {
   `);
 }
 
+async function ensureLoginAttemptTable() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS login_attempt_locks (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      login_key VARCHAR(255) NOT NULL,
+      failed_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+      locked_until DATETIME DEFAULT NULL,
+      last_attempt_at DATETIME DEFAULT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_login_key (login_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+async function getLoginAttempt(loginKey) {
+  await ensureLoginAttemptTable();
+  const [rows] = await db.execute(
+    `SELECT id, login_key, failed_attempts, locked_until, last_attempt_at
+     FROM login_attempt_locks
+     WHERE login_key=?
+     LIMIT 1`,
+    [loginKey]
+  );
+  return rows[0] || null;
+}
+
+function lockoutMessage(lockedUntil) {
+  const unlockTime = new Date(lockedUntil);
+  const diffMs = unlockTime.getTime() - Date.now();
+  const remainingMinutes = Math.max(1, Math.ceil(diffMs / 60000));
+  return `Too many failed login attempts. Try again in ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}.`;
+}
+
+async function recordFailedLogin(loginKey) {
+  await ensureLoginAttemptTable();
+  const attempt = await getLoginAttempt(loginKey);
+  const now = new Date();
+
+  if (!attempt) {
+    const failedAttempts = 1;
+    const lockedUntil = failedAttempts >= LOGIN_ATTEMPT_LIMIT
+      ? new Date(now.getTime() + LOGIN_LOCK_MINUTES * 60000)
+      : null;
+
+    await db.execute(
+      `INSERT INTO login_attempt_locks(login_key, failed_attempts, locked_until, last_attempt_at)
+       VALUES(?,?,?,?)`,
+      [loginKey, failedAttempts, lockedUntil, now]
+    );
+
+    return {
+      failed_attempts: failedAttempts,
+      locked_until: lockedUntil,
+    };
+  }
+
+  const currentlyLocked = attempt.locked_until && new Date(attempt.locked_until) > now;
+  const failedAttempts = currentlyLocked ? attempt.failed_attempts : Number(attempt.failed_attempts || 0) + 1;
+  const lockedUntil = failedAttempts >= LOGIN_ATTEMPT_LIMIT
+    ? new Date(now.getTime() + LOGIN_LOCK_MINUTES * 60000)
+    : null;
+
+  await db.execute(
+    `UPDATE login_attempt_locks
+     SET failed_attempts=?, locked_until=?, last_attempt_at=?
+     WHERE login_key=?`,
+    [failedAttempts, lockedUntil, now, loginKey]
+  );
+
+  return {
+    failed_attempts: failedAttempts,
+    locked_until: lockedUntil,
+  };
+}
+
+async function clearFailedLogins(loginKey) {
+  await ensureLoginAttemptTable();
+  await db.execute(
+    'DELETE FROM login_attempt_locks WHERE login_key=?',
+    [loginKey]
+  );
+}
+
 async function findAdmin(identifier) {
   const [rows] = await db.execute(
     `SELECT id, email, username, password, role, program
@@ -118,6 +205,15 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email/username and password are required.' });
     }
 
+    const loginKey = loginValue.toLowerCase();
+    const attempt = await getLoginAttempt(loginKey);
+    if (attempt?.locked_until && new Date(attempt.locked_until) > new Date()) {
+      return res.status(429).json({
+        message: lockoutMessage(attempt.locked_until),
+        locked_until: attempt.locked_until,
+      });
+    }
+
     let source = 'admin';
     let user = await findAdmin(loginValue);
 
@@ -127,13 +223,28 @@ exports.login = async (req, res) => {
     }
 
     if (!user) {
+      const failed = await recordFailedLogin(loginKey);
       return res.status(401).json({ message: 'Invalid login credentials.' });
     }
 
     const match = await authService.comparePassword(plainPassword, user.password);
     if (!match) {
-      return res.status(401).json({ message: 'Invalid login credentials.' });
+      const failed = await recordFailedLogin(loginKey);
+      if (failed.locked_until) {
+        return res.status(429).json({
+          message: lockoutMessage(failed.locked_until),
+          locked_until: failed.locked_until,
+        });
+      }
+      const remaining = Math.max(0, LOGIN_ATTEMPT_LIMIT - Number(failed.failed_attempts || 0));
+      return res.status(401).json({
+        message: remaining > 0
+          ? `Invalid login credentials. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before a ${LOGIN_LOCK_MINUTES}-minute lock.`
+          : 'Invalid login credentials.',
+      });
     }
+
+    await clearFailedLogins(loginKey);
 
     let payload;
     let portal;
