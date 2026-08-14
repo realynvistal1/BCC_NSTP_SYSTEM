@@ -14,51 +14,6 @@ function applySettingsAppearance() {
   document.documentElement.style.setProperty('--accent-2', colors[1]);
 }
 
-function appearanceCard() {
-  const theme = localStorage.getItem('bcc-theme') || 'light';
-  const accent = localStorage.getItem('bcc-accent') || 'ocean';
-
-  return `
-    <section class="settings-card">
-      <div class="settings-card-head">
-        <div>
-          <h2>Appearance</h2>
-          <p>Choose how the system looks while you are using it.</p>
-        </div>
-        <span class="settings-pill">${esc(theme)} mode</span>
-      </div>
-
-      <h3>Theme</h3>
-      <div class="appearance-options">
-        ${['light', 'dark', 'system'].map((option) => `
-          <button class="appearance-option ${theme === option ? 'selected' : ''}" data-theme="${option}">
-            <strong>${option[0].toUpperCase() + option.slice(1)}</strong>
-            <span>${option === 'light'
-              ? 'Bright interface for daytime use.'
-              : option === 'dark'
-                ? 'Dimmed interface for nighttime use.'
-                : 'Match your device theme automatically.'}</span>
-          </button>
-        `).join('')}
-      </div>
-
-      <h3>Gradient Theme</h3>
-      <div class="accent-options">
-        ${[
-          ['ocean', 'Ocean'],
-          ['emerald', 'Emerald'],
-          ['violet', 'Violet'],
-        ].map(([value, label]) => `
-          <button class="accent-option ${accent === value ? 'selected' : ''}" data-accent="${value}">
-            <span class="accent-preview ${value}"></span>
-            <strong>${label}</strong>
-          </button>
-        `).join('')}
-      </div>
-    </section>
-  `;
-}
-
 function passwordCard() {
   return `
     <section class="settings-card">
@@ -194,22 +149,6 @@ function studentProfile(student) {
 }
 
 function bindSettingsUi() {
-  $$('[data-theme]').forEach((button) => {
-    button.onclick = () => {
-      localStorage.setItem('bcc-theme', button.dataset.theme);
-      applySettingsAppearance();
-      location.reload();
-    };
-  });
-
-  $$('[data-accent]').forEach((button) => {
-    button.onclick = () => {
-      localStorage.setItem('bcc-accent', button.dataset.accent);
-      applySettingsAppearance();
-      location.reload();
-    };
-  });
-
   const form = $('#passwordForm');
   if (!form) return;
 
@@ -242,14 +181,12 @@ async function renderSettingsPage(content, role) {
     content.innerHTML = `
       <div class="settings-stack">
         ${studentProfile(auth.user)}
-        ${appearanceCard()}
         ${passwordCard()}
       </div>
     `;
   } else {
     content.innerHTML = `
       <div class="settings-stack">
-        ${appearanceCard()}
         ${passwordCard()}
       </div>
     `;
