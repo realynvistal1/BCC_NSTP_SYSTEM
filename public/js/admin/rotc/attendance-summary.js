@@ -410,6 +410,7 @@ function makeAttendanceSummary(_programKey) {
         || (group === 'advance-course' && Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit)
         || (group === 'special-platoon' && Boolean(student.special_unit))
       )
+      && 
       (!status || student.attendance_status === status)
       && (!company || summaryStudentCompany(student) === company)
       && (!platoon || summaryStudentPlatoon(student) === platoon)
@@ -1110,11 +1111,48 @@ function makeAttendanceSummary(_programKey) {
       return sections;
     }
 
+    function buildCwtsSections() {
+      if (selectedCompany) {
+        const sectionStudents = students
+          .filter((student) => student.company === selectedCompany)
+          .sort(compareStudents);
+        return sectionStudents.length
+          ? [makeSection('CWTS', `${String(selectedCompany).toUpperCase()} COMPANY`, `${String(selectedCompany).toUpperCase()} COMPANY`, sectionStudents)]
+          : [];
+      }
+
+      const companies = [...new Set(students.map((student) => student.company).filter(Boolean))].sort();
+      const sections = companies.map((company) => {
+        const sectionStudents = students
+          .filter((student) => student.company === company)
+          .sort(compareStudents);
+        return sectionStudents.length
+          ? makeSection('CWTS', `${String(company).toUpperCase()} COMPANY`, `${String(company).toUpperCase()} COMPANY`, sectionStudents)
+          : '';
+      }).filter(Boolean);
+
+      if (sections.length) return sections;
+
+      return students.length
+        ? [makeSection('CWTS', 'ATTENDANCE SUMMARY', 'STUDENT LIST', students.slice().sort(compareStudents))]
+        : [];
+    }
+
     const totals = summarize(students);
-    const sections = buildRotcSections();
-    const title = selectedGroup === 'overall'
-      ? 'ROTC OVERALL ATTENDANCE SUMMARY'
-      : `ROTC ${meta.groupText.toUpperCase()} ATTENDANCE SUMMARY`;
+    let sections = program === 'CWTS' ? buildCwtsSections() : buildRotcSections();
+    if (!sections.length && students.length) {
+      sections = [makeSection(
+        program,
+        program === 'CWTS' ? 'ATTENDANCE SUMMARY' : meta.groupText.toUpperCase(),
+        'STUDENT LIST',
+        students.slice().sort(compareStudents),
+      )];
+    }
+    const title = program === 'CWTS'
+      ? (selectedCompany ? `CWTS ${String(selectedCompany).toUpperCase()} ATTENDANCE SUMMARY` : 'CWTS OVERALL ATTENDANCE SUMMARY')
+      : (selectedGroup === 'overall'
+        ? 'ROTC OVERALL ATTENDANCE SUMMARY'
+        : `ROTC ${meta.groupText.toUpperCase()} ATTENDANCE SUMMARY`);
 
     const documentHtml = `
       <!DOCTYPE html>

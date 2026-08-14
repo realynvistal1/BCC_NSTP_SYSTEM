@@ -144,6 +144,36 @@ async function currentCycle(program) {
   };
 }
 
+async function dashboardScheduleFor(program) {
+  const [schedules] = await db.execute(
+    `SELECT id, program, ms_level, year, open_date, deadline
+     FROM enrollment_schedules
+     WHERE program=?
+     ORDER BY id DESC`,
+    [program]
+  );
+
+  if (!schedules.length) return null;
+
+  const now = Date.now();
+  const active = schedules.find((schedule) => {
+    const start = new Date(schedule.open_date).getTime();
+    const end = new Date(schedule.deadline).getTime();
+    return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
+  });
+
+  if (active) return active;
+
+  const upcoming = schedules.find((schedule) => {
+    const end = new Date(schedule.deadline).getTime();
+    return Number.isFinite(end) && end >= now;
+  });
+
+  if (upcoming) return upcoming;
+
+  return schedules[0];
+}
+
 function sameAttendanceTrack(session, program, isAdvance, cycle) {
   if (session.program !== program) return false;
 
@@ -169,6 +199,24 @@ exports.dashboard = async (req, res) => {
   try {
     await refreshSessionStatuses();
 
+    const rotcSchedule = await dashboardScheduleFor('ROTC');
+    const cwtsSchedule = await dashboardScheduleFor('CWTS');
+
+    const rotcParams = [];
+    const cwtsParams = [];
+    let rotcScheduleCondition = '';
+    let cwtsScheduleCondition = '';
+
+    if (rotcSchedule) {
+      rotcScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
+      rotcParams.push(rotcSchedule.id);
+    }
+
+    if (cwtsSchedule) {
+      cwtsScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
+      cwtsParams.push(cwtsSchedule.id);
+    }
+
     const [[summary]] = await db.query(`
       SELECT
         (SELECT COUNT(DISTINCT s.id)
@@ -181,6 +229,7 @@ exports.dashboard = async (req, res) => {
              WHERE smr.student_id=s.id
                AND smr.program='ROTC'
                AND smr.status='approved'
+               ${rotcScheduleCondition}
            )
         ) rotc,
         (SELECT COUNT(DISTINCT s.id)
@@ -193,11 +242,12 @@ exports.dashboard = async (req, res) => {
              WHERE smr.student_id=s.id
                AND smr.program='CWTS'
                AND smr.status='approved'
+               ${cwtsScheduleCondition}
            )
         ) cwts,
         (SELECT COUNT(*) FROM attendance_sessions WHERE status='open') open_sessions,
         (SELECT COUNT(*) FROM attendance_records) attendance_records
-    `);
+    `, [...rotcParams, ...cwtsParams]);
 
     return res.json(summary);
   } catch (error) {
@@ -594,10 +644,11 @@ exports.updateAttendance = async (req, res) => {
 
 exports.roster = async (req, res) => {
   try {
+    const recordProgram = req.params.group === 'cwts' ? 'CWTS' : 'ROTC';
     const where = req.params.group === 'cwts'
       ? "s.nstp_component='CWTS'"
       : req.params.group === 'advance-course'
-        ? "s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0"
+          ? "s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0"
         : req.params.group === 'special-platoon'
           ? "s.nstp_component='ROTC' AND s.special_unit IN ('Medics','HQ','MP')"
           : req.params.group === 'battalion-1'
@@ -607,11 +658,36 @@ exports.roster = async (req, res) => {
               : "s.nstp_component='ROTC'";
 
     const [rows] = await db.query(
-      `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course
-       FROM students s
-       WHERE s.role='student' AND ${where}
-         AND EXISTS(SELECT 1 FROM student_ms_records smr WHERE smr.student_id=s.id AND smr.status='approved')
-       ORDER BY s.last_name,s.first_name`
+      `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
+              latest.ms_level, COALESCE(latest.school_year,'') school_year
+         FROM students s
+         LEFT JOIN (
+           SELECT smr.student_id,
+                  smr.program,
+                  smr.ms_level,
+                  COALESCE(es.year,'') school_year,
+                  smr.id
+           FROM student_ms_records smr
+           LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+         ) latest ON latest.id=(
+           SELECT x.id
+           FROM student_ms_records x
+           WHERE x.student_id=s.id
+             AND x.program=?
+             AND x.status='approved'
+           ORDER BY x.created_at DESC,x.id DESC
+           LIMIT 1
+         )
+         WHERE s.role='student' AND ${where}
+           AND EXISTS(
+             SELECT 1
+             FROM student_ms_records smr
+             WHERE smr.student_id=s.id
+               AND smr.program=?
+               AND smr.status='approved'
+           )
+         ORDER BY s.last_name,s.first_name`,
+      [recordProgram, recordProgram]
     );
 
     return res.json(rows);
@@ -622,30 +698,46 @@ exports.roster = async (req, res) => {
 
 exports.enrollments = async (req, res) => {
   try {
+    const rotcSchedule = await dashboardScheduleFor('ROTC');
+    const cwtsSchedule = await dashboardScheduleFor('CWTS');
+
     const [rows] = await db.execute(
       `SELECT smr.id record_id,smr.ms_level,smr.status,smr.program,smr.created_at,
+              CAST(smr.schedule_id AS UNSIGNED) schedule_id,
               s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,
               s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
               CASE
                 WHEN s.nstp_component='CWTS' THEN COALESCE(CONCAT('Company ',s.company),'Not assigned')
                 WHEN s.special_unit IS NOT NULL THEN s.special_unit
                 WHEN s.battalion IS NOT NULL THEN CONCAT('Battalion ',s.battalion,' / ',COALESCE(s.rotc_company,''),' / Platoon ',COALESCE(s.rotc_platoon,''))
-                ELSE 'Not assigned'
-              END assignment
-       FROM student_ms_records smr
-       JOIN students s ON s.id=smr.student_id
-       WHERE s.role='student'
-       ORDER BY smr.created_at DESC, s.last_name,s.first_name`
-    );
+                 ELSE 'Not assigned'
+               END assignment
+         FROM student_ms_records smr
+         JOIN students s ON s.id=smr.student_id
+         WHERE s.role='student'
+         ORDER BY smr.created_at DESC, s.last_name,s.first_name`
+      );
 
-    return res.json({
-      rotc: rows.filter((row) => row.program === 'ROTC'),
-      cwts: rows.filter((row) => row.program === 'CWTS'),
+    const filtered = rows.filter((row) => {
+      if (row.program === 'ROTC') {
+        return !rotcSchedule || Number(row.schedule_id || 0) === Number(rotcSchedule.id);
+      }
+
+      if (row.program === 'CWTS') {
+        return !cwtsSchedule || Number(row.schedule_id || 0) === Number(cwtsSchedule.id);
+      }
+
+      return true;
     });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
+
+      return res.json({
+        rotc: filtered.filter((row) => row.program === 'ROTC'),
+        cwts: filtered.filter((row) => row.program === 'CWTS'),
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
 
 exports.records = async (req, res) => {
   try {

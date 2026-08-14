@@ -267,7 +267,7 @@ async function submitForgotPassword(event) {
   event.preventDefault();
   const form = $('#forgotPasswordForm');
   const message = $('#forgotPasswordMsg');
-  const button = form?.querySelector('button[type="submit"]');
+  const button = $('#resetStudentPasswordBtn');
   if (!form || !message || !button) return;
 
   const previous = button.textContent;
@@ -278,10 +278,43 @@ async function submitForgotPassword(event) {
 
   try {
     const payload = formToObject(form);
-    const result = await API.post('/api/auth/forgot-password', payload);
+    const result = await API.post('/api/auth/forgot-password/reset-student', payload);
     message.textContent = result.message;
     message.className = 'notice';
     form.reset();
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'notice error';
+  } finally {
+    button.disabled = false;
+    button.textContent = previous;
+  }
+}
+
+async function requestStudentResetCode(event) {
+  event.preventDefault();
+  const form = $('#forgotPasswordForm');
+  const message = $('#forgotPasswordMsg');
+  const button = $('#sendStudentResetCodeBtn');
+  if (!form || !message || !button) return;
+
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Sending...';
+  message.className = 'notice hidden';
+  message.textContent = '';
+
+  try {
+    const payload = formToObject(form);
+    const result = await API.post('/api/auth/forgot-password/request-code-student', payload);
+    message.textContent = result.message;
+    message.className = 'notice';
+    $('#studentResetStep1')?.classList.add('step-complete');
+    $('#studentResetStep2')?.classList.remove('step-disabled', 'hidden');
+    form.querySelectorAll('[data-step="2"]').forEach((input) => {
+      input.disabled = false;
+    });
+    $('#studentVerificationCode')?.focus();
   } catch (error) {
     message.textContent = error.message;
     message.className = 'notice error';
@@ -405,50 +438,66 @@ function showForgotMessage() {
   body.innerHTML = `
     <div class="forgot-header">
       <h3>Reset Student Password</h3>
-      <p>Enter your Student ID, registered email, and birthdate to set a new password.</p>
+      <p>Follow the steps below: send the code first, then verify it and create a new password.</p>
     </div>
     <div class="notice hidden" id="forgotPasswordMsg"></div>
     <form class="auth-form forgot-form" id="forgotPasswordForm">
       <input type="hidden" name="portal" value="student">
-      <label>
-        Student ID
-        <div class="input-shell">
-          <span class="field-icon">#</span>
-          <input name="student_id" placeholder="000000-0000" required type="text">
+      <section class="forgot-step-card" id="studentResetStep1">
+        <div class="forgot-step-heading">
+          <strong>Step 1</strong>
+          <span>Enter your Student ID and registered email, then send the Gmail verification code.</span>
         </div>
-      </label>
-      <label>
-        Registered Email
-        <div class="input-shell">
-          <span class="field-icon">@</span>
-          <input name="email" placeholder="Enter your email" required type="email">
+        <label>
+          Student ID
+          <div class="input-shell">
+            <span class="field-icon">#</span>
+            <input name="student_id" placeholder="000000-0000" required type="text">
+          </div>
+        </label>
+        <label>
+          Registered Email
+          <div class="input-shell">
+            <span class="field-icon">@</span>
+            <input name="email" placeholder="Enter your email" required type="email">
+          </div>
+        </label>
+        <div class="forgot-action-row">
+          <button class="auth-submit student-submit" id="sendStudentResetCodeBtn" type="button">Send Code</button>
         </div>
-      </label>
-      <label>
-        Birthdate
-        <div class="input-shell">
-          <span class="field-icon">*</span>
-          <input name="birthdate" required type="date">
+      </section>
+      <section class="forgot-step-card step-disabled hidden" id="studentResetStep2">
+        <div class="forgot-step-heading">
+          <strong>Step 2</strong>
+          <span>Enter the verification code from Gmail, then create and confirm your new password.</span>
         </div>
-      </label>
-      <label>
-        New Password
-        <div class="input-shell">
-          <span class="field-icon">*</span>
-          <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
-        </div>
-      </label>
-      <label>
-        Confirm New Password
-        <div class="input-shell">
-          <span class="field-icon">*</span>
-          <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
-        </div>
-      </label>
-      <button class="auth-submit student-submit" type="submit">Reset Password</button>
+        <label>
+          Verification Code
+          <div class="input-shell">
+            <span class="field-icon">#</span>
+            <input data-step="2" disabled id="studentVerificationCode" name="verification_code" placeholder="Enter 6-digit code" required type="text">
+          </div>
+        </label>
+        <label>
+          New Password
+          <div class="input-shell">
+            <span class="field-icon">*</span>
+            <input data-step="2" disabled name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
+          </div>
+        </label>
+        <label>
+          Confirm New Password
+          <div class="input-shell">
+            <span class="field-icon">*</span>
+            <input data-step="2" disabled name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
+          </div>
+        </label>
+        <button class="auth-submit student-submit" id="resetStudentPasswordBtn" type="submit">Reset Password</button>
+      </section>
     </form>
   `;
 
+  $('#sendStudentResetCodeBtn')?.addEventListener('click', requestStudentResetCode);
   $('#forgotPasswordForm')?.addEventListener('submit', submitForgotPassword);
   modal.classList.remove('hidden');
 }

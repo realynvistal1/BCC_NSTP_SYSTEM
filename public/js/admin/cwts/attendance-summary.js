@@ -144,22 +144,58 @@ function makeAttendanceSummary(_programKey) {
     $('#attendanceSummaryMeta').textContent = `SY ${data.session.school_year || '—'} • ${program === 'CWTS' ? 'CWTS' : 'MS'} ${data.session.ms_level || '—'} • ${fmtTime(data.session.open_date)} - ${fmtTime(data.session.close_date)} • 15-minute late window`;
 
     setExportDisabled(false);
+    populateAssignmentFilters();
     renderRows();
   }
 
+  function populateAssignmentFilters() {
+    const companySelect = $('#summaryCompany');
+    const platoonSelect = $('#summaryPlatoon');
+
+    if (companySelect) {
+      const companies = [...new Set(
+        allStudents.map((student) => String(student.company || student.rotc_company || '').trim()).filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b));
+
+      companySelect.innerHTML = '<option value="">All Company</option>'
+        + companies.map((company) => `<option value="${esc(company)}">${esc(company)} Company</option>`).join('');
+    }
+
+    if (platoonSelect) {
+      const platoons = [...new Set(
+        allStudents.map((student) => String(student.rotc_platoon || '').trim()).filter(Boolean)
+      )].sort((a, b) => Number(a) - Number(b));
+
+      platoonSelect.innerHTML = '<option value="">All Platoon</option>'
+        + platoons.map((platoon) => `<option value="${esc(platoon)}">Platoon ${esc(platoon)}</option>`).join('');
+
+      if (program === 'CWTS') {
+        platoonSelect.disabled = true;
+      } else {
+        platoonSelect.disabled = false;
+      }
+    }
+  }
+
   function visibleStudents() {
-    const query = $('#summarySearch').value.toLowerCase().trim();
-    const status = $('#summaryStatus').value;
+    const query = ($('#summarySearch')?.value || '').toLowerCase().trim();
+    const status = $('#summaryStatus')?.value || '';
+    const company = $('#summaryCompany')?.value || '';
+    const platoon = $('#summaryPlatoon')?.value || '';
 
     const filtered = allStudents.filter((student) => (
       (!status || student.attendance_status === status)
-      && (!query || `${student.last_name} ${student.first_name} ${student.student_id} ${student.course} ${assignment(student)}`.toLowerCase().includes(query))
+      && (!company || String(student.company || student.rotc_company || '') === company)
+      && (!platoon || String(student.rotc_platoon || '') === platoon)
+      && (!query || `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${student.course || ''} ${assignment(student)}`.toLowerCase().includes(query))
     ));
 
     filtered.sort((a, b) => {
       const assignmentA = assignment(a);
       const assignmentB = assignment(b);
-      return assignmentA.localeCompare(assignmentB) || a.last_name.localeCompare(b.last_name);
+      return assignmentA.localeCompare(assignmentB)
+        || String(a.last_name || '').localeCompare(String(b.last_name || ''))
+        || String(a.first_name || '').localeCompare(String(b.first_name || ''));
     });
 
     return filtered;
@@ -700,6 +736,8 @@ function makeAttendanceSummary(_programKey) {
     $('#summaryGroup').onchange = loadSelected;
     $('#summarySearch').oninput = renderRows;
     $('#summaryStatus').onchange = renderRows;
+    $('#summaryCompany').onchange = renderRows;
+    $('#summaryPlatoon').onchange = renderRows;
 
     const pdfButton = $('#downloadAttendancePdf');
     const excelButton = $('#downloadAttendanceExcel');

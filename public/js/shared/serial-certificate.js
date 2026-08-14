@@ -45,20 +45,24 @@ function serialCourseCode(course) {
   return letters && letters.length >= 2 ? letters.join('') : value;
 }
 
+function hasSettingValue(value) {
+  return String(value || '').trim().length > 0;
+}
+
 function certSettingsComplete(settings, program) {
   return program === 'rotc'
     ? Boolean(
-      settings.academic_year
-      && settings.ceremony_date
-      && settings.commandant
-      && settings.school_registrar
+      hasSettingValue(settings.academic_year)
+      && hasSettingValue(settings.ceremony_date)
+      && hasSettingValue(settings.commandant || settings.signatory_1_name)
+      && hasSettingValue(settings.school_registrar || settings.signatory_2_name)
     )
     : Boolean(
-      settings.academic_year
-      && settings.ceremony_date
-      && settings.nstp_coordinator
-      && settings.municipal_mayor
-      && settings.bcc_president
+      hasSettingValue(settings.academic_year)
+      && hasSettingValue(settings.ceremony_date)
+      && hasSettingValue(settings.nstp_coordinator || settings.signatory_1_name)
+      && hasSettingValue(settings.bcc_president || settings.signatory_2_name)
+      && hasSettingValue(settings.municipal_mayor || settings.signatory_3_name)
     );
 }
 
@@ -500,8 +504,8 @@ async function renderStudentSerial(content) {
     return;
   }
 
-  const auth = await API.get('/api/auth/me');
-  const student = auth.user;
+  const profile = await API.get('/api/student/profile');
+  const student = profile.student || {};
 
   content.innerHTML = `
     <div class="page-intro-banner sky">
@@ -517,7 +521,7 @@ async function renderStudentSerial(content) {
       <div>
         <span>Official Serial Number</span>
         <strong>${esc(serial.serial_number)}</strong>
-        <p>${esc(student.nstp_component)} - ${esc(`${student.first_name} ${student.last_name}`)}</p>
+        <p>${esc(student.nstp_component || '')} - ${esc([student.first_name, student.last_name].filter(Boolean).join(' ') || 'Student')}</p>
         <small>Issued ${new Date(serial.created_at).toLocaleDateString()}</small>
       </div>
     </div>

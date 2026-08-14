@@ -189,9 +189,6 @@ async function renderEnrollmentSchedule(p,c){
         </table>
       </div>`
     : '<div class="empty-state-card compact"><strong>No enrollment history yet</strong></div>';
-  const hourOptions = selected =>
-    Array.from({ length: 12 }, (_, i) => `<option ${i + 1 === selected ? 'selected' : ''}>${i + 1}</option>`).join('');
-  const minuteOptions = ['00', '15', '30', '45'].map(v => `<option>${v}</option>`).join('');
   const modalMarkup = `
     <div id="scheduleModal" class="app-dialog hidden">
       <div class="app-dialog-backdrop"></div>
@@ -207,32 +204,29 @@ async function renderEnrollmentSchedule(p,c){
         <form id="scheduleForm" class="schedule-form-old">
           <div class="field">
             <label>${p === 'cwts' ? 'CWTS Level' : 'MS Level'}</label>
-            <input type="hidden" name="ms_level" value="${nextLevel}">
-            <select disabled aria-label="Auto-determined enrollment level"><option>${prefix} ${nextLevel}</option></select>
-            <small class="field-help">Automatically follows the required ${prefix} 1 -> ${prefix} 2 sequence.</small>
+            <select name="ms_level" aria-label="Enrollment level" required>
+              <option value="1" ${String(nextLevel) === '1' ? 'selected' : ''}>${prefix} 1</option>
+              <option value="2" ${String(nextLevel) === '2' ? 'selected' : ''}>${prefix} 2</option>
+            </select>
+            <small class="field-help">Choose which enrollment level this schedule should open.</small>
           </div>
           <div class="field">
             <label>School Year</label>
-            <input type="hidden" name="year" value="${esc(nextYear)}">
-            <input value="SY ${esc(nextYear)}" disabled aria-label="Auto-determined school year">
-            <small class="field-help">Automatically follows the previous schedule.</small>
+            <input name="year" value="${esc(nextYear)}" placeholder="2026-2027" required>
+            <small class="field-help">Enter the school year you want to use for this schedule.</small>
           </div>
           <div class="field"><label>Opening Date</label><input name="open_day" type="date" required></div>
           <div class="field time-field">
             <label>Opening Time</label>
             <div class="time-parts">
-              <select name="open_hour">${hourOptions(8)}</select>
-              <select name="open_minute">${minuteOptions}</select>
-              <select name="open_period"><option>AM</option><option>PM</option></select>
+              <input name="open_time" type="time" value="08:00" step="60" required>
             </div>
           </div>
           <div class="field"><label>Deadline Date</label><input name="deadline_day" type="date" required></div>
           <div class="field time-field">
             <label>Deadline Time</label>
             <div class="time-parts">
-              <select name="deadline_hour">${hourOptions(5)}</select>
-              <select name="deadline_minute">${minuteOptions}</select>
-              <select name="deadline_period"><option>AM</option><option selected>PM</option></select>
+              <input name="deadline_time" type="time" value="17:00" step="60" required>
             </div>
           </div>
           <div class="app-dialog-actions">
@@ -292,16 +286,14 @@ async function renderEnrollmentSchedule(p,c){
   $('#scheduleForm').onsubmit = async e => {
     e.preventDefault();
     const f = e.target;
-    function dt(day, hour, min, period) {
-      let h = Number(hour) % 12;
-      if (period === 'PM') h += 12;
-      return `${day}T${String(h).padStart(2, '0')}:${min}:00`;
+    function dt(day, time) {
+      return `${day}T${time}:00`;
     }
     const obj = {
       ms_level: f.ms_level.value,
       year: f.year.value.trim(),
-      open_date: dt(f.open_day.value, f.open_hour.value, f.open_minute.value, f.open_period.value),
-      deadline: dt(f.deadline_day.value, f.deadline_hour.value, f.deadline_minute.value, f.deadline_period.value)
+      open_date: dt(f.open_day.value, f.open_time.value),
+      deadline: dt(f.deadline_day.value, f.deadline_time.value)
     };
     if (new Date(obj.deadline) <= new Date(obj.open_date)) {
       return toast('The deadline must be later than the opening date.', true);
@@ -1154,16 +1146,31 @@ async function renderROTCRoster(c, specialOnly = false) {
 }
 
 async function renderCWTSCompanyRoster(c) {
-  const rows = await API.get("/api/admin/cwts/roster");
+  const defaultRows = await API.get("/api/admin/cwts/roster");
+  const allCycleRows = await API.get("/api/admin/cwts/roster?all_cycles=1");
   const companies = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
   const limit = 60;
   let alphabetical = false;
+  let selectedLevel = "";
+  let selectedYear = "";
 
-  const grouped = Object.fromEntries(
-    companies.map((company) => [company, rows.filter((row) => row.company === company)])
-  );
+  const levels = [...new Set(allCycleRows.map((row) => String(row.ms_level || "").trim()).filter(Boolean))].sort();
+  const years = [...new Set(allCycleRows.map((row) => String(row.school_year || "").trim()).filter(Boolean))].sort().reverse();
+
+  const filteredRows = () => {
+    const source = selectedLevel || selectedYear ? allCycleRows : defaultRows;
+    return source.filter((row) => {
+      if (selectedLevel && String(row.ms_level || "") !== selectedLevel) return false;
+      if (selectedYear && String(row.school_year || "") !== selectedYear) return false;
+      return true;
+    });
+  };
 
   const draw = () => {
+    const rows = filteredRows();
+    const grouped = Object.fromEntries(
+      companies.map((company) => [company, rows.filter((row) => row.company === company)])
+    );
     const shown = Object.fromEntries(
       companies.map((company) => [
         company,
@@ -1178,10 +1185,26 @@ async function renderCWTSCompanyRoster(c) {
     const total = companies.reduce((sum, company) => sum + shown[company].length, 0);
     const capacity = companies.length * limit;
 
-    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Approved CWTS enrollments are automatically assigned to their respective companies.</p></div><button class="page-intro-action emerald" id="sortCompanies">${alphabetical ? "Applied Alphabetical Sort" : "Sort Alphabetical"}</button></div><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Companies", companies.length, `${limit} slots each`, "slate")}</div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Approved CWTS enrollments are automatically assigned to their respective companies.</p></div><button class="page-intro-action emerald" id="sortCompanies">${alphabetical ? "Applied Alphabetical Sort" : "Sort Alphabetical"}</button></div><section class="section-card"><div class="section-heading"><h2>Filter Enrolled Students</h2><p>Filter this company roster by CWTS level and school year.</p></div><div class="filter-row"><select id="cwtsRosterLevel"><option value="">All CWTS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select><button class="clear-filter-btn" id="clearCwtsRosterFilters">Clear Filters</button></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Companies", companies.length, `${limit} slots each`, "slate")}</div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
 
     $("#sortCompanies").onclick = () => {
       alphabetical = true;
+      draw();
+    };
+
+    $("#cwtsRosterLevel").onchange = (event) => {
+      selectedLevel = event.target.value;
+      draw();
+    };
+
+    $("#cwtsRosterYear").onchange = (event) => {
+      selectedYear = event.target.value;
+      draw();
+    };
+
+    $("#clearCwtsRosterFilters").onclick = () => {
+      selectedLevel = "";
+      selectedYear = "";
       draw();
     };
 

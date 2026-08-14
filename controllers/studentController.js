@@ -13,6 +13,27 @@ function levelLabelFor(program, level) {
   return program === 'ROTC' ? `MS ${level}` : `CWTS ${level}`;
 }
 
+async function findBestSchedule(program, level) {
+  const [rows] = await db.execute(
+    'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC',
+    [program, level]
+  );
+
+  if (!rows.length) return null;
+
+  const now = Date.now();
+  const active = rows.find((schedule) => enrollmentService.nowWithin(schedule, now));
+  if (active) return active;
+
+  const upcoming = rows.find((schedule) => {
+    const open = new Date(schedule.open_date).getTime();
+    return Number.isFinite(open) && now < open;
+  });
+  if (upcoming) return upcoming;
+
+  return rows[0];
+}
+
 async function resolveReEnrollContext(studentId) {
   const student = await studentById(studentId);
   const latest = await latestRecord(studentId);
@@ -35,12 +56,7 @@ async function resolveReEnrollContext(studentId) {
       };
     }
 
-    const [retryScheduleRows] = await db.execute(
-      'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',
-      [student.nstp_component, retryLevel]
-    );
-
-    const retrySchedule = retryScheduleRows[0];
+    const retrySchedule = await findBestSchedule(student.nstp_component, retryLevel);
     if (!retrySchedule || !enrollmentService.nowWithin(retrySchedule)) {
       return {
         status: 400,
@@ -64,6 +80,13 @@ async function resolveReEnrollContext(studentId) {
     [studentId, student.nstp_component]
   );
 
+  if (latest && latest.status === 'pending') {
+    return {
+      status: 400,
+      message: `Your ${levelLabelFor(student.nstp_component, String(latest.ms_level || '2'))} enrollment form is waiting for approval.`,
+    };
+  }
+
   if (!latest || String(latest.ms_level) !== '1' || latest.status !== 'approved') {
     return {
       status: 400,
@@ -79,23 +102,20 @@ async function resolveReEnrollContext(studentId) {
   }
 
   const [duplicates] = await db.execute(
-    "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",
+    "SELECT id,status FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",
     [studentId]
   );
 
   if (duplicates.length) {
     return {
       status: 409,
-      message: 'You already have a level 2 enrollment request.',
+      message: duplicates[0].status === 'pending'
+        ? `Your ${levelLabelFor(student.nstp_component, '2')} enrollment form is waiting for approval.`
+        : 'You already have a level 2 enrollment request.',
     };
   }
 
-  const [scheduleRows] = await db.execute(
-    "SELECT * FROM enrollment_schedules WHERE program=? AND ms_level='2' ORDER BY id DESC LIMIT 1",
-    [student.nstp_component]
-  );
-
-  const schedule = scheduleRows[0];
+  const schedule = await findBestSchedule(student.nstp_component, '2');
   if (!schedule || !enrollmentService.nowWithin(schedule)) {
     return {
       status: 400,
@@ -127,12 +147,7 @@ exports.checkSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Select a valid NSTP component and level.' });
     }
 
-    const [rows] = await db.execute(
-      'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC LIMIT 1',
-      [program, msLevel]
-    );
-
-    const schedule = rows[0] || null;
+    const schedule = await findBestSchedule(program, msLevel);
     if (!schedule) {
       return res.json({
         open: false,

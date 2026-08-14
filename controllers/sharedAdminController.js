@@ -14,6 +14,32 @@ function levelPrefix(programCode) {
   return programCode === 'CWTS' ? 'CWTS' : 'MS';
 }
 
+function hasSettingValue(value) {
+  return String(value || '').trim().length > 0;
+}
+
+function selectDashboardSchedule(schedules) {
+  if (!schedules.length) return null;
+
+  const now = Date.now();
+  const active = schedules.find((schedule) => {
+    const start = new Date(schedule.open_date).getTime();
+    const end = new Date(schedule.deadline).getTime();
+    return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
+  });
+
+  if (active) return active;
+
+  const upcoming = schedules.find((schedule) => {
+    const end = new Date(schedule.deadline).getTime();
+    return Number.isFinite(end) && end >= now;
+  });
+
+  if (upcoming) return upcoming;
+
+  return schedules[0];
+}
+
 function approvedStudentExistsSql() {
   return `EXISTS(
     SELECT 1
@@ -27,6 +53,24 @@ function approvedStudentExistsSql() {
 exports.dashboard = async (req, res) => {
   try {
     const programCode = program(req);
+    const [schedules] = await db.execute(
+      `SELECT id, program, ms_level, year, open_date, deadline
+       FROM enrollment_schedules
+       WHERE program=?
+       ORDER BY id DESC`,
+      [programCode]
+    );
+
+    const dashboardSchedule = selectDashboardSchedule(schedules);
+
+    const params = [programCode];
+    let scheduleCondition = '';
+
+    if (dashboardSchedule) {
+      scheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
+      params.push(dashboardSchedule.id);
+    }
+
     const [[counts]] = await db.query(
       `SELECT COUNT(*) total,
               SUM(smr.status='pending') pending,
@@ -34,26 +78,56 @@ exports.dashboard = async (req, res) => {
               SUM(smr.status='rejected') rejected
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
-       WHERE smr.program=?`,
-      [programCode]
+       WHERE smr.program=? AND s.role='student'${scheduleCondition}`,
+      params
     );
+
+    const assignmentParams = [programCode, programCode];
+    let assignmentScheduleCondition = '';
+
+    if (dashboardSchedule) {
+      assignmentScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
+      assignmentParams.push(dashboardSchedule.id);
+    }
+
     const [[assigned]] = await db.query(
       `SELECT
          SUM(
            CASE
              WHEN ?='CWTS' THEN s.company IS NOT NULL
-             ELSE (s.rotc_company IS NOT NULL OR s.special_unit IS NOT NULL)
+              ELSE (s.rotc_company IS NOT NULL OR s.special_unit IS NOT NULL)
            END
          ) assigned
        FROM students s
-       WHERE s.nstp_component=? AND s.role='student'`,
-      [programCode, programCode]
+       JOIN student_ms_records smr ON smr.student_id=s.id
+       WHERE s.nstp_component=? AND s.role='student'
+         AND smr.program=?
+         AND smr.status='approved'${assignmentScheduleCondition}
+         AND smr.id=(
+           SELECT MAX(x.id)
+           FROM student_ms_records x
+           WHERE x.student_id=s.id
+             AND x.program=smr.program
+             AND x.status='approved'${dashboardSchedule ? ' AND CAST(x.schedule_id AS UNSIGNED)=?' : ''}
+         )`,
+      dashboardSchedule
+        ? [programCode, programCode, programCode, dashboardSchedule.id, dashboardSchedule.id]
+        : [programCode, programCode, programCode]
     );
 
     return res.json({
       program: programCode,
       ...counts,
       assigned: assigned.assigned || 0,
+      schedule: dashboardSchedule
+        ? {
+            id: dashboardSchedule.id,
+            ms_level: String(dashboardSchedule.ms_level || ''),
+            year: dashboardSchedule.year,
+            open_date: dashboardSchedule.open_date,
+            deadline: dashboardSchedule.deadline,
+          }
+        : null,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -118,43 +192,20 @@ exports.schedules = async (req, res) => {
       });
     }
 
-    const currentYear = new Date().getFullYear();
-    let expectedLevel = '1';
-    let expectedYear = `${currentYear}-${currentYear + 1}`;
-
-    if (existing[0]) {
-      const latest = existing[0];
-      if (String(latest.ms_level) === '1') {
-        expectedLevel = '2';
-        expectedYear = String(latest.year);
-      } else {
-        const start = parseInt(String(latest.year || '').split('-')[0], 10) || currentYear;
-        expectedLevel = '1';
-        expectedYear = `${start + 1}-${start + 2}`;
-      }
-    }
-
-    if (normalizedLevel !== expectedLevel || normalizedYear !== expectedYear) {
-      const label = levelPrefix(programCode);
-      return res.status(409).json({
-        message: `The next allowed schedule is ${label} ${expectedLevel} for SY ${expectedYear}. ${label} 2 cannot be created before ${label} 1.`,
-      });
-    }
-
     const [duplicates] = await db.execute(
       'SELECT id FROM enrollment_schedules WHERE program=? AND ms_level=? AND year=? LIMIT 1',
-      [programCode, expectedLevel, expectedYear]
+      [programCode, normalizedLevel, normalizedYear]
     );
 
     if (duplicates.length) {
       return res.status(409).json({
-        message: `A ${levelPrefix(programCode)} ${expectedLevel} schedule for SY ${expectedYear} already exists.`,
+        message: `A ${levelPrefix(programCode)} ${normalizedLevel} schedule for SY ${normalizedYear} already exists.`,
       });
     }
 
     await db.execute(
       'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
-      [programCode, expectedLevel, expectedYear, openDate, deadline]
+      [programCode, normalizedLevel, normalizedYear, openDate, deadline]
     );
 
     return res.json({ message: `${programCode} enrollment schedule created successfully.` });
@@ -505,14 +556,44 @@ exports.bulkReject = async (req, res) => {
 exports.roster = async (req, res) => {
   try {
     const programCode = program(req);
+    const requestedLevel = String(req.query.ms_level || '').trim();
+    const requestedYear = String(req.query.school_year || '').trim();
+    const includeAllCycles = String(req.query.all_cycles || '').trim() === '1';
+    const [schedules] = await db.execute(
+      `SELECT id, program, ms_level, year, open_date, deadline
+       FROM enrollment_schedules
+       WHERE program=?
+       ORDER BY id DESC`,
+      [programCode]
+    );
+
+    let selectedSchedule = null;
+    if (requestedLevel || requestedYear) {
+      selectedSchedule = schedules.find((schedule) => (
+        (!requestedLevel || String(schedule.ms_level || '') === requestedLevel)
+        && (!requestedYear || String(schedule.year || '') === requestedYear)
+      )) || null;
+    } else {
+      selectedSchedule = selectDashboardSchedule(schedules);
+    }
+
+    const params = [programCode, programCode];
+    let scheduleCondition = '';
+
+    if (!includeAllCycles && selectedSchedule) {
+      scheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
+      params.push(selectedSchedule.id);
+    }
+
     const [rows] = await db.execute(
-      `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level
+      `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
        FROM students s
        JOIN student_ms_records smr ON smr.student_id=s.id
-       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'
+       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'${scheduleCondition}
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
        ORDER BY s.last_name,s.first_name`,
-      [programCode, programCode]
+      params
     );
 
     return res.json(rows);
@@ -848,8 +929,19 @@ exports.serials = async (req, res) => {
     );
     const settings = settingsRows[0];
     const complete = programCode === 'ROTC'
-      ? Boolean(settings?.academic_year && settings?.ceremony_date && settings?.commandant && settings?.school_registrar)
-      : Boolean(settings?.academic_year && settings?.ceremony_date && settings?.nstp_coordinator && settings?.municipal_mayor && settings?.bcc_president);
+      ? Boolean(
+        hasSettingValue(settings?.academic_year)
+        && hasSettingValue(settings?.ceremony_date)
+        && hasSettingValue(settings?.commandant || settings?.signatory_1_name)
+        && hasSettingValue(settings?.school_registrar || settings?.signatory_2_name)
+      )
+      : Boolean(
+        hasSettingValue(settings?.academic_year)
+        && hasSettingValue(settings?.ceremony_date)
+        && hasSettingValue(settings?.nstp_coordinator || settings?.signatory_1_name)
+        && hasSettingValue(settings?.municipal_mayor || settings?.signatory_3_name)
+        && hasSettingValue(settings?.bcc_president || settings?.signatory_2_name)
+      );
 
     if (!complete) {
       return res.status(400).json({

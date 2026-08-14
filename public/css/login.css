@@ -608,6 +608,34 @@
 .forgot-form {
   gap: 15px
 }
+.forgot-step-card {
+  border: 1px solid #dbe5f4;
+  border-radius: 18px;
+  padding: 16px;
+  background: #f8fbff;
+  display: grid;
+  gap: 14px
+}
+.forgot-step-heading {
+  display: grid;
+  gap: 4px
+}
+.forgot-step-heading strong {
+  color: #1d4ed8;
+  font-size: .95rem
+}
+.forgot-step-heading span {
+  color: #5f6f8b;
+  font-size: .92rem;
+  line-height: 1.45
+}
+.forgot-step-card.step-disabled {
+  opacity: .72
+}
+.forgot-step-card.step-complete {
+  border-color: #86efac;
+  background: #f0fdf4
+}
 .forgot-action-row {
   display: flex
 }
