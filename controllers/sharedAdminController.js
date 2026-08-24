@@ -848,10 +848,21 @@ exports.roster = async (req, res) => {
 
     const params = [programCode, programCode];
     let scheduleCondition = '';
+    let filterCondition = '';
 
     if (!includeAllCycles && selectedSchedule) {
       scheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
       params.push(selectedSchedule.id);
+    } else {
+      if (requestedLevel) {
+        filterCondition += ' AND smr.ms_level=?';
+        params.push(requestedLevel);
+      }
+
+      if (requestedYear) {
+        filterCondition += " AND COALESCE(es.year,'')=?";
+        params.push(requestedYear);
+      }
     }
 
     const [rows] = await db.execute(
@@ -859,7 +870,7 @@ exports.roster = async (req, res) => {
        FROM students s
        JOIN student_ms_records smr ON smr.student_id=s.id
        LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'${scheduleCondition}
+       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'${scheduleCondition}${filterCondition}
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
        ORDER BY s.last_name,s.first_name`,
       params
@@ -881,26 +892,55 @@ exports.autoAssign = async (req, res) => {
       });
     }
 
-    const msLevel = String(req.body.ms_level || req.query.ms_level || '1');
-    const [scheduleRows] = await db.execute(
-      "SELECT * FROM enrollment_schedules WHERE program='ROTC' AND ms_level=? ORDER BY id DESC LIMIT 1",
-      [msLevel]
-    );
+    const msLevel = String(req.body.ms_level || req.query.ms_level || '1').trim();
+    const requestedYear = String(req.body.school_year || req.query.school_year || '').trim();
+    const scheduleParams = [msLevel];
+    let scheduleWhere = "program='ROTC' AND ms_level=?";
 
-    if (scheduleRows[0] && Date.now() <= new Date(scheduleRows[0].deadline).getTime()) {
+    if (requestedYear) {
+      scheduleWhere += ' AND year=?';
+      scheduleParams.push(requestedYear);
+    }
+
+    const [scheduleRows] = await db.execute(
+      `SELECT * FROM enrollment_schedules WHERE ${scheduleWhere} ORDER BY id DESC LIMIT 1`,
+      scheduleParams
+    );
+    const selectedSchedule = scheduleRows[0] || null;
+
+    if (selectedSchedule && Date.now() <= new Date(selectedSchedule.deadline).getTime()) {
       return res.status(400).json({
-        message: `Wait until the MS ${msLevel} enrollment schedule closes before assigning platoons.`,
+        message: `Wait until the MS ${msLevel}${selectedSchedule.year ? ` (${selectedSchedule.year})` : ''} enrollment schedule closes before assigning platoons.`,
       });
+    }
+
+    if (requestedYear && !selectedSchedule) {
+      return res.status(400).json({
+        message: `No ROTC enrollment schedule found for MS ${msLevel} in school year ${requestedYear}.`,
+      });
+    }
+
+    const queryParams = [msLevel, msLevel];
+    let yearCondition = '';
+
+    if (selectedSchedule) {
+      yearCondition = ' AND CAST(r.schedule_id AS UNSIGNED)=?';
+      queryParams.push(selectedSchedule.id);
+    } else if (requestedYear) {
+      yearCondition = " AND COALESCE(es.year,'')=?";
+      queryParams.push(requestedYear);
     }
 
     const [rows] = await db.execute(
       `SELECT s.id,s.last_name,s.first_name,s.middle_name,s.suffix,s.sex,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police
        FROM students s
        JOIN student_ms_records r ON r.student_id=s.id
+       LEFT JOIN enrollment_schedules es ON CAST(r.schedule_id AS UNSIGNED)=es.id
        WHERE s.nstp_component='ROTC' AND r.ms_level=? AND r.status='approved'
+         ${yearCondition}
          AND r.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.ms_level=?)
        ORDER BY s.last_name,s.first_name,s.middle_name,s.id`,
-      [msLevel, msLevel]
+      queryParams
     );
 
     const maleCompanies = ['Alpha', 'Bravo', 'Charlie', 'Delta'];
@@ -993,7 +1033,7 @@ exports.autoAssign = async (req, res) => {
     );
 
     return res.json({
-      message: `Automatic platoon assignment complete. ${battalionOneAssigned + battalionTwoAssigned} cadet(s) assigned.`,
+      message: `Automatic platoon assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${battalionOneAssigned + battalionTwoAssigned} cadet(s) assigned.`,
       assigned: battalionOneAssigned + battalionTwoAssigned,
       alreadyAssigned: rows.length - candidates.length,
     });

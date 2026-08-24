@@ -1024,8 +1024,8 @@ function bindSettings() {
 }
 
 async function renderROTCRoster(c, specialOnly = false) {
-  const [rows, schedules] = await Promise.all([
-    API.get("/api/admin/rotc/roster"),
+  const [allCycleRows, schedules] = await Promise.all([
+    API.get("/api/admin/rotc/roster?all_cycles=1"),
     API.get("/api/admin/rotc/enrollment-schedule"),
   ]);
 
@@ -1035,7 +1035,21 @@ async function renderROTCRoster(c, specialOnly = false) {
   const platoons = 4;
   const tones = ["blue", "green", "amber", "purple", "rose", "cyan", "orange", "teal"];
   const latest = [...schedules].sort((a, b) => Number(b.id) - Number(a.id))[0];
-  let ms = String(latest?.ms_level || "1");
+  let selectedLevel = String(latest?.ms_level || "1");
+  let selectedYear = String(latest?.year || "");
+
+  const levels = [...new Set(
+    [
+      ...allCycleRows.map((row) => String(row.ms_level || "").trim()),
+      ...schedules.map((row) => String(row.ms_level || "").trim()),
+    ].filter(Boolean)
+  )].sort((a, b) => Number(a) - Number(b));
+  const years = [...new Set(
+    [
+      ...allCycleRows.map((row) => String(row.school_year || "").trim()),
+      ...schedules.map((row) => String(row.year || "").trim()),
+    ].filter(Boolean)
+  )].sort().reverse();
 
   function battalionMarkup(num, label, companies, list, battalionCap) {
     const companyCards = companies.map((company, companyIndex) => {
@@ -1063,11 +1077,23 @@ async function renderROTCRoster(c, specialOnly = false) {
   }
 
   const draw = () => {
-    const current = rows.filter((row) => String(row.ms_level) === ms);
+    const current = allCycleRows.filter((row) => {
+      if (selectedLevel && String(row.ms_level || "") !== selectedLevel) return false;
+      if (selectedYear && String(row.school_year || "") !== selectedYear) return false;
+      return true;
+    });
     const schedule = [...schedules]
-      .filter((item) => String(item.ms_level) === ms)
+      .filter((item) => (
+        (!selectedLevel || String(item.ms_level || "") === selectedLevel)
+        && (!selectedYear || String(item.year || "") === selectedYear)
+      ))
       .sort((a, b) => Number(b.id) - Number(a.id))[0];
-    const closed = !schedule || Date.now() > new Date(schedule.deadline).getTime();
+    const closed = Boolean(schedule) && Date.now() > new Date(schedule.deadline).getTime();
+    const cycleLabel = [
+      selectedLevel ? `MS ${selectedLevel}` : "all MS levels",
+      selectedYear ? `SY ${selectedYear}` : "all school years",
+    ].join(" - ");
+    const canAssign = Boolean(selectedLevel && selectedYear && schedule && closed);
 
     const special = {
       Medics: current.filter((student) => student.special_unit === "Medics"),
@@ -1077,9 +1103,13 @@ async function renderROTCRoster(c, specialOnly = false) {
 
     if (specialOnly) {
       const total = Object.values(special).flat().length;
-      c.innerHTML = `<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><select id="specialMs" class="roster-ms-select"><option value="1" ${ms === "1" ? "selected" : ""}>MS 1</option><option value="2" ${ms === "2" ? "selected" : ""}>MS 2</option></select></div><div class="roster-summary-grid four">${rosterSummary("Special Members", total, "all units", "rose")}${rosterSummary("Medics", special.Medics.length, "of 37", "rose")}${rosterSummary("HQ", special.HQ.length, "no limit", "blue")}${rosterSummary("Military Police", special.MP.length, "of 37", "green")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+      c.innerHTML = `<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><div class="filter-row"><select id="specialMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="specialYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Filter Special Platoon</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Special Members", total, "all units", "rose")}${rosterSummary("Medics", special.Medics.length, "of 37", "rose")}${rosterSummary("HQ", special.HQ.length, "no limit", "blue")}${rosterSummary("Military Police", special.MP.length, "of 37", "green")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
       $("#specialMs").onchange = (event) => {
-        ms = event.target.value;
+        selectedLevel = event.target.value;
+        draw();
+      };
+      $("#specialYear").onchange = (event) => {
+        selectedYear = event.target.value;
         draw();
       };
       bindRosterExpanders();
@@ -1114,21 +1144,29 @@ async function renderROTCRoster(c, specialOnly = false) {
     const total = battalionOne.length + battalionTwo.length + specialTotal + advanceTotal;
     const battalionCap = maleCompanies.length * platoons * platoonCap;
 
-    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon for ROTC MS ${ms} cadets.</p></div><select id="rosterMs" class="roster-ms-select"><option value="1" ${ms === "1" ? "selected" : ""}>MS 1</option><option value="2" ${ms === "2" ? "selected" : ""}>MS 2</option></select></div><div class="roster-summary-grid six">${rosterSummary("Total Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", closed ? "Closed" : "Open / Upcoming", closed ? "Ready to assign" : "Waiting to close", closed ? "green" : "amber")}</div><div class="assignment-box ${closed ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${closed ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${closed ? `MS ${ms} enrollment is closed. You can now assign cadets to platoons.` : `Waiting for the MS ${ms} enrollment schedule to close before assignment.`}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${closed ? "" : "disabled"}>${closed ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", canAssign ? "Closed" : schedule ? "Open / Upcoming" : "No Schedule", canAssign ? "Ready to assign" : schedule ? "Waiting to close" : "Pick one cycle", canAssign ? "green" : "amber")}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
 
     $("#rosterMs").onchange = (event) => {
-      ms = event.target.value;
+      selectedLevel = event.target.value;
+      draw();
+    };
+
+    $("#rosterYear").onchange = (event) => {
+      selectedYear = event.target.value;
       draw();
     };
 
     const assign = $("#assignPlatoons");
     if (assign) {
       assign.onclick = async () => {
-        if (!confirm(`Assign approved ROTC MS ${ms} cadets now?`)) return;
+        if (!confirm(`Assign approved ROTC MS ${selectedLevel} cadets for SY ${selectedYear} now?`)) return;
         assign.disabled = true;
         assign.textContent = "Assigning...";
         try {
-          const result = await API.post("/api/admin/rotc/auto-assign", { ms_level: ms });
+          const result = await API.post("/api/admin/rotc/auto-assign", {
+            ms_level: selectedLevel,
+            school_year: selectedYear,
+          });
           $("#assignResult").innerHTML = `<div class="assignment-result success">${esc(result.message)}</div>`;
           setTimeout(() => location.reload(), 700);
         } catch (error) {
