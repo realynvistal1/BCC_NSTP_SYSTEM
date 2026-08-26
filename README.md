@@ -64,9 +64,9 @@ npm start
 
 ## Default accounts created by `npm run db:setup`
 
-- ROTC Admin: `bcc.rotc.admin@gmail.com` / `rotc@admin`
-- CWTS Admin: `bcc.cwts.admin@gmail.com` / `cwts@admin`
-- NSTP Director: `bcc.officer.admin@gmail.com` / `officer@admin`
+- ROTC Admin: `bcc.rotc.admin@gmail.com` / `bcc@admin123`
+- CWTS Admin: `bcc.cwts.admin@gmail.com` / `bcc@admin123`
+- NSTP Director: `bcc.officer.admin@gmail.com` / `bcc@admin123`
 
 Students create their account through `/enrollment`.
 
@@ -74,7 +74,15 @@ Students create their account through `/enrollment`.
 
 Change all default passwords and `JWT_SECRET` before real deployment.
 
+If your local database was seeded before this update, rerun `npm run db:setup` or `npm run db:seed` so the `admins` table matches the documented credentials.
+
 The database structure is used as the base design for this system, while the application flow is implemented through standard Express routes, controllers, and browser `fetch()` calls.
+
+## Testing Guides
+
+- Normal flow and regression checks: `REGRESSION_TEST_GUIDE.md`
+- SQL injection defensive checks: `SQLI_DEFENSIVE_CHECKLIST.md`
+- Automated SQL hardening verification: `npm run verify:sqli`
 
 ## Flow Matching
 
