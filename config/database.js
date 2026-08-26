@@ -10,7 +10,23 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  dateStrings: true
+  dateStrings: true,
+  multipleStatements: false,
 });
 
-module.exports = pool;
+async function getConnection() {
+  const connection = await pool.getConnection();
+
+  // Route every query call through prepared execution to reduce the chance
+  // that future code reintroduces raw query usage.
+  connection.query = connection.execute.bind(connection);
+
+  return connection;
+}
+
+module.exports = {
+  execute: pool.execute.bind(pool),
+  query: pool.execute.bind(pool),
+  getConnection,
+  end: pool.end.bind(pool),
+};
