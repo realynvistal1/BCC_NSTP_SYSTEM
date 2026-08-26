@@ -2,6 +2,18 @@ const db = require('../config/database');
 const attendance = require('../services/attendanceService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
+const {
+  parsePositiveInt,
+  readLevel,
+} = require('../services/requestValidationService');
+
+function readAttendanceProgram(value) {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (['ROTC', 'CWTS', 'ADVANCE_COURSE'].includes(normalized)) {
+    return normalized;
+  }
+  return null;
+}
 
 function sessionLabel(session) {
   const unit = session.program === 'CWTS' ? 'CS' : 'MI';
@@ -33,47 +45,42 @@ function rosterScope(group) {
 }
 
 async function approvedStudentsForSession(session) {
-  const values = [session.program, String(session.ms_level || '1')];
-  let extra = '';
-
-  if (session.school_year) {
-    extra += ` AND EXISTS (
-      SELECT 1
-      FROM student_ms_records smr
-      LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-      WHERE smr.student_id=s.id
-        AND smr.program=?
-        AND smr.ms_level=?
-        AND smr.status='approved'
-        AND (es.year=? OR es.year IS NULL)
-    )`;
-    values.push(session.school_year);
-  } else {
-    extra += ` AND EXISTS (
-      SELECT 1 FROM student_ms_records smr
-      WHERE smr.student_id=s.id
-        AND smr.program=?
-        AND smr.ms_level=?
-        AND smr.status='approved'
-    )`;
-  }
-
-  if (session.program === 'ROTC') {
-    if (Number(session.is_advance_course || 0) === 1) {
-      extra += ' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0';
-    } else {
-      extra += ' AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)';
-    }
-  }
+  const schoolYear = String(session.school_year || '').trim();
+  const isAdvanceCourse = Number(session.program === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0);
 
   const [rows] = await db.execute(
     `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,s.sex,
             s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
             s.willing_to_take_advance_course,s.serial_number
      FROM students s
-     WHERE s.role='student' AND s.nstp_component=? ${extra}
+     WHERE s.role='student'
+       AND s.nstp_component=?
+       AND EXISTS (
+         SELECT 1
+         FROM student_ms_records smr
+         LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+         WHERE smr.student_id=s.id
+           AND smr.program=?
+           AND smr.ms_level=?
+           AND smr.status='approved'
+           AND (?='' OR es.year=? OR es.year IS NULL)
+       )
+       AND (
+         ?<>'ROTC'
+         OR (?=1 AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
+         OR (?=0 AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0))
+       )
      ORDER BY s.last_name,s.first_name`,
-    [session.program, ...values]
+    [
+      session.program,
+      session.program,
+      String(session.ms_level || '1'),
+      schoolYear,
+      schoolYear,
+      session.program,
+      isAdvanceCourse,
+      isAdvanceCourse,
+    ]
   );
 
   return rows.filter((student) => !student.serial_number);
@@ -226,22 +233,10 @@ exports.dashboard = async (req, res) => {
     const rotcSchedule = await dashboardScheduleFor('ROTC');
     const cwtsSchedule = await dashboardScheduleFor('CWTS');
 
-    const rotcParams = [];
-    const cwtsParams = [];
-    let rotcScheduleCondition = '';
-    let cwtsScheduleCondition = '';
+    const rotcScheduleId = rotcSchedule ? Number(rotcSchedule.id) : null;
+    const cwtsScheduleId = cwtsSchedule ? Number(cwtsSchedule.id) : null;
 
-    if (rotcSchedule) {
-      rotcScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
-      rotcParams.push(rotcSchedule.id);
-    }
-
-    if (cwtsSchedule) {
-      cwtsScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
-      cwtsParams.push(cwtsSchedule.id);
-    }
-
-    const [[summary]] = await db.query(`
+    const [[summary]] = await db.execute(`
       SELECT
         (SELECT COUNT(DISTINCT s.id)
          FROM students s
@@ -253,7 +248,7 @@ exports.dashboard = async (req, res) => {
              WHERE smr.student_id=s.id
                AND smr.program='ROTC'
                AND smr.status='approved'
-               ${rotcScheduleCondition}
+               AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
            )
         ) rotc,
         (SELECT COUNT(DISTINCT s.id)
@@ -266,12 +261,12 @@ exports.dashboard = async (req, res) => {
              WHERE smr.student_id=s.id
                AND smr.program='CWTS'
                AND smr.status='approved'
-               ${cwtsScheduleCondition}
+               AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
            )
         ) cwts,
         (SELECT COUNT(*) FROM attendance_sessions WHERE status='open') open_sessions,
         (SELECT COUNT(*) FROM attendance_records) attendance_records
-    `, [...rotcParams, ...cwtsParams]);
+    `, [rotcScheduleId, rotcScheduleId, cwtsScheduleId, cwtsScheduleId]);
 
     return res.json(summary);
   } catch (error) {
@@ -283,11 +278,11 @@ exports.attendanceProgress = async (req, res) => {
   try {
     await refreshSessionStatuses();
 
-    const rawProgram = String(req.query.program || '').toUpperCase();
+    const rawProgram = readAttendanceProgram(req.query.program);
     const isAdvance = rawProgram === 'ADVANCE_COURSE';
     const program = isAdvance ? 'ROTC' : rawProgram;
 
-    if (!['ROTC', 'CWTS'].includes(program)) {
+    if (!program) {
       return res.status(400).json({
         message: 'Select ROTC, CWTS, or Advance Course.',
       });
@@ -339,11 +334,11 @@ exports.createAttendance = async (req, res) => {
     await refreshSessionStatuses();
 
     const body = req.body;
-    const rawProgram = String(body.program || '').toUpperCase();
+    const rawProgram = readAttendanceProgram(body.program);
     const isAdvance = rawProgram === 'ADVANCE_COURSE' || Boolean(body.is_advance_course);
     const program = isAdvance ? 'ROTC' : rawProgram;
 
-    if (!['ROTC', 'CWTS'].includes(program)) {
+    if (!program) {
       return res.status(400).json({
         message: 'Select ROTC, CWTS, or Advance Course.',
       });
@@ -385,8 +380,16 @@ exports.createAttendance = async (req, res) => {
     }
 
     const cycle = await currentCycle(program);
-    const msLevel = body.ms_level ? String(body.ms_level) : cycle.ms_level;
+    const msLevel = body.ms_level == null || String(body.ms_level).trim() === ''
+      ? cycle.ms_level
+      : readLevel(body.ms_level);
     const schoolYear = body.school_year || cycle.school_year;
+
+    if (msLevel === null) {
+      return res.status(400).json({
+        message: 'Select a valid MS/CWTS level.',
+      });
+    }
 
     const [existing] = await db.execute(
       `SELECT * FROM attendance_sessions
@@ -515,10 +518,15 @@ exports.sessions = async (req, res) => {
 exports.sessionRecords = async (req, res) => {
   try {
     await refreshSessionStatuses();
+    const sessionId = parsePositiveInt(req.params.id);
+
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Select a valid attendance session.' });
+    }
 
     const [[session]] = await db.execute(
       'SELECT * FROM attendance_sessions WHERE id=?',
-      [req.params.id]
+      [sessionId]
     );
 
     if (!session) {
@@ -573,10 +581,11 @@ exports.sessionRecords = async (req, res) => {
 
 exports.setAttendance = async (req, res) => {
   try {
-    const studentId = Number(req.body.student_id);
+    const sessionId = parsePositiveInt(req.params.id);
+    const studentId = parsePositiveInt(req.body.student_id);
     const status = String(req.body.status || '').toLowerCase();
 
-    if (!studentId || !['present', 'late', 'absent'].includes(status)) {
+    if (!sessionId || !studentId || !['present', 'late', 'absent'].includes(status)) {
       return res.status(400).json({
         message: 'Select a student and valid attendance status.',
       });
@@ -584,7 +593,7 @@ exports.setAttendance = async (req, res) => {
 
     const [[session]] = await db.execute(
       'SELECT * FROM attendance_sessions WHERE id=?',
-      [req.params.id]
+      [sessionId]
     );
 
     if (!session) {
@@ -626,15 +635,16 @@ exports.setAttendance = async (req, res) => {
 
 exports.updateAttendance = async (req, res) => {
   try {
+    const recordId = parsePositiveInt(req.params.id);
     const status = String(req.body.status || '').toLowerCase();
 
-    if (!['present', 'late', 'absent'].includes(status)) {
+    if (!recordId || !['present', 'late', 'absent'].includes(status)) {
       return res.status(400).json({ message: 'Invalid attendance status.' });
     }
 
     const [[before]] = await db.execute(
       'SELECT student_id,status FROM attendance_records WHERE id=?',
-      [req.params.id]
+      [recordId]
     );
 
     if (!before) {
@@ -643,7 +653,7 @@ exports.updateAttendance = async (req, res) => {
 
     await db.execute(
       'UPDATE attendance_records SET status=?,verified_by=?,verified_at=NOW(),updated_at=NOW() WHERE id=?',
-      [status, req.user.email, req.params.id]
+      [status, req.user.email, recordId]
     );
 
     let offense = null;
@@ -670,7 +680,7 @@ exports.roster = async (req, res) => {
   try {
     const scope = rosterScope(String(req.params.group || '').toLowerCase());
 
-    const [rows] = await db.query(
+    const [rows] = await db.execute(
       `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
               latest.ms_level, COALESCE(latest.school_year,'') school_year
          FROM students s
@@ -797,11 +807,19 @@ exports.records = async (req, res) => {
 exports.recordDetail = async (req, res) => {
   try {
     const programCode = String(req.query.program || '').toUpperCase();
-    const studentId = Number(req.params.studentId);
-    const level = String(req.query.ms_level || '1');
+    const studentId = parsePositiveInt(req.params.studentId);
+    const level = readLevel(req.query.ms_level || '1');
 
     if (!['ROTC', 'CWTS'].includes(programCode)) {
       return res.status(400).json({ message: 'Valid program is required.' });
+    }
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Select a valid student.' });
+    }
+
+    if (!level) {
+      return res.status(400).json({ message: 'Select a valid enrollment level.' });
     }
 
     const [[student]] = await db.execute(
@@ -832,22 +850,17 @@ exports.recordDetail = async (req, res) => {
       [studentId, programCode]
     );
 
-    const params = [studentId, programCode, level];
-    let schoolYearCondition = '';
-
-    if (cycle.school_year) {
-      schoolYearCondition = ' AND (ses.school_year=? OR ses.school_year IS NULL)';
-      params.push(cycle.school_year);
-    }
+    const schoolYear = String(cycle.school_year || '').trim();
 
     const [attendance] = await db.execute(
       `SELECT ar.id,ar.status,ar.created_at,ar.distance_meters,ar.latitude,ar.longitude,
               ses.mi_number,ses.mi_type,ses.open_date,ses.close_date,ses.school_year,ses.ms_level
        FROM attendance_records ar
        JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id
-       WHERE ar.student_id=? AND ses.program=? AND (ses.ms_level=? OR ses.ms_level IS NULL) ${schoolYearCondition}
+       WHERE ar.student_id=? AND ses.program=? AND (ses.ms_level=? OR ses.ms_level IS NULL)
+         AND (?='' OR ses.school_year=? OR ses.school_year IS NULL)
        ORDER BY ses.mi_number,FIELD(ses.mi_type,'in','out'),ar.created_at`,
-      params
+      [studentId, programCode, level, schoolYear, schoolYear]
     );
 
     const [serials] = await db.execute(
