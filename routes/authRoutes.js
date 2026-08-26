@@ -8,6 +8,7 @@ router.post('/forgot-password/request-code-student', controller.requestStudentRe
 router.post('/forgot-password/reset-student', controller.resetStudentPassword);
 router.post('/forgot-password/request-code', controller.requestAdminResetCode);
 router.post('/forgot-password/reset-admin', controller.resetAdminPassword);
+router.get('/captcha-config', controller.captchaConfig);
 router.get('/me', requireAuth, controller.me);
 router.post('/change-password', requireAuth, controller.changePassword);
 

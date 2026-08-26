@@ -8,6 +8,7 @@ const certificateService = require('../services/certificateService');
 const enrollmentService = require('../services/enrollmentService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
+const captchaService = require('../services/captchaService');
 const {
   parsePositiveInt,
   readLevel,
@@ -145,6 +146,19 @@ function normalizeBooleanFlag(value) {
   return Number(value === true || value === '1' || value === 1 || value === 'true');
 }
 
+async function ensureCaptcha(req, res, token, action) {
+  const verification = await captchaService.verifyToken(token, action, {
+    hostname: req.hostname,
+  });
+
+  if (!verification.ok) {
+    res.status(400).json({ message: verification.message });
+    return false;
+  }
+
+  return true;
+}
+
 exports.checkSchedule = async (req, res) => {
   try {
     const program = String(req.query.program || '').toUpperCase();
@@ -195,6 +209,11 @@ exports.register = async (req, res) => {
 
   try {
     const body = req.body;
+
+    if (!await ensureCaptcha(req, res, body.recaptcha_token, 'student_enrollment')) {
+      return;
+    }
+
     const required = [
       'student_id',
       'first_name',

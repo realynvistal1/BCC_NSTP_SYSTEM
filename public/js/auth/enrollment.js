@@ -175,6 +175,7 @@
       data.xray_file=await fileAsDataUrl(f.xray_file_input.files[0]);
       data.photo=await fileAsDataUrl(f.photo_file.files[0]);
       data.cor_file=await fileAsDataUrl(f.cor_file_input.files[0]);
+      data.recaptcha_token=await Captcha.token('student_enrollment');
       delete data.medical_certificate_file;
       delete data.xray_file_input;
       delete data.photo_file;

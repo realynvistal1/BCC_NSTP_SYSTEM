@@ -23,6 +23,23 @@ This build runs as a web application using:
 - Node.js + Express
 - MySQL (`mysql2`)
 
+## Security Notes
+
+- SQL injection defenses use prepared execution, validated inputs, escaped search patterns, and disabled multi-statement runtime queries.
+- Stronger DoS protection is enabled with in-memory rate limits on `/api/*`, stricter limits on `/api/auth/*`, temporary IP blocking after repeated abuse, and per-IP concurrency caps.
+- Google reCAPTCHA v3 can be enabled on login and password-reset flows with `GOOGLE_RECAPTCHA_ENABLED=true` plus site/secret keys in `.env`.
+- If the app runs behind Nginx, Apache, Cloudflare, or another proxy, set `TRUST_PROXY_HOPS` in `.env` so IP-based rate limiting uses the correct client address.
+
+## Cloudflare Setup
+
+For a stronger external layer in front of Node.js:
+
+- Put the site behind Cloudflare proxy DNS
+- Set `TRUST_PROXY_HOPS=1` in `.env`
+- Restrict direct origin access if your hosting allows it
+- Enable Cloudflare WAF managed rules, Bot Fight Mode, and rate limiting/challenge rules for `/api/auth/*`
+- Keep Google reCAPTCHA enabled on the login and reset flows for an extra human-verification layer
+
 ## Included portals
 
 1. Student Portal

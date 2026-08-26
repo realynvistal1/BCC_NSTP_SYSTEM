@@ -4,6 +4,13 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const cookieParser = require("cookie-parser");
+const {
+  trustProxyHop,
+  generalApiRateLimit,
+  authRateLimit,
+  generalApiConcurrencyLimit,
+  authConcurrencyLimit,
+} = require("./middleware/rateLimitMiddleware");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
@@ -27,6 +34,7 @@ if (jwtSecret === "replace-with-a-long-random-secret") {
   throw new Error("JWT_SECRET must be replaced before running the app.");
 }
 
+app.set("trust proxy", trustProxyHop());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
@@ -40,6 +48,10 @@ app.use((req, res, next) => {
   next();
 });
 app.use("/assets", express.static(path.join(__dirname, "public")));
+app.use("/api", generalApiConcurrencyLimit);
+app.use("/api", generalApiRateLimit);
+app.use("/api/auth", authConcurrencyLimit);
+app.use("/api/auth", authRateLimit);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/admin/rotc", require("./routes/rotcAdminRoutes"));

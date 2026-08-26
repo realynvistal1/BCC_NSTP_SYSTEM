@@ -278,6 +278,7 @@ async function submitForgotPassword(event) {
 
   try {
     const payload = formToObject(form);
+    payload.recaptcha_token = await Captcha.token('student_reset_confirm');
     const result = await API.post('/api/auth/forgot-password/reset-student', payload);
     message.textContent = result.message;
     message.className = 'notice';
@@ -306,6 +307,7 @@ async function requestStudentResetCode(event) {
 
   try {
     const payload = formToObject(form);
+    payload.recaptcha_token = await Captcha.token('student_reset_request');
     const result = await API.post('/api/auth/forgot-password/request-code-student', payload);
     message.textContent = result.message;
     message.className = 'notice';
@@ -339,6 +341,7 @@ async function requestAdminResetCode(event) {
 
   try {
     const payload = formToObject(form);
+    payload.recaptcha_token = await Captcha.token('admin_reset_request');
     const result = await API.post('/api/auth/forgot-password/request-code', payload);
     message.textContent = result.message;
     message.className = 'notice';
@@ -366,6 +369,7 @@ async function submitAdminForgotPassword(event) {
 
   try {
     const payload = formToObject(form);
+    payload.recaptcha_token = await Captcha.token('admin_reset_confirm');
     const result = await API.post('/api/auth/forgot-password/reset-admin', payload);
     message.textContent = result.message;
     message.className = 'notice';

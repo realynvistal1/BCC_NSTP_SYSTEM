@@ -140,6 +140,8 @@ Quick repeat checks:
 - bad admin email input returns `400`
 - bad `ms_level`, `studentId`, and `sessionId` inputs return `400`
 - protected routes still return `401` or `403` when unauthenticated or cross-portal
+- repeated rapid requests to `/api/auth/login` eventually return `429`
+- repeated rapid requests to other API routes eventually return `429`
 
 ## Good Final Result
 

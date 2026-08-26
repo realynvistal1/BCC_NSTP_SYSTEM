@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
+const captchaService = require('../services/captchaService');
 const {
   MAX_LOGIN_IDENTIFIER_LENGTH,
   isReasonableEmail,
@@ -26,6 +27,18 @@ function jwtOptions() {
 function serverError(res, error) {
   console.error(error);
   return res.status(500).json({ message: 'Unexpected server error.' });
+}
+
+async function ensureCaptcha(req, res, token, action) {
+  const verification = await captchaService.verifyToken(token, action, {
+    hostname: req.hostname,
+  });
+  if (!verification.ok) {
+    res.status(400).json({ message: verification.message });
+    return false;
+  }
+
+  return true;
 }
 
 function adminPortal(program, storedRole) {
@@ -330,9 +343,19 @@ async function findStudent(identifier) {
 
 exports.login = async (req, res) => {
   try {
-    const { identifier, username, email, password } = req.body;
+    const {
+      identifier,
+      username,
+      email,
+      password,
+      recaptcha_token: recaptchaToken,
+    } = req.body;
     const loginValue = String(identifier || username || email || '').trim();
     const plainPassword = String(password || '');
+
+    if (!await ensureCaptcha(req, res, recaptchaToken, 'login')) {
+      return;
+    }
 
     if (!loginValue || !plainPassword) {
       return res.status(400).json({ message: 'Email/username and password are required.' });
@@ -434,6 +457,10 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.captchaConfig = async (req, res) => {
+  res.json(captchaService.publicConfig());
+};
+
 exports.logout = async (req, res) => {
   clearAuthCookies(res);
   res.json({ message: 'Logged out successfully.' });
@@ -485,7 +512,12 @@ exports.requestStudentResetCode = async (req, res) => {
       portal,
       student_id: studentId,
       email,
+      recaptcha_token: recaptchaToken,
     } = req.body;
+
+    if (!await ensureCaptcha(req, res, recaptchaToken, 'student_reset_request')) {
+      return;
+    }
 
     if (String(portal || '') !== 'student') {
       return res.status(400).json({
@@ -582,7 +614,12 @@ exports.resetStudentPassword = async (req, res) => {
       verification_code: code,
       newPassword,
       confirmPassword,
+      recaptcha_token: recaptchaToken,
     } = req.body;
+
+    if (!await ensureCaptcha(req, res, recaptchaToken, 'student_reset_confirm')) {
+      return;
+    }
 
     if (String(portal || '') !== 'student') {
       return res.status(400).json({
@@ -702,6 +739,11 @@ exports.requestAdminResetCode = async (req, res) => {
   try {
     const portal = String(req.body.portal || '').trim();
     const email = String(req.body.email || '').trim();
+    const recaptchaToken = req.body.recaptcha_token;
+
+    if (!await ensureCaptcha(req, res, recaptchaToken, 'admin_reset_request')) {
+      return;
+    }
 
     if (!['rotc-admin', 'cwts-admin', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });
@@ -779,6 +821,11 @@ exports.resetAdminPassword = async (req, res) => {
     const code = String(req.body.verification_code || '').trim();
     const newPassword = String(req.body.newPassword || '');
     const confirmPassword = String(req.body.confirmPassword || '');
+    const recaptchaToken = req.body.recaptcha_token;
+
+    if (!await ensureCaptcha(req, res, recaptchaToken, 'admin_reset_confirm')) {
+      return;
+    }
 
     if (!['rotc-admin', 'cwts-admin', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });

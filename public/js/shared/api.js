@@ -49,6 +49,104 @@ const API = {
   },
 };
 
+const Captcha = {
+  configPromise: null,
+  scriptPromise: null,
+  scriptUrls(siteKey) {
+    const encodedKey = encodeURIComponent(siteKey);
+    return [
+      `https://www.google.com/recaptcha/api.js?render=${encodedKey}`,
+      `https://www.recaptcha.net/recaptcha/api.js?render=${encodedKey}`,
+    ];
+  },
+
+  async config() {
+    if (!this.configPromise) {
+      this.configPromise = API.get('/api/auth/captcha-config').catch((error) => {
+        this.configPromise = null;
+        throw error;
+      });
+    }
+
+    return this.configPromise;
+  },
+
+  async load(siteKey) {
+    if (window.grecaptcha?.execute) {
+      return;
+    }
+
+    if (!this.scriptPromise) {
+      this.scriptPromise = (async () => {
+        const existing = document.querySelector('script[data-recaptcha="true"]');
+        if (existing) {
+          await new Promise((resolve, reject) => {
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', () => reject(new Error('Unable to load security check.')), { once: true });
+          });
+          return;
+        }
+
+        let lastError = null;
+
+        for (const scriptUrl of this.scriptUrls(siteKey)) {
+          try {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = scriptUrl;
+              script.async = true;
+              script.defer = true;
+              script.dataset.recaptcha = 'true';
+              script.onload = () => resolve();
+              script.onerror = () => {
+                script.remove();
+                reject(new Error('Unable to load security check.'));
+              };
+              document.head.appendChild(script);
+            });
+
+            if (window.grecaptcha?.execute) {
+              return;
+            }
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        throw lastError || new Error('Unable to load security check.');
+      })().catch((error) => {
+        this.scriptPromise = null;
+        throw error;
+      });
+    }
+
+    await this.scriptPromise;
+  },
+
+  async token(action) {
+    const config = await this.config();
+    if (!config?.enabled) {
+      return '';
+    }
+
+    if (!config.siteKey) {
+      throw new Error('Security check is not configured correctly.');
+    }
+
+    try {
+      await this.load(config.siteKey);
+    } catch (error) {
+      const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (config.localhostBypass && isLocalHost) {
+        return '';
+      }
+      throw error;
+    }
+    await new Promise((resolve) => window.grecaptcha.ready(resolve));
+    return await window.grecaptcha.execute(config.siteKey, { action });
+  },
+};
+
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
