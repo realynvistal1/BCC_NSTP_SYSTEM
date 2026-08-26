@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const controller = require('../controllers/rotcAdminController');
-const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const { requireAuth, requireRole, requirePortal } = require('../middleware/authMiddleware');
 const excelUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -9,7 +9,7 @@ const excelUpload = multer({
   },
 });
 
-router.use(requireAuth, requireRole('admin'));
+router.use(requireAuth, requireRole('admin'), requirePortal('rotc-admin'));
 
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);

@@ -1,6 +1,21 @@
-# BCC ROTC & CWTS NSTP System — Node.js Recreation
+# BCC ROTC & CWTS NSTP System
 
-This project recreates the uploaded Next.js/React BCC NSTP system using:
+This application is a school management system for the Buenavista Community College NSTP program. It is built to support the daily workflow of students, ROTC administrators, CWTS administrators, and the NSTP Director.
+
+The system is used for:
+
+- student enrollment and re-enrollment
+- separate portal login by user role
+- enrollment review and approval
+- ROTC platoon assignment
+- CWTS company assignment
+- attendance session creation and attendance tracking
+- grade encoding and monitoring
+- attendance offense monitoring
+- serial number and certificate management
+- student record viewing and administrative review
+
+This build runs as a web application using:
 
 - HTML
 - CSS
@@ -15,7 +30,7 @@ This project recreates the uploaded Next.js/React BCC NSTP system using:
 3. CWTS Admin Portal
 4. NSTP Director Portal
 
-## Included modules
+## Main features
 
 - student enrollment and re-enrollment
 - separate role-based login portals
@@ -59,7 +74,7 @@ Students create their account through `/enrollment`.
 
 Change all default passwords and `JWT_SECRET` before real deployment.
 
-The original uploaded schema was preserved as the base database design. Some old Next.js-only implementation details were intentionally replaced by normal Express routes/controllers and browser `fetch()` calls.
+The database structure is used as the base design for this system, while the application flow is implemented through standard Express routes, controllers, and browser `fetch()` calls.
 
 ## Flow Matching
 
@@ -129,4 +144,3 @@ This build recreates the old assignment screens:
 - ROTC Platoon List with MS selector, summary cards, enrollment-close lock, Assign Platoons action, Battalion 1 (Male), Battalion 2 (Female), Advance Course, and Special Platoon sections.
 - ROTC rules: Alpha–Delta for Battalion 1, Echo–Hotel for Battalion 2, 4 platoons/company, 37 cadets/platoon; medical condition -> HQ, Medics preference -> Medics (37 max), MP preference -> MP (37 max), Advance Course kept separate.
 - CWTS Company List with Alpha–Foxtrot, 60 students/company, automatic company assignment on approval, capacity summaries, alphabetical sorting, and expandable company member tables.
-

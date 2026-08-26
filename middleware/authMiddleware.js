@@ -25,7 +25,16 @@ function requireRole(...roles) {
   );
 }
 
+function requirePortal(...portals) {
+  return (req, res, next) => (
+    portals.includes(req.user?.portal)
+      ? next()
+      : res.status(403).json({ message: 'Access denied.' })
+  );
+}
+
 module.exports = {
   requireAuth,
   requireRole,
+  requirePortal,
 };

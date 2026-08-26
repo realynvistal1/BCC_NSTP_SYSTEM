@@ -35,6 +35,27 @@ function portalLabel(portal) {
   return 'Student Portal';
 }
 
+function shouldUseSecureCookies(req) {
+  if (process.env.COOKIE_SECURE === 'true') return true;
+  if (process.env.COOKIE_SECURE === 'false') return false;
+
+  return req.secure || req.headers['x-forwarded-proto'] === 'https';
+}
+
+function accountQueries(isStudent) {
+  if (isStudent) {
+    return {
+      select: 'SELECT id, password FROM students WHERE id = ? LIMIT 1',
+      update: 'UPDATE students SET password = ? WHERE id = ?',
+    };
+  }
+
+  return {
+    select: 'SELECT id, password FROM admins WHERE id = ? LIMIT 1',
+    update: 'UPDATE admins SET password = ? WHERE id = ?',
+  };
+}
+
 function adminResetWhere(portal) {
   if (portal === 'officer') {
     return {
@@ -279,7 +300,7 @@ exports.login = async (req, res) => {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
-      secure: false,
+      secure: shouldUseSecureCookies(req),
       maxAge: 12 * 60 * 60 * 1000,
     });
 
@@ -317,11 +338,8 @@ exports.changePassword = async (req, res) => {
     }
 
     const isStudent = req.user.role === 'student';
-    const table = isStudent ? 'students' : 'admins';
-    const [rows] = await db.execute(
-      `SELECT id, password FROM ${table} WHERE id = ? LIMIT 1`,
-      [req.user.id]
-    );
+    const queries = accountQueries(isStudent);
+    const [rows] = await db.execute(queries.select, [req.user.id]);
 
     const account = rows[0];
     if (!account) {
@@ -334,7 +352,7 @@ exports.changePassword = async (req, res) => {
     }
 
     const hashedPassword = await authService.hashPassword(newPassword);
-    await db.execute(`UPDATE ${table} SET password = ? WHERE id = ?`, [hashedPassword, req.user.id]);
+    await db.execute(queries.update, [hashedPassword, req.user.id]);
 
     return res.json({ message: 'Password changed successfully.' });
   } catch (error) {

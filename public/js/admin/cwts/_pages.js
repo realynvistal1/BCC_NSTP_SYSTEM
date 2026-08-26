@@ -167,23 +167,6 @@
     </strong></td></tr>`))}</div>`;
     return
   }
-  if(page==='withdrawal-requests'){
-    const rows=await API.get('/api/admin/rotc/withdrawals');
-    c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Advance Course Withdrawal Requests</h2><p class="panel-subtitle">Review requests from ROTC advance-course students.</p></div></div>${table(['Student','Reason','Status','Action'],rows.map(x=>`<tr><td><strong>${
-      esc(x.student_no)
-    }
-    </strong><br>${
-      esc(x.last_name+', '+x.first_name)
-    }
-    </td><td>${
-      esc(x.reason)
-    }
-    </td><td>${
-      badge(x.status)
-    }
-    </td><td><div class="actions"><button class="btn small success" onclick="withdraw(${x.id},'approved')">Approve</button><button class="btn small danger" onclick="withdraw(${x.id},'rejected')">Reject</button></div></td></tr>`))}</div>`;
-    return
-  }
   if(page==='settings'){
     c.innerHTML=settingsHtml();
     bindSettings();
@@ -236,17 +219,6 @@ async function saveSerial(p,id){
     toast(e.message,true)
   }
 }
-async function withdraw(id,status){
-  try{
-    const remarks=prompt('Admin remarks (optional):')||'';
-    const x=await API.patch(`/api/admin/rotc/withdrawals/${id}`,{status,admin_remarks:remarks});
-    toast(x.message);
-    setTimeout(()=>location.reload(),500)
-  }   catch(e){
-    toast(e.message,true)
-  }
-}
 function recordsTable(rows){
   return table(['Student ID','Name','Course','Year','Program','Assignment','Email'],rows.map(x=>`<tr><td><strong>${esc(x.student_id)}</strong></td><td>${esc(x.last_name+', '+x.first_name)}</td><td>${esc(x.course)}</td><td>${esc(x.year_level)}</td><td>${esc(x.nstp_component)}</td><td>${esc(x.company||x.special_unit||x.rotc_company||'-')}</td><td>${esc(x.email)}</td></tr>`))
 }
-

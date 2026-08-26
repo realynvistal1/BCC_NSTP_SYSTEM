@@ -8,6 +8,30 @@ function sessionLabel(session) {
   return `${unit} ${session.mi_number || '-'} ${(session.mi_type || '').toUpperCase()}`.trim();
 }
 
+function rosterScope(group) {
+  if (group === 'cwts') {
+    return { group: 'cwts', recordProgram: 'CWTS' };
+  }
+
+  if (group === 'advance-course') {
+    return { group: 'advance-course', recordProgram: 'ROTC' };
+  }
+
+  if (group === 'special-platoon') {
+    return { group: 'special-platoon', recordProgram: 'ROTC' };
+  }
+
+  if (group === 'battalion-1') {
+    return { group: 'battalion-1', recordProgram: 'ROTC' };
+  }
+
+  if (group === 'battalion-2') {
+    return { group: 'battalion-2', recordProgram: 'ROTC' };
+  }
+
+  return { group: 'rotc', recordProgram: 'ROTC' };
+}
+
 async function approvedStudentsForSession(session) {
   const values = [session.program, String(session.ms_level || '1')];
   let extra = '';
@@ -644,18 +668,7 @@ exports.updateAttendance = async (req, res) => {
 
 exports.roster = async (req, res) => {
   try {
-    const recordProgram = req.params.group === 'cwts' ? 'CWTS' : 'ROTC';
-    const where = req.params.group === 'cwts'
-      ? "s.nstp_component='CWTS'"
-      : req.params.group === 'advance-course'
-          ? "s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0"
-        : req.params.group === 'special-platoon'
-          ? "s.nstp_component='ROTC' AND s.special_unit IN ('Medics','HQ','MP')"
-          : req.params.group === 'battalion-1'
-            ? "s.nstp_component='ROTC' AND s.battalion=1 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL"
-            : req.params.group === 'battalion-2'
-              ? "s.nstp_component='ROTC' AND s.battalion=2 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL"
-              : "s.nstp_component='ROTC'";
+    const scope = rosterScope(String(req.params.group || '').toLowerCase());
 
     const [rows] = await db.query(
       `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
@@ -678,7 +691,15 @@ exports.roster = async (req, res) => {
            ORDER BY x.created_at DESC,x.id DESC
            LIMIT 1
          )
-         WHERE s.role='student' AND ${where}
+         WHERE s.role='student'
+           AND (
+             (?='cwts' AND s.nstp_component='CWTS')
+             OR (?='advance-course' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
+             OR (?='special-platoon' AND s.nstp_component='ROTC' AND s.special_unit IN ('Medics','HQ','MP'))
+             OR (?='battalion-1' AND s.nstp_component='ROTC' AND s.battalion=1 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL)
+             OR (?='battalion-2' AND s.nstp_component='ROTC' AND s.battalion=2 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL)
+             OR (?='rotc' AND s.nstp_component='ROTC')
+           )
            AND EXISTS(
              SELECT 1
              FROM student_ms_records smr
@@ -687,7 +708,16 @@ exports.roster = async (req, res) => {
                AND smr.status='approved'
            )
          ORDER BY s.last_name,s.first_name`,
-      [recordProgram, recordProgram]
+      [
+        scope.recordProgram,
+        scope.group,
+        scope.group,
+        scope.group,
+        scope.group,
+        scope.group,
+        scope.group,
+        scope.recordProgram,
+      ]
     );
 
     return res.json(rows);

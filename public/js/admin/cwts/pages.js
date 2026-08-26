@@ -228,37 +228,6 @@ async function adminPage(_role, page, content) {
     return;
   }
 
-  if (page === 'withdrawal-requests') {
-    const rows = await API.get('/api/admin/rotc/withdrawals');
-    content.innerHTML = `
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Advance Course Withdrawal Requests</h2>
-            <p class="panel-subtitle">Review requests from ROTC advance-course students.</p>
-          </div>
-        </div>
-        ${table(
-          ['Student', 'Reason', 'Status', 'Action'],
-          rows.map((row) => `
-            <tr>
-              <td><strong>${esc(row.student_no)}</strong><br>${esc(`${row.last_name}, ${row.first_name}`)}</td>
-              <td>${esc(row.reason)}</td>
-              <td>${badge(row.status)}</td>
-              <td>
-                <div class="actions">
-                  <button class="btn small success" onclick="withdraw(${row.id},'approved')">Approve</button>
-                  <button class="btn small danger" onclick="withdraw(${row.id},'rejected')">Reject</button>
-                </div>
-              </td>
-            </tr>
-          `)
-        )}
-      </div>
-    `;
-    return;
-  }
-
   if (page === 'settings') {
     content.innerHTML = settingsHtml();
     bindSettings();
@@ -337,20 +306,6 @@ async function saveSerial(programKey, id) {
       serial_number: value,
     });
     toast(result.message);
-  } catch (error) {
-    toast(error.message, true);
-  }
-}
-
-async function withdraw(id, status) {
-  try {
-    const remarks = prompt('Admin remarks (optional):') || '';
-    const result = await API.patch(`/api/admin/rotc/withdrawals/${id}`, {
-      status,
-      admin_remarks: remarks,
-    });
-    toast(result.message);
-    setTimeout(() => location.reload(), 500);
   } catch (error) {
     toast(error.message, true);
   }

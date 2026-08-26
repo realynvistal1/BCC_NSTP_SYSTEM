@@ -21,20 +21,30 @@ const admins = [
 
 async function ensureAttendanceColumns(db) {
   const columns = [
-    ["latitude", "DOUBLE DEFAULT NULL"],
-    ["longitude", "DOUBLE DEFAULT NULL"],
-    ["distance_meters", "DECIMAL(10,2) DEFAULT NULL"],
-    ["verified_by", "VARCHAR(255) DEFAULT NULL"],
-    ["verified_at", "DATETIME DEFAULT NULL"],
+    "latitude",
+    "longitude",
+    "distance_meters",
+    "verified_by",
+    "verified_at",
   ];
 
-  for (const [column, definition] of columns) {
+  for (const column of columns) {
     const [rows] = await db.query(
       "SELECT COUNT(*) AS total FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='attendance_records' AND COLUMN_NAME=?",
       [DB_NAME, column]
     );
     if (!Number(rows[0].total)) {
-      await db.query(`ALTER TABLE attendance_records ADD COLUMN ${column} ${definition}`);
+      if (column === "latitude") {
+        await db.query("ALTER TABLE attendance_records ADD COLUMN latitude DOUBLE DEFAULT NULL");
+      } else if (column === "longitude") {
+        await db.query("ALTER TABLE attendance_records ADD COLUMN longitude DOUBLE DEFAULT NULL");
+      } else if (column === "distance_meters") {
+        await db.query("ALTER TABLE attendance_records ADD COLUMN distance_meters DECIMAL(10,2) DEFAULT NULL");
+      } else if (column === "verified_by") {
+        await db.query("ALTER TABLE attendance_records ADD COLUMN verified_by VARCHAR(255) DEFAULT NULL");
+      } else if (column === "verified_at") {
+        await db.query("ALTER TABLE attendance_records ADD COLUMN verified_at DATETIME DEFAULT NULL");
+      }
     }
   }
 }

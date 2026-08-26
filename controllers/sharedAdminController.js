@@ -267,32 +267,32 @@ function approvedStudentExistsSql() {
   )`;
 }
 
+function normalizedRosterGroup(group) {
+  const value = String(group || '').toLowerCase();
+  if (['battalion-1', 'battalion-2', 'advance-course', 'special-platoon'].includes(value)) {
+    return value;
+  }
+  return 'overall';
+}
+
 async function approvedRecordRows(programCode, filters = {}) {
-  const params = [programCode];
-  const conditions = ["smr.program=?", "smr.status='approved'", "s.role='student'"];
-
-  if (filters.msLevel) {
-    conditions.push('smr.ms_level=?');
-    params.push(String(filters.msLevel));
-  }
-
-  if (filters.schoolYear) {
-    conditions.push('COALESCE(es.year,?)=?');
-    params.push('');
-    params.push(String(filters.schoolYear));
-  }
-
-  if (String(filters.search || '').trim()) {
-    const query = `%${String(filters.search).trim()}%`;
-    conditions.push(`(
-      s.student_id LIKE ?
-      OR s.first_name LIKE ?
-      OR s.middle_name LIKE ?
-      OR s.last_name LIKE ?
-      OR s.course LIKE ?
-    )`);
-    params.push(query, query, query, query, query);
-  }
+  const msLevel = String(filters.msLevel || '').trim();
+  const schoolYear = String(filters.schoolYear || '').trim();
+  const search = String(filters.search || '').trim();
+  const query = `%${search}%`;
+  const params = [
+    programCode,
+    msLevel,
+    msLevel,
+    schoolYear,
+    schoolYear,
+    search,
+    query,
+    query,
+    query,
+    query,
+    query,
+  ];
 
   const [rows] = await db.execute(
     `SELECT smr.id record_id,smr.ms_level,smr.status,smr.created_at,
@@ -311,7 +311,19 @@ async function approvedRecordRows(programCode, filters = {}) {
      JOIN students s ON s.id=smr.student_id
      LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
      LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=smr.program AND g.ms_level=smr.ms_level
-     WHERE ${conditions.join(' AND ')}
+     WHERE smr.program=?
+       AND smr.status='approved'
+       AND s.role='student'
+       AND (?='' OR smr.ms_level=?)
+       AND (?='' OR COALESCE(es.year,'')=?)
+       AND (
+         ?=''
+         OR s.student_id LIKE ?
+         OR s.first_name LIKE ?
+         OR s.middle_name LIKE ?
+         OR s.last_name LIKE ?
+         OR s.course LIKE ?
+       )
      ORDER BY s.last_name,s.first_name,smr.ms_level`,
     params
   );
@@ -332,13 +344,7 @@ exports.dashboard = async (req, res) => {
 
     const dashboardSchedule = selectDashboardSchedule(schedules);
 
-    const params = [programCode];
-    let scheduleCondition = '';
-
-    if (dashboardSchedule) {
-      scheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
-      params.push(dashboardSchedule.id);
-    }
+    const scheduleId = dashboardSchedule ? Number(dashboardSchedule.id) : null;
 
     const [[counts]] = await db.query(
       `SELECT COUNT(*) total,
@@ -347,17 +353,10 @@ exports.dashboard = async (req, res) => {
               SUM(smr.status='rejected') rejected
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
-       WHERE smr.program=? AND s.role='student'${scheduleCondition}`,
-      params
+       WHERE smr.program=? AND s.role='student'
+         AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)`,
+      [programCode, scheduleId, scheduleId]
     );
-
-    const assignmentParams = [programCode, programCode];
-    let assignmentScheduleCondition = '';
-
-    if (dashboardSchedule) {
-      assignmentScheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
-      assignmentParams.push(dashboardSchedule.id);
-    }
 
     const [[assigned]] = await db.query(
       `SELECT
@@ -371,17 +370,17 @@ exports.dashboard = async (req, res) => {
        JOIN student_ms_records smr ON smr.student_id=s.id
        WHERE s.nstp_component=? AND s.role='student'
          AND smr.program=?
-         AND smr.status='approved'${assignmentScheduleCondition}
+         AND smr.status='approved'
+         AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
          AND smr.id=(
            SELECT MAX(x.id)
            FROM student_ms_records x
            WHERE x.student_id=s.id
              AND x.program=smr.program
-             AND x.status='approved'${dashboardSchedule ? ' AND CAST(x.schedule_id AS UNSIGNED)=?' : ''}
+             AND x.status='approved'
+             AND (? IS NULL OR CAST(x.schedule_id AS UNSIGNED)=?)
          )`,
-      dashboardSchedule
-        ? [programCode, programCode, programCode, dashboardSchedule.id, dashboardSchedule.id]
-        : [programCode, programCode, programCode]
+      [programCode, programCode, programCode, scheduleId, scheduleId, scheduleId, scheduleId]
     );
 
     return res.json({
@@ -846,31 +845,20 @@ exports.roster = async (req, res) => {
       selectedSchedule = selectDashboardSchedule(schedules);
     }
 
-    const params = [programCode, programCode];
-    let scheduleCondition = '';
-    let filterCondition = '';
-
-    if (!includeAllCycles && selectedSchedule) {
-      scheduleCondition = ' AND CAST(smr.schedule_id AS UNSIGNED)=?';
-      params.push(selectedSchedule.id);
-    } else {
-      if (requestedLevel) {
-        filterCondition += ' AND smr.ms_level=?';
-        params.push(requestedLevel);
-      }
-
-      if (requestedYear) {
-        filterCondition += " AND COALESCE(es.year,'')=?";
-        params.push(requestedYear);
-      }
-    }
+    const selectedScheduleId = !includeAllCycles && selectedSchedule ? Number(selectedSchedule.id) : null;
+    const levelFilter = selectedScheduleId == null ? requestedLevel : '';
+    const yearFilter = selectedScheduleId == null ? requestedYear : '';
+    const params = [programCode, programCode, selectedScheduleId, selectedScheduleId, levelFilter, levelFilter, yearFilter, yearFilter];
 
     const [rows] = await db.execute(
       `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
        FROM students s
        JOIN student_ms_records smr ON smr.student_id=s.id
        LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'${scheduleCondition}${filterCondition}
+       WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'
+         AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
+         AND (?='' OR smr.ms_level=?)
+         AND (?='' OR COALESCE(es.year,'')=?)
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
        ORDER BY s.last_name,s.first_name`,
       params
@@ -894,17 +882,12 @@ exports.autoAssign = async (req, res) => {
 
     const msLevel = String(req.body.ms_level || req.query.ms_level || '1').trim();
     const requestedYear = String(req.body.school_year || req.query.school_year || '').trim();
-    const scheduleParams = [msLevel];
-    let scheduleWhere = "program='ROTC' AND ms_level=?";
-
-    if (requestedYear) {
-      scheduleWhere += ' AND year=?';
-      scheduleParams.push(requestedYear);
-    }
-
     const [scheduleRows] = await db.execute(
-      `SELECT * FROM enrollment_schedules WHERE ${scheduleWhere} ORDER BY id DESC LIMIT 1`,
-      scheduleParams
+      `SELECT * FROM enrollment_schedules
+       WHERE program='ROTC' AND ms_level=?
+         AND (?='' OR year=?)
+       ORDER BY id DESC LIMIT 1`,
+      [msLevel, requestedYear, requestedYear]
     );
     const selectedSchedule = scheduleRows[0] || null;
 
@@ -920,16 +903,9 @@ exports.autoAssign = async (req, res) => {
       });
     }
 
-    const queryParams = [msLevel, msLevel];
-    let yearCondition = '';
-
-    if (selectedSchedule) {
-      yearCondition = ' AND CAST(r.schedule_id AS UNSIGNED)=?';
-      queryParams.push(selectedSchedule.id);
-    } else if (requestedYear) {
-      yearCondition = " AND COALESCE(es.year,'')=?";
-      queryParams.push(requestedYear);
-    }
+    const selectedScheduleId = selectedSchedule ? Number(selectedSchedule.id) : null;
+    const requestedYearFilter = selectedSchedule ? '' : requestedYear;
+    const queryParams = [msLevel, selectedScheduleId, selectedScheduleId, requestedYearFilter, requestedYearFilter, msLevel];
 
     const [rows] = await db.execute(
       `SELECT s.id,s.last_name,s.first_name,s.middle_name,s.suffix,s.sex,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police
@@ -937,7 +913,8 @@ exports.autoAssign = async (req, res) => {
        JOIN student_ms_records r ON r.student_id=s.id
        LEFT JOIN enrollment_schedules es ON CAST(r.schedule_id AS UNSIGNED)=es.id
        WHERE s.nstp_component='ROTC' AND r.ms_level=? AND r.status='approved'
-         ${yearCondition}
+         AND (? IS NULL OR CAST(r.schedule_id AS UNSIGNED)=?)
+         AND (?='' OR COALESCE(es.year,'')=?)
          AND r.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.ms_level=?)
        ORDER BY s.last_name,s.first_name,s.middle_name,s.id`,
       queryParams
@@ -1710,20 +1687,16 @@ exports.recordDetail = async (req, res) => {
       [studentId, programCode]
     );
 
-    const params = [studentId, programCode, level];
-    let schoolYearCondition = '';
-
-    if (cycle.school_year) {
-      schoolYearCondition = ' AND (ses.school_year=? OR ses.school_year IS NULL)';
-      params.push(cycle.school_year);
-    }
+    const schoolYear = String(cycle.school_year || '').trim();
+    const params = [studentId, programCode, level, schoolYear, schoolYear];
 
     const [attendance] = await db.execute(
       `SELECT ar.id,ar.status,ar.created_at,ar.distance_meters,ar.latitude,ar.longitude,
               ses.mi_number,ses.mi_type,ses.open_date,ses.close_date,ses.school_year,ses.ms_level
        FROM attendance_records ar
        JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id
-       WHERE ar.student_id=? AND ses.program=? AND (ses.ms_level=? OR ses.ms_level IS NULL) ${schoolYearCondition}
+       WHERE ar.student_id=? AND ses.program=? AND (ses.ms_level=? OR ses.ms_level IS NULL)
+         AND (?='' OR ses.school_year=? OR ses.school_year IS NULL)
        ORDER BY ses.mi_number,FIELD(ses.mi_type,'in','out'),ar.created_at`,
       params
     );
@@ -1917,33 +1890,23 @@ exports.attendanceSummary = async (req, res) => {
       return res.status(404).json({ message: 'Attendance session not found.' });
     }
 
-    let rosterCondition = '';
-    if (programCode === 'ROTC') {
-      if (group === 'battalion-1') {
-        rosterCondition = ' AND s.battalion=1 AND s.special_unit IS NULL AND s.willing_to_take_advance_course=0';
-      } else if (group === 'battalion-2') {
-        rosterCondition = ' AND s.battalion=2 AND s.special_unit IS NULL AND s.willing_to_take_advance_course=0';
-      } else if (group === 'advance-course') {
-        rosterCondition = ' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0';
-      } else if (group === 'special-platoon') {
-        rosterCondition = " AND s.special_unit IN ('Medics','HQ','MP')";
-      }
-    }
-
-    let trackCondition = '';
-    if (programCode === 'ROTC') {
-      trackCondition = Number(session.is_advance_course || 0) === 1
-        ? ' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0'
-        : ' AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)';
-    }
-
-    const params = [session.id, programCode, programCode, String(session.ms_level || '1')];
-    let yearCondition = '';
-
-    if (session.school_year) {
-      yearCondition = ' AND (es.year=? OR es.year IS NULL)';
-      params.push(session.school_year);
-    }
+    const rosterGroup = normalizedRosterGroup(group);
+    const sessionSchoolYear = String(session.school_year || '').trim();
+    const isAdvanceTrack = programCode === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0;
+    const params = [
+      session.id,
+      programCode,
+      programCode,
+      String(session.ms_level || '1'),
+      sessionSchoolYear,
+      sessionSchoolYear,
+      programCode,
+      isAdvanceTrack,
+      rosterGroup,
+      rosterGroup,
+      rosterGroup,
+      rosterGroup,
+    ];
 
     const [students] = await db.execute(
       `SELECT
@@ -1960,9 +1923,21 @@ exports.attendanceSummary = async (req, res) => {
            SELECT 1
            FROM student_ms_records smr
            LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-           WHERE smr.student_id=s.id AND smr.program=? AND smr.ms_level=? AND smr.status='approved' ${yearCondition}
+           WHERE smr.student_id=s.id AND smr.program=? AND smr.ms_level=? AND smr.status='approved'
+             AND (?='' OR es.year=? OR es.year IS NULL)
          )
-         ${trackCondition} ${rosterCondition}
+         AND (
+           ?<>'ROTC'
+           OR (?=1 AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
+           OR (?=0 AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0))
+         )
+         AND (
+           ?='overall'
+           OR (?='battalion-1' AND s.battalion=1 AND s.special_unit IS NULL AND s.willing_to_take_advance_course=0)
+           OR (?='battalion-2' AND s.battalion=2 AND s.special_unit IS NULL AND s.willing_to_take_advance_course=0)
+           OR (?='advance-course' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
+           OR (?='special-platoon' AND s.special_unit IN ('Medics','HQ','MP'))
+         )
        ORDER BY s.last_name,s.first_name`,
       params
     );

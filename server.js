@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const app = express();
@@ -17,12 +18,50 @@ app.use((req, res, next) => {
   next();
 });
 app.use("/assets", express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/admin/rotc", require("./routes/rotcAdminRoutes"));
 app.use("/api/admin/cwts", require("./routes/cwtsAdminRoutes"));
 app.use("/api/officer", require("./routes/officerRoutes"));
+
+function loginPathForPortal(portal) {
+  if (portal === "rotc-admin") return "/admin/rotc/login";
+  if (portal === "cwts-admin") return "/admin/cwts/login";
+  if (portal === "officer") return "/officer/login";
+  return "/student/login";
+}
+
+function readToken(req) {
+  const bearer = req.headers.authorization?.startsWith("Bearer ")
+    ? req.headers.authorization.slice(7)
+    : null;
+
+  return req.cookies?.nstp_token || bearer;
+}
+
+function readSession(req) {
+  const token = readToken(req);
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function requirePagePortal(...portals) {
+  return (req, res, next) => {
+    const session = readSession(req);
+    if (session && portals.includes(session.portal)) {
+      req.user = session;
+      return next();
+    }
+
+    return res.redirect(loginPathForPortal(portals[0]));
+  };
+}
+
 const publicPages = {
   "/login": "views/auth/student-login.html",
   "/enrollment": "views/auth/enrollment.html",
@@ -36,11 +75,11 @@ app.get("/", (req, res) => res.redirect("/student/login"));
 for (const [route, file] of Object.entries(publicPages)) {
   app.get(route, (req, res) => res.sendFile(path.join(__dirname, file)));
 }
-function mountPages(prefix, files) {
+function mountPages(prefix, files, guard) {
   for (const fileName of files) {
     const route = `${prefix}/${fileName}`;
     const file = `views${route}.html`;
-    app.get(route, (req, res) => res.sendFile(path.join(__dirname, file)));
+    app.get(route, guard, (req, res) => res.sendFile(path.join(__dirname, file)));
   }
 }
 mountPages("/student", [
@@ -52,7 +91,7 @@ mountPages("/student", [
 "grades",
 "serial-number",
 "settings",
-]);
+], requirePagePortal("student"));
 mountPages("/admin/rotc", [
 "dashboard",
 "enrollment-schedule",
@@ -65,10 +104,10 @@ mountPages("/admin/rotc", [
 "view-records",
 "withdrawal-requests",
 "settings",
-]);
+], requirePagePortal("rotc-admin"));
 for (const page of ["overall", "battalion-1", "battalion-2", "advance-course", "special-platoon"]) {
-  app.get(`/admin/rotc/attendance/${page}`, (req, res) => res.redirect(`/admin/rotc/attendance-summary?group=${page}`));
-  app.get(`/admin/rotc/attendance-summary/${page}`, (req, res) => res.redirect(`/admin/rotc/attendance-summary?group=${page}`));
+  app.get(`/admin/rotc/attendance/${page}`, requirePagePortal("rotc-admin"), (req, res) => res.redirect(`/admin/rotc/attendance-summary?group=${page}`));
+  app.get(`/admin/rotc/attendance-summary/${page}`, requirePagePortal("rotc-admin"), (req, res) => res.redirect(`/admin/rotc/attendance-summary?group=${page}`));
 }
 mountPages("/admin/cwts", [
 "dashboard",
@@ -81,7 +120,7 @@ mountPages("/admin/cwts", [
 "serial-number",
 "view-records",
 "settings",
-]);
+], requirePagePortal("cwts-admin"));
 mountPages("/officer", [
 "dashboard",
 "create-attendance",
@@ -89,13 +128,13 @@ mountPages("/officer", [
 "view-records",
 "cwts",
 "settings",
-]);
+], requirePagePortal("officer"));
 for (const page of ["rotc", "cwts", "advance-course", "special-platoon"]) {
-  app.get(`/officer/attendance/${page}`, (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
-  app.get(`/officer/view-attendance/${page}`, (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
+  app.get(`/officer/attendance/${page}`, requirePagePortal("officer"), (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
+  app.get(`/officer/view-attendance/${page}`, requirePagePortal("officer"), (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
 }
 for (const page of ["battalion-1", "battalion-2", "advance-course", "special-platoon"]) {
-  app.get(`/officer/rotc/${page}`, (req, res) => {
+  app.get(`/officer/rotc/${page}`, requirePagePortal("officer"), (req, res) => {
   res.sendFile(path.join(__dirname, `views/officer/rotc/${page}.html`));
   });
 }
