@@ -9,7 +9,8 @@
     "start": "node server.js",
     "db:setup": "node database/setup.js",
     "db:seed": "node database/seed-admins.js",
-    "db:seed:students": "node database/seed-students.js"
+    "db:seed:students": "node database/seed-students.js",
+    "verify:sqli": "node scripts/verify-sqli-hardening.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
