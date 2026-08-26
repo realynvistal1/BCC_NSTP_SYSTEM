@@ -1,10 +1,32 @@
 require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+
+function jwtVerifyOptions() {
+  return {
+    audience: 'bcc-nstp-app',
+    issuer: 'bcc-nstp-system',
+  };
+}
+
+function requireEnv(name) {
+  const value = String(process.env[name] || "").trim();
+  if (!value) {
+    throw new Error(`${name} is required.`);
+  }
+  return value;
+}
+
+const jwtSecret = requireEnv("JWT_SECRET");
+if (jwtSecret === "replace-with-a-long-random-secret") {
+  throw new Error("JWT_SECRET must be replaced before running the app.");
+}
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
@@ -44,7 +66,7 @@ function readSession(req) {
   if (!token) return null;
 
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    return jwt.verify(token, jwtSecret, jwtVerifyOptions());
   } catch {
     return null;
   }
@@ -146,6 +168,20 @@ res.status(404).sendFile(path.join(__dirname, "views/404.html"));
 });
 app.use((err, req, res, next) => {
 console.error(err);
+if (err instanceof multer.MulterError) {
+res.status(400).json({ message: err.message });
+return;
+}
+if (err?.message && (
+  err.message.includes('data URL')
+  || err.message.includes('must be a ')
+  || err.message.includes('Maximum size')
+  || err.message.includes('too large')
+  || err.message.includes('required.')
+)) {
+res.status(400).json({ message: err.message });
+return;
+}
 res.status(500).json({ message: "Unexpected server error." });
 });
 app.listen(PORT, () => {

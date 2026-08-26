@@ -1,5 +1,12 @@
 const jwt = require('jsonwebtoken');
 
+function jwtVerifyOptions() {
+  return {
+    audience: 'bcc-nstp-app',
+    issuer: 'bcc-nstp-system',
+  };
+}
+
 function readToken(req) {
   const bearer = req.headers.authorization?.startsWith('Bearer ')
     ? req.headers.authorization.slice(7)
@@ -10,7 +17,12 @@ function readToken(req) {
 
 function requireAuth(req, res, next) {
   try {
-    req.user = jwt.verify(readToken(req), process.env.JWT_SECRET);
+    const token = readToken(req);
+    if (!token) {
+      return res.status(401).json({ message: 'Please log in again.' });
+    }
+
+    req.user = jwt.verify(token, process.env.JWT_SECRET, jwtVerifyOptions());
     next();
   } catch {
     return res.status(401).json({ message: 'Please log in again.' });

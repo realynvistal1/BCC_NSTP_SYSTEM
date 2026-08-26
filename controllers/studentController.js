@@ -8,6 +8,13 @@ const certificateService = require('../services/certificateService');
 const enrollmentService = require('../services/enrollmentService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
+const {
+  parsePositiveInt,
+  readLevel,
+  isValidStudentId,
+  readLimitedText,
+} = require('../services/requestValidationService');
+const uploadValidation = require('../services/uploadValidationService');
 
 function levelLabelFor(program, level) {
   return program === 'ROTC' ? `MS ${level}` : `CWTS ${level}`;
@@ -141,9 +148,9 @@ function normalizeBooleanFlag(value) {
 exports.checkSchedule = async (req, res) => {
   try {
     const program = String(req.query.program || '').toUpperCase();
-    const msLevel = String(req.query.ms_level || '1');
+    const msLevel = readLevel(req.query.ms_level || '1');
 
-    if (!['ROTC', 'CWTS'].includes(program) || !['1', '2'].includes(msLevel)) {
+    if (!['ROTC', 'CWTS'].includes(program) || !msLevel) {
       return res.status(400).json({ message: 'Select a valid NSTP component and level.' });
     }
 
@@ -165,6 +172,13 @@ exports.checkSchedule = async (req, res) => {
 exports.checkStudentId = async (req, res) => {
   try {
     const studentId = String(req.query.student_id || '').trim();
+
+     if (!isValidStudentId(studentId)) {
+      return res.status(400).json({
+        message: 'Student ID must use format 000000-0000.',
+      });
+    }
+
     const [rows] = await db.execute(
       'SELECT 1 FROM students WHERE student_id=? LIMIT 1',
       [studentId]
@@ -286,6 +300,22 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(body.password, 10);
+    const medicalCertificate = uploadValidation.validateDocumentUpload(body.medical_certificate, {
+      label: 'Medical certificate',
+      required: true,
+    });
+    const xrayFile = uploadValidation.validateDocumentUpload(body.xray_file, {
+      label: 'X-ray',
+      required: body.nstp_component === 'ROTC',
+    });
+    const photo = uploadValidation.validateImageUpload(body.photo, {
+      label: '2x2 photo',
+      required: true,
+    });
+    const corFile = uploadValidation.validateDocumentUpload(body.cor_file, {
+      label: 'Certificate of Registration',
+      required: true,
+    });
 
     await connection.beginTransaction();
 
@@ -339,13 +369,13 @@ exports.register = async (req, res) => {
       body.complexion,
       enrollmentService.normalizeMedicalCondition(body.has_medical_condition),
       body.medical_condition || '',
-      body.medical_certificate,
-      body.xray_file || null,
+      medicalCertificate,
+      xrayFile,
       body.email,
       body.username,
       hashedPassword,
-      body.photo,
-      body.cor_file,
+      photo,
+      corFile,
     ];
 
     const [result] = await connection.execute(insertStudentSql, insertStudentValues);
@@ -529,7 +559,13 @@ exports.openSessions = async (req, res) => {
 
 exports.markAttendance = async (req, res) => {
   try {
-    const { sessionId, latitude, longitude } = req.body;
+    const sessionId = parsePositiveInt(req.body.sessionId);
+    const { latitude, longitude } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Select a valid attendance session.' });
+    }
+
     const [[session]] = await db.execute(
       'SELECT * FROM attendance_sessions WHERE id=?',
       [sessionId]
@@ -712,6 +748,24 @@ exports.reEnroll = async (req, res) => {
     }
 
     const hasMedicalCondition = enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
+    const medicalCertificate = body.medical_certificate == null || String(body.medical_certificate).trim() === ''
+      ? (student.medical_certificate || null)
+      : uploadValidation.validateDocumentUpload(body.medical_certificate, {
+        label: 'Medical certificate',
+        required: true,
+      });
+    const xrayFile = body.xray_file == null || String(body.xray_file).trim() === ''
+      ? (student.xray_file || null)
+      : uploadValidation.validateDocumentUpload(body.xray_file, {
+        label: 'X-ray',
+        required: student.nstp_component === 'ROTC',
+      });
+    const corFile = body.cor_file == null || String(body.cor_file).trim() === ''
+      ? (student.cor_file || null)
+      : uploadValidation.validateDocumentUpload(body.cor_file, {
+        label: 'Certificate of Registration',
+        required: true,
+      });
 
     await connection.beginTransaction();
 
@@ -745,9 +799,9 @@ exports.reEnroll = async (req, res) => {
         body.complexion,
         hasMedicalCondition,
         hasMedicalCondition ? (body.medical_condition || '') : '',
-        body.medical_certificate || student.medical_certificate || null,
-        body.xray_file || student.xray_file || null,
-        body.cor_file || student.cor_file || null,
+        medicalCertificate,
+        xrayFile,
+        corFile,
         normalizeBooleanFlag(body.willing_to_take_advance_course ?? student.willing_to_take_advance_course),
         normalizeBooleanFlag(body.willing_to_be_medics ?? student.willing_to_be_medics),
         normalizeBooleanFlag(body.willing_to_be_military_police ?? student.willing_to_be_military_police),
@@ -801,8 +855,15 @@ exports.withdrawal = async (req, res) => {
       });
     }
 
-    const { reason } = req.body;
-    if (!reason || reason.trim().length < 5) {
+    const reason = readLimitedText(req.body.reason, 2000);
+
+    if (reason === null) {
+      return res.status(400).json({
+        message: 'Withdrawal reason is too long.',
+      });
+    }
+
+    if (!reason || reason.length < 5) {
       return res.status(400).json({
         message: 'Please enter your reason for withdrawal.',
       });
@@ -821,7 +882,7 @@ exports.withdrawal = async (req, res) => {
 
     await db.execute(
       'INSERT INTO advance_course_withdrawals(student_id,reason) VALUES(?,?)',
-      [req.user.id, reason.trim()]
+      [req.user.id, reason]
     );
 
     return res.json({ message: 'Withdrawal request submitted.' });

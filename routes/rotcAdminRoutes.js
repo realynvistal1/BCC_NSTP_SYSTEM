@@ -2,10 +2,23 @@ const router = require('express').Router();
 const multer = require('multer');
 const controller = require('../controllers/rotcAdminController');
 const { requireAuth, requireRole, requirePortal } = require('../middleware/authMiddleware');
+const uploadValidation = require('../services/uploadValidationService');
 const excelUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 8 * 1024 * 1024,
+  },
+  fileFilter(req, file, cb) {
+    try {
+      uploadValidation.validateExcelFile({
+        ...file,
+        buffer: Buffer.alloc(1),
+        size: file.size || 1,
+      });
+      cb(null, true);
+    } catch (error) {
+      cb(error);
+    }
   },
 });
 
