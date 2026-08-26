@@ -6,9 +6,24 @@ const gradesService = require('../services/gradesService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const attendanceService = require('../services/attendanceService');
+const {
+  parsePositiveInt,
+  parseIdList,
+  readLevel,
+  readSchoolYear,
+  readSearchTerm,
+  escapeLikePattern,
+  readLimitedText,
+} = require('../services/requestValidationService');
+const uploadValidation = require('../services/uploadValidationService');
 
 function program(req) {
-  return req.params.program?.toUpperCase() || (/cwts/i.test(req.user.portal) ? 'CWTS' : 'ROTC');
+  const routeProgram = String(req.params.program || '').toUpperCase();
+  if (routeProgram === 'ROTC' || routeProgram === 'CWTS') {
+    return routeProgram;
+  }
+
+  return /cwts/i.test(req.user.portal) ? 'CWTS' : 'ROTC';
 }
 
 function levelPrefix(programCode) {
@@ -276,10 +291,15 @@ function normalizedRosterGroup(group) {
 }
 
 async function approvedRecordRows(programCode, filters = {}) {
-  const msLevel = String(filters.msLevel || '').trim();
-  const schoolYear = String(filters.schoolYear || '').trim();
-  const search = String(filters.search || '').trim();
-  const query = `%${search}%`;
+  const msLevel = readLevel(filters.msLevel, { allowBlank: true });
+  const schoolYear = readSchoolYear(filters.schoolYear, { allowBlank: true });
+  const search = readSearchTerm(filters.search, { allowBlank: true });
+
+  if (msLevel === null || schoolYear === null || search === null) {
+    return [];
+  }
+
+  const query = `%${escapeLikePattern(search)}%`;
   const params = [
     programCode,
     msLevel,
@@ -318,11 +338,11 @@ async function approvedRecordRows(programCode, filters = {}) {
        AND (?='' OR COALESCE(es.year,'')=?)
        AND (
          ?=''
-         OR s.student_id LIKE ?
-         OR s.first_name LIKE ?
-         OR s.middle_name LIKE ?
-         OR s.last_name LIKE ?
-         OR s.course LIKE ?
+         OR s.student_id LIKE ? ESCAPE '\\'
+         OR s.first_name LIKE ? ESCAPE '\\'
+         OR s.middle_name LIKE ? ESCAPE '\\'
+         OR s.last_name LIKE ? ESCAPE '\\'
+         OR s.course LIKE ? ESCAPE '\\'
        )
      ORDER BY s.last_name,s.first_name,smr.ms_level`,
     params
@@ -346,7 +366,7 @@ exports.dashboard = async (req, res) => {
 
     const scheduleId = dashboardSchedule ? Number(dashboardSchedule.id) : null;
 
-    const [[counts]] = await db.query(
+    const [[counts]] = await db.execute(
       `SELECT COUNT(*) total,
               SUM(smr.status='pending') pending,
               SUM(smr.status='approved') approved,
@@ -358,7 +378,7 @@ exports.dashboard = async (req, res) => {
       [programCode, scheduleId, scheduleId]
     );
 
-    const [[assigned]] = await db.query(
+    const [[assigned]] = await db.execute(
       `SELECT
          SUM(
            CASE
@@ -508,13 +528,19 @@ exports.enrollments = async (req, res) => {
 exports.enrollmentDetail = async (req, res) => {
   try {
     const programCode = program(req);
+    const recordId = parsePositiveInt(req.params.id);
+
+    if (!recordId) {
+      return res.status(400).json({ message: 'Select a valid enrollment record.' });
+    }
+
     const [[row]] = await db.execute(
       `SELECT smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,s.*
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
        WHERE smr.id=? AND smr.program=? AND s.role='student'
        LIMIT 1`,
-      [req.params.id, programCode]
+      [recordId, programCode]
     );
 
     if (!row) {
@@ -531,10 +557,20 @@ exports.enrollmentDetail = async (req, res) => {
 exports.updateEnrollment = async (req, res) => {
   try {
     const programCode = program(req);
+    const recordId = parsePositiveInt(req.params.id);
     const { status, rejection_reason: rejectionReason } = req.body;
+    const safeRejectionReason = readLimitedText(rejectionReason, 1000);
+
+    if (!recordId) {
+      return res.status(400).json({ message: 'Select a valid enrollment record.' });
+    }
 
     if (!['pending', 'approved', 'rejected'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    if (safeRejectionReason === null) {
+      return res.status(400).json({ message: 'Rejection reason is too long.' });
     }
 
     const [[record]] = await db.execute(
@@ -542,7 +578,7 @@ exports.updateEnrollment = async (req, res) => {
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
        WHERE smr.id=? AND smr.program=?`,
-      [req.params.id, programCode]
+      [recordId, programCode]
     );
 
     if (!record) {
@@ -551,7 +587,7 @@ exports.updateEnrollment = async (req, res) => {
 
     await db.execute(
       'UPDATE student_ms_records SET status=?,rejection_reason=? WHERE id=?',
-      [status, status === 'rejected' ? (rejectionReason || 'Please contact your NSTP administrator.') : null, req.params.id]
+      [status, status === 'rejected' ? (safeRejectionReason || 'Please contact your NSTP administrator.') : null, recordId]
     );
 
     if (status !== 'approved') {
@@ -568,7 +604,7 @@ exports.updateEnrollment = async (req, res) => {
     if (programCode === 'CWTS') {
       const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
       const limit = 60;
-      const [counts] = await db.query(
+      const [counts] = await db.execute(
         `SELECT company,COUNT(*) total
          FROM students s
          WHERE s.nstp_component='CWTS'
@@ -581,9 +617,9 @@ exports.updateEnrollment = async (req, res) => {
         map[row.company] = Number(row.total);
       });
 
-      const company = companies.find((item) => map[item] < limit);
+        const company = companies.find((item) => map[item] < limit);
       if (!company) {
-        await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [req.params.id]);
+        await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [recordId]);
         return res.status(409).json({
           message: 'All CWTS companies are full. Enrollment was left pending.',
         });
@@ -609,7 +645,7 @@ exports.updateEnrollment = async (req, res) => {
         );
 
         if (Number(count.total || 0) >= 37) {
-          await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [req.params.id]);
+          await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [recordId]);
           return res.status(409).json({
             message: `${unit} is already full (37/37). Enrollment was left pending.`,
           });
@@ -644,9 +680,7 @@ exports.updateEnrollment = async (req, res) => {
 exports.bulkApprove = async (req, res) => {
   try {
     const programCode = program(req);
-    const ids = Array.isArray(req.body.ids)
-      ? req.body.ids.map(Number).filter(Boolean)
-      : [];
+    const ids = parseIdList(req.body.ids);
 
     if (!ids.length) {
       return res.status(400).json({ message: 'No pending enrollment records selected.' });
@@ -675,7 +709,7 @@ exports.bulkApprove = async (req, res) => {
         if (programCode === 'CWTS') {
           const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
           const limit = 60;
-          const [counts] = await db.query(
+          const [counts] = await db.execute(
             `SELECT s.company,COUNT(DISTINCT s.id) total
              FROM students s
              WHERE s.nstp_component='CWTS'
@@ -766,13 +800,17 @@ exports.bulkApprove = async (req, res) => {
 exports.bulkReject = async (req, res) => {
   try {
     const programCode = program(req);
-    const ids = Array.isArray(req.body.ids)
-      ? req.body.ids.map(Number).filter(Boolean)
-      : [];
-    const rejectionReason = String(req.body.rejection_reason || '').trim();
+    const ids = parseIdList(req.body.ids);
+    const rejectionReason = readLimitedText(req.body.rejection_reason, 1000);
 
     if (!ids.length) {
       return res.status(400).json({ message: 'No pending enrollment records selected.' });
+    }
+
+    if (rejectionReason === null) {
+      return res.status(400).json({
+        message: 'Rejection reason is too long.',
+      });
     }
 
     if (!rejectionReason) {
@@ -824,9 +862,18 @@ exports.bulkReject = async (req, res) => {
 exports.roster = async (req, res) => {
   try {
     const programCode = program(req);
-    const requestedLevel = String(req.query.ms_level || '').trim();
-    const requestedYear = String(req.query.school_year || '').trim();
+    const requestedLevel = readLevel(req.query.ms_level, { allowBlank: true });
+    const requestedYear = readSchoolYear(req.query.school_year, { allowBlank: true });
     const includeAllCycles = String(req.query.all_cycles || '').trim() === '1';
+
+    if (requestedLevel === null) {
+      return res.status(400).json({ message: 'Select a valid enrollment level.' });
+    }
+
+    if (requestedYear === null) {
+      return res.status(400).json({ message: 'Select a valid school year.' });
+    }
+
     const [schedules] = await db.execute(
       `SELECT id, program, ms_level, year, open_date, deadline
        FROM enrollment_schedules
@@ -880,8 +927,17 @@ exports.autoAssign = async (req, res) => {
       });
     }
 
-    const msLevel = String(req.body.ms_level || req.query.ms_level || '1').trim();
-    const requestedYear = String(req.body.school_year || req.query.school_year || '').trim();
+    const msLevel = readLevel(req.body.ms_level || req.query.ms_level || '1');
+    const requestedYear = readSchoolYear(req.body.school_year || req.query.school_year || '', { allowBlank: true });
+
+    if (!msLevel) {
+      return res.status(400).json({ message: 'Select a valid MS level.' });
+    }
+
+    if (requestedYear === null) {
+      return res.status(400).json({ message: 'Select a valid school year.' });
+    }
+
     const [scheduleRows] = await db.execute(
       `SELECT * FROM enrollment_schedules
        WHERE program='ROTC' AND ms_level=?
@@ -1050,10 +1106,15 @@ exports.grades = async (req, res) => {
       return res.json({ students, grades });
     }
 
-    const { student_id: studentId, ms_level: msLevel, midterm, final_term: finalTerm } = req.body;
-    const level = String(msLevel || '');
+    const { student_id: rawStudentId, ms_level: msLevel, midterm, final_term: finalTerm } = req.body;
+    const studentId = parsePositiveInt(rawStudentId);
+    const level = readLevel(msLevel);
 
-    if (!['1', '2'].includes(level)) {
+    if (!studentId) {
+      return res.status(400).json({ message: 'Select a valid student.' });
+    }
+
+    if (!level) {
       return res.status(400).json({ message: 'Select a valid MS/CWTS level.' });
     }
 
@@ -1133,7 +1194,7 @@ exports.offenses = async (req, res) => {
       return res.json(rows);
     }
 
-    const studentId = Number(req.body.student_id);
+    const studentId = parsePositiveInt(req.body.student_id);
     const action = String(req.body.action || '').toLowerCase();
 
     if (!studentId) {
@@ -1197,10 +1258,18 @@ exports.serials = async (req, res) => {
       })));
     }
 
-    const { student_id: studentId, serial_number: serialNumber } = req.body;
-    if (!studentId || !String(serialNumber || '').trim()) {
+    const studentId = parsePositiveInt(req.body.student_id);
+    const serialNumber = String(req.body.serial_number || '').trim();
+
+    if (!studentId || !serialNumber) {
       return res.status(400).json({
         message: 'Student and serial number are required.',
+      });
+    }
+
+    if (serialNumber.length > 100) {
+      return res.status(400).json({
+        message: 'Serial number is too long.',
       });
     }
 
@@ -1233,7 +1302,7 @@ exports.serials = async (req, res) => {
       });
     }
 
-    const serial = String(serialNumber).trim().toUpperCase();
+    const serial = serialNumber.toUpperCase();
     const [duplicate] = await db.execute(
       'SELECT student_id FROM serial_numbers WHERE serial_number=? AND student_id<>?',
       [serial, studentId]
@@ -1298,9 +1367,7 @@ exports.bulkImportSerials = async (req, res) => {
   try {
     const programCode = program(req);
 
-    if (!req.file?.buffer) {
-      return res.status(400).json({ message: 'Upload an Excel file first.' });
-    }
+    uploadValidation.validateExcelFile(req.file);
 
     const [settingsRows] = await db.execute(
       'SELECT * FROM serial_number_settings WHERE program=?',
@@ -1533,11 +1600,36 @@ exports.certificateSettings = async (req, res) => {
       body.nstp_coordinator || null,
       body.municipal_mayor || null,
       body.bcc_president || null,
-      body.commandant_signature || null,
-      body.school_registrar_signature || null,
-      body.nstp_coordinator_signature || null,
-      body.municipal_mayor_signature || null,
-      body.bcc_president_signature || null,
+      body.commandant_signature == null || String(body.commandant_signature).trim() === ''
+        ? null
+        : uploadValidation.validateImageUpload(body.commandant_signature, {
+          label: 'Commandant signature',
+          maxBytes: 1024 * 1024,
+        }),
+      body.school_registrar_signature == null || String(body.school_registrar_signature).trim() === ''
+        ? null
+        : uploadValidation.validateImageUpload(body.school_registrar_signature, {
+          label: 'Registrar signature',
+          maxBytes: 1024 * 1024,
+        }),
+      body.nstp_coordinator_signature == null || String(body.nstp_coordinator_signature).trim() === ''
+        ? null
+        : uploadValidation.validateImageUpload(body.nstp_coordinator_signature, {
+          label: 'NSTP Coordinator signature',
+          maxBytes: 1024 * 1024,
+        }),
+      body.municipal_mayor_signature == null || String(body.municipal_mayor_signature).trim() === ''
+        ? null
+        : uploadValidation.validateImageUpload(body.municipal_mayor_signature, {
+          label: 'Municipal Mayor signature',
+          maxBytes: 1024 * 1024,
+        }),
+      body.bcc_president_signature == null || String(body.bcc_president_signature).trim() === ''
+        ? null
+        : uploadValidation.validateImageUpload(body.bcc_president_signature, {
+          label: 'BCC President signature',
+          maxBytes: 1024 * 1024,
+        }),
     ];
 
     await db.execute(
@@ -1579,7 +1671,11 @@ exports.certificateSettings = async (req, res) => {
 exports.certificate = async (req, res) => {
   try {
     const programCode = program(req);
-    const studentId = Number(req.params.studentId);
+    const studentId = parsePositiveInt(req.params.studentId);
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Select a valid student.' });
+    }
 
     const [students] = await db.execute(
       'SELECT * FROM students WHERE id=? AND nstp_component=?',
@@ -1629,10 +1725,26 @@ exports.records = async (req, res) => {
 exports.downloadRecordProfiles = async (req, res) => {
   try {
     const programCode = program(req);
+    const msLevel = readLevel(req.query.ms_level, { allowBlank: true });
+    const schoolYear = readSchoolYear(req.query.school_year, { allowBlank: true });
+    const search = readSearchTerm(req.query.search, { allowBlank: true });
+
+    if (msLevel === null) {
+      return res.status(400).json({ message: 'Select a valid enrollment level.' });
+    }
+
+    if (schoolYear === null) {
+      return res.status(400).json({ message: 'Select a valid school year.' });
+    }
+
+    if (search === null) {
+      return res.status(400).json({ message: 'Search text is too long.' });
+    }
+
     const filters = {
-      msLevel: req.query.ms_level || '',
-      schoolYear: req.query.school_year || '',
-      search: req.query.search || '',
+      msLevel,
+      schoolYear,
+      search,
     };
 
     const rows = await approvedRecordRows(programCode, filters);
@@ -1656,8 +1768,16 @@ exports.downloadRecordProfiles = async (req, res) => {
 exports.recordDetail = async (req, res) => {
   try {
     const programCode = program(req);
-    const studentId = Number(req.params.studentId);
-    const level = String(req.query.ms_level || '1');
+    const studentId = parsePositiveInt(req.params.studentId);
+    const level = readLevel(req.query.ms_level || '1');
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Select a valid student.' });
+    }
+
+    if (!level) {
+      return res.status(400).json({ message: 'Select a valid enrollment level.' });
+    }
 
     const [[student]] = await db.execute(
       "SELECT * FROM students WHERE id=? AND nstp_component=? AND role='student' LIMIT 1",
@@ -1739,12 +1859,22 @@ exports.withdrawals = async (req, res) => {
       return res.json(rows);
     }
 
-    const id = Number(req.params.id);
+    const id = parsePositiveInt(req.params.id);
     const status = String(req.body.status || '').toLowerCase();
-    const remarks = String(req.body.admin_remarks || '').trim();
+    const remarks = readLimitedText(req.body.admin_remarks, 1000);
+
+    if (!id) {
+      return res.status(400).json({ message: 'Select a valid withdrawal request.' });
+    }
 
     if (!['approved', 'rejected'].includes(status)) {
       return res.status(400).json({ message: 'Invalid withdrawal action.' });
+    }
+
+    if (remarks === null) {
+      return res.status(400).json({
+        message: 'Admin remarks are too long.',
+      });
     }
 
     const [[request]] = await db.execute(
@@ -1860,8 +1990,13 @@ exports.withdrawals = async (req, res) => {
 exports.attendanceSummary = async (req, res) => {
   try {
     const programCode = program(req);
-    const sessionId = Number(req.query.session_id || 0);
+    const rawSessionId = String(req.query.session_id || '').trim();
+    const sessionId = rawSessionId ? parsePositiveInt(rawSessionId) : null;
     const group = String(req.query.group || 'overall').toLowerCase();
+
+    if (rawSessionId && !sessionId) {
+      return res.status(400).json({ message: 'Select a valid attendance session.' });
+    }
 
     if (!sessionId) {
       const [sessions] = await db.execute(
@@ -1973,8 +2108,8 @@ exports.attendanceSummary = async (req, res) => {
 exports.verifyAttendance = async (req, res) => {
   try {
     const programCode = program(req);
-    const sessionId = Number(req.params.sessionId);
-    const studentId = Number(req.body.student_id);
+    const sessionId = parsePositiveInt(req.params.sessionId);
+    const studentId = parsePositiveInt(req.body.student_id);
     const status = String(req.body.status || '').toLowerCase();
 
     if (!sessionId || !studentId || !['present', 'late', 'absent'].includes(status)) {
