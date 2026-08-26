@@ -196,6 +196,6 @@ return;
 }
 res.status(500).json({ message: "Unexpected server error." });
 });
-app.listen(PORT, () => {
-console.log(`BCC NSTP System running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+console.log(`BCC NSTP System running on port ${PORT}`);
 });

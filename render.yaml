@@ -1,0 +1,66 @@
+services:
+  - type: web
+    name: bcc-nstp-system
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: bcc_nstp_database
+      - key: COOKIE_SECURE
+        value: true
+      - key: TRUST_PROXY_HOPS
+        value: 1
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: GOOGLE_RECAPTCHA_ENABLED
+        value: false
+      - key: GOOGLE_RECAPTCHA_SITE_KEY
+        sync: false
+      - key: GOOGLE_RECAPTCHA_SECRET_KEY
+        sync: false
+      - key: GOOGLE_RECAPTCHA_MIN_SCORE
+        value: 0.5
+      - key: GOOGLE_RECAPTCHA_EXPECTED_HOSTNAME
+        sync: false
+      - key: GOOGLE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS
+        value: false
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 120
+      - key: RATE_LIMIT_BLOCK_MS
+        value: 300000
+      - key: RATE_LIMIT_MAX_BLOCK_MS
+        value: 3600000
+      - key: RATE_LIMIT_MAX_CONCURRENT
+        value: 30
+      - key: AUTH_RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: AUTH_RATE_LIMIT_MAX_REQUESTS
+        value: 20
+      - key: AUTH_RATE_LIMIT_BLOCK_MS
+        value: 600000
+      - key: AUTH_RATE_LIMIT_MAX_BLOCK_MS
+        value: 7200000
+      - key: AUTH_RATE_LIMIT_MAX_CONCURRENT
+        value: 5

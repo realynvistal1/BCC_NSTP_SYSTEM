@@ -4,6 +4,9 @@
   "private": true,
   "description": "BCC ROTC and CWTS Enrollment with Geolocation-Based Attendance and Automatic Platoon Assignment",
   "main": "server.js",
+  "engines": {
+    "node": ">=20 <25"
+  },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",

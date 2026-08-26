@@ -79,6 +79,53 @@ npm start
 
 5. Open `http://localhost:3000`.
 
+## Render Deployment
+
+This repo is now prepared for a Render web service deployment.
+
+### What to create in Render
+
+1. A `Web Service` for this Node.js app
+2. A MySQL service for the database
+
+Render's current docs say web services should bind to the `PORT` environment variable on host `0.0.0.0`, and new services default to Node.js `24.14.1` unless you pin a version. This repo now pins Node to `>=20 <25` in `package.json` and the server explicitly binds for hosted environments.
+
+### Web service settings
+
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Health Check Path: `/api/health`
+
+### Environment variables to add in Render
+
+Copy values from your local `.env`, then update these for production:
+
+- `JWT_SECRET`:
+Use a long random secret, not the placeholder value.
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`:
+Point these to your Render MySQL service.
+- `COOKIE_SECURE=true`
+- `TRUST_PROXY_HOPS=1`
+- `GOOGLE_RECAPTCHA_ENABLED=true` only if you have working production keys
+- `GOOGLE_RECAPTCHA_EXPECTED_HOSTNAME`:
+Set this to your actual Render hostname, such as `your-app.onrender.com`
+
+If you do not yet have production reCAPTCHA keys, set `GOOGLE_RECAPTCHA_ENABLED=false` temporarily so login and reset flows are not blocked.
+
+### Database setup on Render
+
+After the MySQL service is running and the web service environment variables are set, run this once against the Render database:
+
+```bash
+npm run db:setup
+```
+
+That creates the schema and seeds the default admin accounts.
+
+### Blueprint option
+
+The root `render.yaml` file can be used with a Render Blueprint to prefill the web service settings and required environment variable names.
+
 ## Default accounts created by `npm run db:setup`
 
 - ROTC Admin: `bcc.rotc.admin@gmail.com` / `bcc@admin123`
