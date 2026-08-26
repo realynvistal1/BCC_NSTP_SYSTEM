@@ -2,9 +2,31 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
+const {
+  MAX_LOGIN_IDENTIFIER_LENGTH,
+  isReasonableEmail,
+  isValidStudentId,
+  isValidResetCode,
+} = require('../services/requestValidationService');
 
 const LOGIN_ATTEMPT_LIMIT = 5;
 const LOGIN_LOCK_MINUTES = 5;
+const RESET_REQUEST_LIMIT = 3;
+const RESET_REQUEST_LOCK_MINUTES = 15;
+const RESET_VERIFY_LIMIT = 5;
+const RESET_VERIFY_LOCK_MINUTES = 15;
+
+function jwtOptions() {
+  return {
+    audience: 'bcc-nstp-app',
+    issuer: 'bcc-nstp-system',
+  };
+}
+
+function serverError(res, error) {
+  console.error(error);
+  return res.status(500).json({ message: 'Unexpected server error.' });
+}
 
 function adminPortal(program, storedRole) {
   if (storedRole === 'director' || storedRole === 'officer') return 'officer';
@@ -56,24 +78,36 @@ function accountQueries(isStudent) {
   };
 }
 
-function adminResetWhere(portal) {
+function adminResetLookup(portal) {
   if (portal === 'officer') {
     return {
-      clause: "email=? AND role IN ('director','officer')",
-      params: (email) => [email],
+      selectByEmail: `SELECT id,email FROM admins
+        WHERE email=? AND role IN ('director','officer')
+        LIMIT 1`,
+      selectAccount: `SELECT id,email,password FROM admins
+        WHERE email=? AND role IN ('director','officer')
+        LIMIT 1`,
     };
   }
 
   if (portal === 'cwts-admin') {
     return {
-      clause: "email=? AND role='admin' AND program IN ('CWTS','BOTH')",
-      params: (email) => [email],
+      selectByEmail: `SELECT id,email FROM admins
+        WHERE email=? AND role='admin' AND program IN ('CWTS','BOTH')
+        LIMIT 1`,
+      selectAccount: `SELECT id,email,password FROM admins
+        WHERE email=? AND role='admin' AND program IN ('CWTS','BOTH')
+        LIMIT 1`,
     };
   }
 
   return {
-    clause: "email=? AND role='admin' AND program IN ('ROTC','BOTH')",
-    params: (email) => [email],
+    selectByEmail: `SELECT id,email FROM admins
+      WHERE email=? AND role='admin' AND program IN ('ROTC','BOTH')
+      LIMIT 1`,
+    selectAccount: `SELECT id,email,password FROM admins
+      WHERE email=? AND role='admin' AND program IN ('ROTC','BOTH')
+      LIMIT 1`,
   };
 }
 
@@ -119,6 +153,21 @@ async function ensureLoginAttemptTable() {
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       UNIQUE KEY uk_login_key (login_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+async function ensureSecurityEventTable() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS security_event_locks (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      event_key VARCHAR(255) NOT NULL,
+      failed_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+      locked_until DATETIME DEFAULT NULL,
+      last_attempt_at DATETIME DEFAULT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_event_key (event_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 }
@@ -192,6 +241,69 @@ async function clearFailedLogins(loginKey) {
   );
 }
 
+async function getSecurityEvent(eventKey) {
+  await ensureSecurityEventTable();
+  const [rows] = await db.execute(
+    `SELECT id,event_key,failed_attempts,locked_until,last_attempt_at
+     FROM security_event_locks
+     WHERE event_key=?
+     LIMIT 1`,
+    [eventKey]
+  );
+  return rows[0] || null;
+}
+
+function securityLockMessage(lockedUntil) {
+  const unlockTime = new Date(lockedUntil);
+  const diffMs = unlockTime.getTime() - Date.now();
+  const remainingMinutes = Math.max(1, Math.ceil(diffMs / 60000));
+  return `Too many reset attempts. Try again in ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}.`;
+}
+
+async function recordSecurityEvent(eventKey, limit, lockMinutes) {
+  await ensureSecurityEventTable();
+  const current = await getSecurityEvent(eventKey);
+  const now = new Date();
+
+  if (!current) {
+    const failedAttempts = 1;
+    const lockedUntil = failedAttempts >= limit
+      ? new Date(now.getTime() + lockMinutes * 60000)
+      : null;
+
+    await db.execute(
+      `INSERT INTO security_event_locks(event_key,failed_attempts,locked_until,last_attempt_at)
+       VALUES(?,?,?,?)`,
+      [eventKey, failedAttempts, lockedUntil, now]
+    );
+
+    return { failed_attempts: failedAttempts, locked_until: lockedUntil };
+  }
+
+  const currentlyLocked = current.locked_until && new Date(current.locked_until) > now;
+  const failedAttempts = currentlyLocked ? current.failed_attempts : Number(current.failed_attempts || 0) + 1;
+  const lockedUntil = failedAttempts >= limit
+    ? new Date(now.getTime() + lockMinutes * 60000)
+    : null;
+
+  await db.execute(
+    `UPDATE security_event_locks
+     SET failed_attempts=?, locked_until=?, last_attempt_at=?
+     WHERE event_key=?`,
+    [failedAttempts, lockedUntil, now, eventKey]
+  );
+
+  return { failed_attempts: failedAttempts, locked_until: lockedUntil };
+}
+
+async function clearSecurityEvent(eventKey) {
+  await ensureSecurityEventTable();
+  await db.execute(
+    'DELETE FROM security_event_locks WHERE event_key=?',
+    [eventKey]
+  );
+}
+
 async function findAdmin(identifier) {
   const [rows] = await db.execute(
     `SELECT id, email, username, password, role, program
@@ -224,6 +336,10 @@ exports.login = async (req, res) => {
 
     if (!loginValue || !plainPassword) {
       return res.status(400).json({ message: 'Email/username and password are required.' });
+    }
+
+    if (loginValue.length > MAX_LOGIN_IDENTIFIER_LENGTH) {
+      return res.status(400).json({ message: 'Email/username is too long.' });
     }
 
     const loginKey = loginValue.toLowerCase();
@@ -292,7 +408,10 @@ exports.login = async (req, res) => {
       };
     }
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '12h',
+      ...jwtOptions(),
+    });
 
     clearAuthCookies(res);
 
@@ -311,7 +430,7 @@ exports.login = async (req, res) => {
       user: payload,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
 
@@ -321,7 +440,7 @@ exports.logout = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  res.json({ ...req.user, user: req.user });
+  res.json({ user: req.user });
 };
 
 exports.changePassword = async (req, res) => {
@@ -356,7 +475,7 @@ exports.changePassword = async (req, res) => {
 
     return res.json({ message: 'Password changed successfully.' });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
 
@@ -380,6 +499,27 @@ exports.requestStudentResetCode = async (req, res) => {
       });
     }
 
+    if (!isValidStudentId(studentId)) {
+      return res.status(400).json({
+        message: 'Student ID must use format 000000-0000.',
+      });
+    }
+
+    if (!isReasonableEmail(email)) {
+      return res.status(400).json({
+        message: 'Enter a valid registered email address.',
+      });
+    }
+
+    const requestKey = `student-reset-request:${String(studentId).trim().toLowerCase()}:${String(email).trim().toLowerCase()}`;
+    const requestAttempt = await getSecurityEvent(requestKey);
+    if (requestAttempt?.locked_until && new Date(requestAttempt.locked_until) > new Date()) {
+      return res.status(429).json({
+        message: securityLockMessage(requestAttempt.locked_until),
+        locked_until: requestAttempt.locked_until,
+      });
+    }
+
     if (!emailService.hasEmailConfig()) {
       return res.status(500).json({
         message: 'Gmail SMTP is not configured yet. Add GMAIL_USER and GMAIL_APP_PASSWORD in .env first.',
@@ -396,8 +536,10 @@ exports.requestStudentResetCode = async (req, res) => {
 
     const account = rows[0];
     if (!account) {
+      const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
         message: 'No student account matched the provided Student ID and email.',
+        locked_until: failed.locked_until || null,
       });
     }
 
@@ -421,11 +563,13 @@ exports.requestStudentResetCode = async (req, res) => {
       portalLabel: portalLabel('student'),
     });
 
+    await clearSecurityEvent(requestKey);
+
     return res.json({
       message: `A verification code was sent to ${account.email}.`,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
 
@@ -452,6 +596,20 @@ exports.resetStudentPassword = async (req, res) => {
       });
     }
 
+    if (!isValidStudentId(studentId)) {
+      return res.status(400).json({
+        message: 'Student ID must use format 000000-0000.',
+      });
+    }
+
+    if (!isReasonableEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid registered email address.' });
+    }
+
+    if (!isValidResetCode(code)) {
+      return res.status(400).json({ message: 'Enter a valid 6-digit verification code.' });
+    }
+
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: 'Passwords do not match.' });
     }
@@ -461,6 +619,17 @@ exports.resetStudentPassword = async (req, res) => {
       return res.status(400).json({ message: validationMessage });
     }
 
+    const normalizedStudentId = String(studentId).trim();
+    const normalizedEmail = String(email).trim();
+    const resetKey = `student-reset-verify:${normalizedStudentId.toLowerCase()}:${normalizedEmail.toLowerCase()}`;
+    const resetAttempt = await getSecurityEvent(resetKey);
+    if (resetAttempt?.locked_until && new Date(resetAttempt.locked_until) > new Date()) {
+      return res.status(429).json({
+        message: securityLockMessage(resetAttempt.locked_until),
+        locked_until: resetAttempt.locked_until,
+      });
+    }
+
     await ensureStudentResetTable();
 
     const [students] = await db.execute(
@@ -468,13 +637,15 @@ exports.resetStudentPassword = async (req, res) => {
        FROM students
        WHERE student_id=? AND email=?
        LIMIT 1`,
-      [String(studentId).trim(), String(email).trim()]
+      [normalizedStudentId, normalizedEmail]
     );
 
     const student = students[0];
     if (!student) {
+      const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
         message: 'No student account matched the provided Student ID and email.',
+        locked_until: failed.locked_until || null,
       });
     }
 
@@ -489,12 +660,15 @@ exports.resetStudentPassword = async (req, res) => {
 
     const reset = rows[0];
     if (!reset) {
+      const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(400).json({
         message: 'Request a verification code first.',
+        locked_until: failed.locked_until || null,
       });
     }
 
     if (String(reset.verification_code) !== String(code).trim()) {
+      const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
@@ -514,12 +688,13 @@ exports.resetStudentPassword = async (req, res) => {
     const hashedPassword = await authService.hashPassword(newPassword);
     await db.execute('UPDATE students SET password=? WHERE id=?', [hashedPassword, student.id]);
     await db.execute('DELETE FROM password_reset_codes WHERE student_id=?', [student.id]);
+    await clearSecurityEvent(resetKey);
 
     return res.json({
       message: 'Password reset successful. You can now sign in with your new password.',
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
 
@@ -536,21 +711,33 @@ exports.requestAdminResetCode = async (req, res) => {
       return res.status(400).json({ message: 'Email is required.' });
     }
 
+    if (!isReasonableEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid admin email address.' });
+    }
+
+    const requestKey = `admin-reset-request:${portal}:${String(email).trim().toLowerCase()}`;
+    const requestAttempt = await getSecurityEvent(requestKey);
+    if (requestAttempt?.locked_until && new Date(requestAttempt.locked_until) > new Date()) {
+      return res.status(429).json({
+        message: securityLockMessage(requestAttempt.locked_until),
+        locked_until: requestAttempt.locked_until,
+      });
+    }
+
     if (!emailService.hasEmailConfig()) {
       return res.status(500).json({
         message: 'Gmail SMTP is not configured yet. Add GMAIL_USER and GMAIL_APP_PASSWORD in .env first.',
       });
     }
 
-    const lookup = adminResetWhere(portal);
-    const [rows] = await db.execute(
-      `SELECT id,email FROM admins WHERE ${lookup.clause} LIMIT 1`,
-      lookup.params(email)
-    );
+    const lookup = adminResetLookup(portal);
+    const [rows] = await db.execute(lookup.selectByEmail, [email]);
 
     if (!rows[0]) {
+      const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
         message: 'No admin account matched that email for the selected portal.',
+        locked_until: failed.locked_until || null,
       });
     }
 
@@ -575,11 +762,13 @@ exports.requestAdminResetCode = async (req, res) => {
       portalLabel: portalLabel(portal),
     });
 
+    await clearSecurityEvent(requestKey);
+
     return res.json({
       message: `A verification code was sent to ${rows[0].email}.`,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
 
@@ -601,6 +790,14 @@ exports.resetAdminPassword = async (req, res) => {
       });
     }
 
+    if (!isReasonableEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid admin email address.' });
+    }
+
+    if (!isValidResetCode(code)) {
+      return res.status(400).json({ message: 'Enter a valid 6-digit verification code.' });
+    }
+
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: 'Passwords do not match.' });
     }
@@ -610,18 +807,26 @@ exports.resetAdminPassword = async (req, res) => {
       return res.status(400).json({ message: validationMessage });
     }
 
+    const resetKey = `admin-reset-verify:${portal}:${email.toLowerCase()}`;
+    const resetAttempt = await getSecurityEvent(resetKey);
+    if (resetAttempt?.locked_until && new Date(resetAttempt.locked_until) > new Date()) {
+      return res.status(429).json({
+        message: securityLockMessage(resetAttempt.locked_until),
+        locked_until: resetAttempt.locked_until,
+      });
+    }
+
     await ensureAdminResetTable();
 
-    const lookup = adminResetWhere(portal);
-    const [admins] = await db.execute(
-      `SELECT id,email,password FROM admins WHERE ${lookup.clause} LIMIT 1`,
-      lookup.params(email)
-    );
+    const lookup = adminResetLookup(portal);
+    const [admins] = await db.execute(lookup.selectAccount, [email]);
 
     const admin = admins[0];
     if (!admin) {
+      const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
         message: 'No admin account matched that email for the selected portal.',
+        locked_until: failed.locked_until || null,
       });
     }
 
@@ -636,12 +841,15 @@ exports.resetAdminPassword = async (req, res) => {
 
     const reset = rows[0];
     if (!reset) {
+      const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(400).json({
         message: 'Request a verification code first.',
+        locked_until: failed.locked_until || null,
       });
     }
 
     if (reset.verification_code !== code) {
+      await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
@@ -661,11 +869,12 @@ exports.resetAdminPassword = async (req, res) => {
     const hashedPassword = await authService.hashPassword(newPassword);
     await db.execute('UPDATE admins SET password=? WHERE id=?', [hashedPassword, admin.id]);
     await db.execute('DELETE FROM admin_password_reset_codes WHERE admin_id=?', [admin.id]);
+    await clearSecurityEvent(resetKey);
 
     return res.json({
       message: 'Password reset successful. You can now sign in with your new password.',
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return serverError(res, error);
   }
 };
