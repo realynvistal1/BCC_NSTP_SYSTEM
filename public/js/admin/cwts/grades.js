@@ -42,6 +42,179 @@ function avgGrade(midterm, finalTerm) {
   return Math.round(((first + second) / 2) * 100) / 100;
 }
 
+function xmlSafe(value = '') {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function courseCode(course) {
+  const value = String(course || '').trim();
+  const upper = value.toUpperCase();
+  const known = {
+    'BS INFORMATION TECHNOLOGY': 'BSIT',
+    'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY': 'BSIT',
+    BEED: 'BEED',
+    'BEED - BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    'BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    BSHM: 'BSHM',
+    'BS HOSPITALITY MANAGEMENT': 'BSHM',
+    'BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT': 'BSHM',
+    BSED: 'BSED',
+    'BSED - MAJOR IN ENGLISH': 'BSED',
+    'BSED - MAJOR IN MATHEMATICS': 'BSED',
+    'BACHELOR OF SECONDARY EDUCATION': 'BSED',
+    'BS TOURISM MANAGEMENT': 'BSTM',
+    'BACHELOR OF SCIENCE IN TOURISM MANAGEMENT': 'BSTM',
+    'BS CRIMINOLOGY': 'BSCRIM',
+    'BACHELOR OF SCIENCE IN CRIMINOLOGY': 'BSCRIM',
+  };
+
+  if (known[upper]) return known[upper];
+
+  const letters = upper.match(/\b[A-Z]/g);
+  return letters && letters.length >= 2 ? letters.join('') : value;
+}
+
+function downloadGradesExcel(rows, grades, program, level, schoolYear) {
+  const headers = ['NO.', 'ID NUMBER', 'LAST NAME', 'FIRST NAME', 'MIDDLE NAME', 'YEAR', 'COURSE', 'MIDTERM', 'FINAL'];
+  const makeCell = (value, options = {}) => {
+    const {
+      style = 'Cell',
+      type = 'String',
+      mergeAcross = 0,
+    } = options;
+    const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
+    return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="${type}">${xmlSafe(value)}</Data></Cell>`;
+  };
+  const levels = level ? [String(level)] : ['1', '2'];
+  const columnWidths = [42, 100, 110, 120, 110, 90, 90, 80, 80];
+  const columnsXml = columnWidths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
+
+  const stylesXml = `
+    <Styles>
+      <Style ss:ID="Default" ss:Name="Normal">
+        <Alignment ss:Vertical="Center"/>
+        <Borders/>
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1F2937"/>
+        <Interior/>
+        <NumberFormat/>
+        <Protection/>
+      </Style>
+      <Style ss:ID="Cell">
+        <Alignment ss:Vertical="Center"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+        </Borders>
+      </Style>
+      <Style ss:ID="CenterCell">
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
+        </Borders>
+      </Style>
+      <Style ss:ID="MetaLabel">
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>
+      </Style>
+      <Style ss:ID="SchoolTitle">
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+        <Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#111827"/>
+      </Style>
+      <Style ss:ID="SchoolSubtitle">
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#374151"/>
+      </Style>
+      <Style ss:ID="TableHeader">
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#15803D"/>
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#15803D"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#15803D"/>
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#15803D"/>
+        </Borders>
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+        <Interior ss:Color="#16A34A" ss:Pattern="Solid"/>
+      </Style>
+    </Styles>
+  `;
+
+  const worksheetOptions = '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><Selected/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>5</SplitHorizontal><TopRowBottomPane>5</TopRowBottomPane><ActivePane>2</ActivePane><Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>5</ActiveRow></Pane></Panes><ProtectObjects>False</ProtectObjects><ProtectScenarios>False</ProtectScenarios></WorksheetOptions>';
+  const worksheetsXml = levels.map((currentLevel) => {
+    const levelData = rows
+      .filter((student) => Number(student[`approved_ms${currentLevel}`]) === 1)
+      .map((student, index) => [
+        index + 1,
+        student.student_no || '',
+        student.last_name || '',
+        student.first_name || '',
+        student.middle_name || '',
+        student.year_level || '',
+        courseCode(student.course),
+        gradeValue(grades.get(`${student.student_id}|${currentLevel}`)?.midterm),
+        gradeValue(grades.get(`${student.student_id}|${currentLevel}`)?.final_term),
+      ]);
+
+    const levelRows = levelData.map((dataRow) => `
+        <Row ss:Height="21">
+          ${dataRow.map((value, columnIndex) => makeCell(value, {
+            style: columnIndex === 0 ? 'CenterCell' : 'Cell',
+            type: columnIndex === 0 ? 'Number' : 'String',
+          })).join('')}
+        </Row>
+      `).join('');
+
+    const topRows = [
+      `<Row ss:Height="24">${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: headers.length - 1 })}</Row>`,
+      `<Row ss:Height="18">${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: headers.length - 1 })}</Row>`,
+      `<Row ss:Height="18">${makeCell(`School Year: ${schoolYear ? `SY ${schoolYear}` : 'All'}    Level: NSTP ${currentLevel}`, { style: 'MetaLabel', mergeAcross: headers.length - 1 })}</Row>`,
+      '<Row ss:Height="10"></Row>',
+      `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
+    ].join('');
+
+    return `
+      <Worksheet ss:Name="NSTP ${currentLevel}">
+        <Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${levelData.length + 5}" x:FullColumns="1" x:FullRows="1">
+          ${columnsXml}
+          ${topRows}
+          ${levelRows}
+        </Table>
+        ${worksheetOptions}
+      </Worksheet>
+    `;
+  }).join('');
+
+  const xml = `<?xml version="1.0"?>
+  <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">
+    ${stylesXml}
+    ${worksheetsXml}
+  </Workbook>`;
+
+  const blob = new Blob(['\ufeff', xml], {
+    type: 'application/vnd.ms-excel;charset=utf-8',
+  });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.href = url;
+  link.download = `${program}${level ? `_CWTS${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Grades.xls`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 5000);
+}
+
 async function renderAdminGrades(_program, content) {
   const program = 'CWTS';
   const apiProgram = 'cwts';
@@ -94,6 +267,8 @@ async function renderAdminGrades(_program, content) {
           <option>4th Year</option>
         </select>
         <input id="gradeSearch" placeholder="Search by name, student ID, or course...">
+        <button class="btn success" id="downloadGradeRecords">Download Excel</button>
+        <button class="clear-filter-btn" id="clearGradeFilters" type="button">Clear Filters</button>
       </div>
       <div class="table-wrap">
         <table class="data-table grade-table">
@@ -376,6 +551,28 @@ async function renderAdminGrades(_program, content) {
   });
 
   $('#gradeSearch').oninput = renderRows;
+  $('#clearGradeFilters').onclick = () => {
+    $('#gradeLevel').value = '';
+    $('#gradeSY').value = '';
+    $('#gradeYear').value = '';
+    $('#gradeSearch').value = '';
+    renderRows();
+  };
+  $('#downloadGradeRecords').onclick = () => {
+    const rows = filtered();
+
+    if (!rows.length) {
+      return toast('No grade records to download.', true);
+    }
+
+    downloadGradesExcel(
+      rows,
+      grades,
+      program,
+      $('#gradeLevel').value,
+      $('#gradeSY').value
+    );
+  };
 
   renderRows();
 }
