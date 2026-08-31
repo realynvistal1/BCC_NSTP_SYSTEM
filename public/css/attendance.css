@@ -292,6 +292,41 @@
   color: #13345a;
   font-size: 14px;
 }
+.officer-session-table-card {
+  overflow: hidden;
+  padding: 20px
+}
+.officer-session-table td strong {
+  color: #0f172a
+}
+.officer-session-table .attendance-status-badge {
+  display: inline-flex
+}
+.officer-session-table td:last-child {
+  white-space: nowrap
+}
+.officer-session-table-card .attendance-record-overview {
+  gap: 16px;
+  margin-bottom: 14px
+}
+.officer-session-table-card .attendance-record-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px
+}
+.officer-session-table-card .attendance-record-tools {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px
+}
+.officer-session-table-card .attendance-record-table-wrap {
+  overflow-x: auto
+}
+.officer-session-table-card .data-table td small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b
+}
 .officer-session-card {
   background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,250,255,.96));
   border: 1px solid #dbe7f5;
@@ -526,27 +561,27 @@
 .attendance-record-stats, .attendance-summary-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-  padding: 20px 0 16px
+  gap: 12px;
+  padding: 14px 0 12px
 }
 .attendance-record-stats>div, .attendance-stat-card {
   border: 1px solid #dfe8f3;
-  border-radius: 18px;
-  padding: 16px 14px;
+  border-radius: 14px;
+  padding: 12px 10px;
   background: linear-gradient(180deg, #ffffff, #fbfdff);
   text-align: center;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.7)
 }
 .attendance-record-stats span, .attendance-stat-card span {
   display: block;
-  font-size: 10px;
+  font-size: 9px;
   color: #64748b;
   text-transform: uppercase;
   font-weight: 800;
   letter-spacing: .08em
 }
 .attendance-record-stats strong, .attendance-stat-card strong {
-  font-size: 28px;
+  font-size: 22px;
   color: #102747;
   line-height: 1.1
 }
@@ -759,36 +794,36 @@
   display: grid;
   grid-template-columns: minmax(165px, 190px) 1fr;
   align-items: flex-start;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 .attendance-summary-head h2 {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.1;
   letter-spacing: -.01em;
 }
 .attendance-summary-head p {
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1.2;
   max-width: 190px;
 }
 .summary-actions {
   display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) repeat(3, minmax(86px, .6fr)) auto;
-  gap: 6px;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(110px, .7fr)) auto;
+  gap: 10px;
   align-items: start;
 }
 .summary-actions input {
   min-width: 0;
-  min-height: 28px;
-  padding: 5px 8px;
-  font-size: 11px;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 .summary-actions select {
   min-width: 0;
-  min-height: 28px;
-  padding: 4px 8px;
-  font-size: 11px;
+  min-height: 38px;
+  padding: 7px 12px;
+  font-size: 13px;
 }
 .attendance-empty {
   text-align: center;
