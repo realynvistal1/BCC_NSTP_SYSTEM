@@ -804,6 +804,20 @@ exports.records = async (req, res) => {
   }
 };
 
+exports.recordFilterOptions = async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      `SELECT program,ms_level,year
+       FROM enrollment_schedules
+       ORDER BY year DESC,program ASC,ms_level ASC,id DESC`
+    );
+
+    return res.json(rows);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 exports.recordDetail = async (req, res) => {
   try {
     const programCode = String(req.query.program || '').toUpperCase();
