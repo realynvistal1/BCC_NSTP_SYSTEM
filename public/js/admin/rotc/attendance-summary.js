@@ -9,6 +9,19 @@ function makeAttendanceSummary(_programKey) {
   let currentSessions = [];
   let allStudents = [];
   let currentSummary = null;
+  const rotcCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+
+  const cycleKeyFor = (session) => `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}`;
+
+  function cycleSortValue(year) {
+    const value = String(year || '').trim();
+    const match = value.match(/^(\d{4})/);
+    return match ? Number(match[1]) : -1;
+  }
+
+  function cycleLabelFor(item) {
+    return `${program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(item.level || 'â€”')} - SY ${esc(item.year)}`;
+  }
 
   const fmtTime = (value) => value
     ? new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -22,7 +35,7 @@ function makeAttendanceSummary(_programKey) {
     const map = new Map();
 
     sessions.forEach((session) => {
-      const key = `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}`;
+      const key = cycleKeyFor(session);
       if (!map.has(key)) {
         map.set(key, {
           key,
@@ -33,7 +46,9 @@ function makeAttendanceSummary(_programKey) {
     });
 
     return [...map.values()].sort(
-      (a, b) => b.year.localeCompare(a.year) || String(a.level).localeCompare(String(b.level))
+      (a, b) => cycleSortValue(b.year) - cycleSortValue(a.year)
+        || Number(b.level || 0) - Number(a.level || 0)
+        || String(b.year).localeCompare(String(a.year))
     );
   }
 
@@ -43,7 +58,7 @@ function makeAttendanceSummary(_programKey) {
     const type = $('#summaryType').value;
 
     return sessions.filter((session) => (
-      (!cycle || `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}` === cycle)
+      (!cycle || cycleKeyFor(session) === cycle)
       && (!mi || String(session.mi_number) === mi)
       && (!type || session.mi_type === type)
     ));
@@ -51,7 +66,9 @@ function makeAttendanceSummary(_programKey) {
 
   function populate() {
     const cycle = $('#summaryCycle');
-    cycle.innerHTML = '<option value="">Select cycle</option>' + cycles().map((item) => (
+    const previousCycle = cycle.value || '';
+    const cycleOptions = cycles();
+    cycle.innerHTML = '<option value="">Select cycle</option>' + cycleOptions.map((item) => (
       `<option value="${esc(item.key)}">${program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(item.level || '—')} - SY ${esc(item.year)}</option>`
     )).join('');
 
@@ -70,6 +87,45 @@ function makeAttendanceSummary(_programKey) {
 
     $('#summaryMI').innerHTML = `<option value="">All ${unit}</option>`
       + numbers.map((number) => `<option value="${number}">${unit} ${number}</option>`).join('');
+    loadSelected();
+  }
+
+  function populateCycleOptions() {
+    const cycle = $('#summaryCycle');
+    const previousCycle = cycle.value || '';
+    const cycleOptions = cycles();
+
+    cycle.innerHTML = '<option value="">Select cycle</option>' + cycleOptions.map((item) => (
+      `<option value="${esc(item.key)}">${cycleLabelFor(item)}</option>`
+    )).join('');
+
+    if (previousCycle && cycleOptions.some((item) => item.key === previousCycle)) {
+      cycle.value = previousCycle;
+    } else if (cycle.options.length > 1) {
+      cycle.selectedIndex = 1;
+    }
+
+    populateMIOptions();
+  }
+
+  function populateMIOptions() {
+    const cycle = $('#summaryCycle').value;
+    const miSelect = $('#summaryMI');
+    const previousMI = miSelect.value || '';
+    const numbers = [...new Set(
+      sessions
+        .filter((session) => !cycle || cycleKeyFor(session) === cycle)
+        .map((session) => Number(session.mi_number))
+        .filter(Boolean)
+    )].sort((a, b) => a - b);
+
+    miSelect.innerHTML = `<option value="">All ${unit}</option>`
+      + numbers.map((number) => `<option value="${number}">${unit} ${number}</option>`).join('');
+
+    if (previousMI && numbers.includes(Number(previousMI))) {
+      miSelect.value = previousMI;
+    }
+
     loadSelected();
   }
 
@@ -186,6 +242,10 @@ function makeAttendanceSummary(_programKey) {
       return String(student.company || '').trim();
     }
 
+    if (Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit) {
+      return String(student.sex || '').trim();
+    }
+
     if (student.special_unit) return '';
     return String(student.rotc_company || '').trim();
   }
@@ -202,6 +262,21 @@ function makeAttendanceSummary(_programKey) {
     return String(student.rotc_platoon || '').trim();
   }
 
+  function overallSummaryPlatoonLabel(student) {
+    if (student.special_unit) {
+      return String(student.special_unit || '').trim();
+    }
+
+    if (Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit) {
+      const sex = String(student.sex || '').trim().toUpperCase();
+      return sex === 'FEMALE' ? 'Advance F' : sex === 'MALE' ? 'Advance M' : 'Advance Course';
+    }
+
+    const battalion = Number(student.battalion || 0);
+    const platoon = String(student.rotc_platoon || '').trim();
+    return battalion && platoon ? `B${battalion} P${platoon}` : '';
+  }
+
   function summaryCompanyOptions(group, students) {
     if (program === 'CWTS') {
       return [...new Set(
@@ -209,13 +284,44 @@ function makeAttendanceSummary(_programKey) {
       )].sort((a, b) => a.localeCompare(b));
     }
 
+    if (group === 'overall') {
+      return [...rotcCompanyOptions];
+    }
+
     if (group === 'battalion-1') return ['Alpha', 'Bravo', 'Charlie', 'Delta'];
     if (group === 'battalion-2') return ['Echo', 'Foxtrot', 'Golf', 'Hotel'];
-    if (group === 'special-platoon') return [];
+    if (group === 'advance-course') return ['Male', 'Female'];
+    if (group === 'special-platoon') return ['HQ', 'Medics', 'MP'];
 
     return [...new Set(
       students.map((student) => summaryStudentCompany(student)).filter(Boolean)
     )].sort((a, b) => a.localeCompare(b));
+  }
+
+  function ensureSummaryBattalionSelect() {
+    if (program === 'CWTS') return null;
+
+    let battalionSelect = $('#summaryBattalion');
+    if (battalionSelect) return battalionSelect;
+
+    const companySelect = $('#summaryCompany');
+    if (!companySelect || !companySelect.parentNode) return null;
+
+    battalionSelect = document.createElement('select');
+    battalionSelect.id = 'summaryBattalion';
+    battalionSelect.className = companySelect.className;
+    battalionSelect.innerHTML = '<option value="">All Battalion</option>';
+    companySelect.parentNode.insertBefore(battalionSelect, companySelect);
+    return battalionSelect;
+  }
+
+  function effectiveSummaryGroup() {
+    const group = $('#summaryGroup')?.value || 'overall';
+    const battalionSelect = $('#summaryBattalion');
+    if (program !== 'CWTS' && group === 'overall' && battalionSelect?.value) {
+      return battalionSelect.value;
+    }
+    return group;
   }
 
   function sortPlatoonValues(values) {
@@ -231,14 +337,54 @@ function makeAttendanceSummary(_programKey) {
     });
   }
 
+  function sortOverallPlatoonValues(values) {
+    return [...values].sort((a, b) => {
+      const advanceOrder = { 'Advance M': 1, 'Advance F': 2 };
+      const aAdvance = Object.prototype.hasOwnProperty.call(advanceOrder, a);
+      const bAdvance = Object.prototype.hasOwnProperty.call(advanceOrder, b);
+
+      if (aAdvance && bAdvance) {
+        return advanceOrder[a] - advanceOrder[b];
+      }
+
+      if (aAdvance) return 1;
+      if (bAdvance) return -1;
+
+      return String(a).localeCompare(String(b), undefined, { numeric: true });
+    });
+  }
+
   function syncSummaryRosterFilters() {
+    const battalionSelect = ensureSummaryBattalionSelect();
     const companySelect = $('#summaryCompany');
     const platoonSelect = $('#summaryPlatoon');
     if (!companySelect || !platoonSelect) return;
 
-    const group = $('#summaryGroup').value || 'overall';
+    const viewGroup = $('#summaryGroup').value || 'overall';
+    const group = effectiveSummaryGroup();
+    const previousBattalion = battalionSelect?.value || '';
     const previousCompany = companySelect.value || '';
     const previousPlatoon = platoonSelect.value || '';
+
+    if (battalionSelect) {
+      if (viewGroup === 'overall') {
+        battalionSelect.style.display = '';
+        battalionSelect.disabled = false;
+        battalionSelect.innerHTML = ''
+          + '<option value="">All Battalion</option>'
+          + '<option value="battalion-1">Battalion 1</option>'
+          + '<option value="battalion-2">Battalion 2</option>'
+          + '<option value="advance-course">Advance Course</option>'
+          + '<option value="special-platoon">Special Platoon</option>';
+        battalionSelect.value = ['battalion-1', 'battalion-2', 'advance-course', 'special-platoon'].includes(previousBattalion)
+          ? previousBattalion
+          : '';
+      } else {
+        battalionSelect.value = '';
+        battalionSelect.disabled = true;
+        battalionSelect.style.display = 'none';
+      }
+    }
 
     const groupStudents = allStudents.filter((student) => {
       if (group === 'overall') return true;
@@ -250,18 +396,49 @@ function makeAttendanceSummary(_programKey) {
     });
 
     const companyOptions = summaryCompanyOptions(group, groupStudents);
-    companySelect.innerHTML = '<option value="">All Company</option>'
+    const companyLabel = group === 'advance-course'
+      ? 'All Gender'
+      : group === 'special-platoon'
+        ? 'Unit'
+        : 'All Company';
+    companySelect.innerHTML = `<option value="">${companyLabel}</option>`
       + companyOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
     companySelect.value = companyOptions.includes(previousCompany) ? previousCompany : '';
     companySelect.disabled = companyOptions.length === 0;
 
+    if (program === 'CWTS' || group === 'advance-course' || group === 'special-platoon') {
+      platoonSelect.value = '';
+      platoonSelect.disabled = true;
+      platoonSelect.style.display = 'none';
+      return;
+    }
+
+    platoonSelect.style.display = '';
+
     const selectedCompany = companySelect.value || '';
-    const platoonOptions = sortPlatoonValues(new Set(
-      groupStudents
-        .filter((student) => !selectedCompany || summaryStudentCompany(student) === selectedCompany)
-        .map((student) => summaryStudentPlatoon(student))
-        .filter(Boolean)
-    ));
+    const platoonOptions = group === 'overall'
+      ? sortOverallPlatoonValues(new Set([
+        ...groupStudents
+          .filter((student) => {
+            if (!selectedCompany) return true;
+            if (selectedCompany === 'Advance Course') {
+              return Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit;
+            }
+            return !student.special_unit
+              && Number(student.willing_to_take_advance_course || 0) !== 1
+              && String(student.rotc_company || '').trim() === selectedCompany;
+          })
+          .map((student) => overallSummaryPlatoonLabel(student))
+          .filter(Boolean),
+        'Advance M',
+        'Advance F',
+      ]))
+      : sortPlatoonValues(new Set(
+        groupStudents
+          .filter((student) => !selectedCompany || summaryStudentCompany(student) === selectedCompany)
+          .map((student) => summaryStudentPlatoon(student))
+          .filter(Boolean)
+      ));
 
     platoonSelect.innerHTML = `<option value="">All ${group === 'special-platoon' ? 'Unit' : 'Platoon'}</option>`
       + platoonOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
@@ -397,7 +574,7 @@ function makeAttendanceSummary(_programKey) {
 
   function visibleStudents() {
     const query = $('#summarySearch').value.toLowerCase().trim();
-    const group = $('#summaryGroup')?.value || 'overall';
+    const group = effectiveSummaryGroup();
     const status = $('#summaryStatus').value;
     const company = $('#summaryCompany')?.value || '';
     const platoon = $('#summaryPlatoon')?.value || '';
@@ -412,8 +589,16 @@ function makeAttendanceSummary(_programKey) {
       )
       && 
       (!status || student.attendance_status === status)
-      && (!company || summaryStudentCompany(student) === company)
-      && (!platoon || summaryStudentPlatoon(student) === platoon)
+      && (!company || (
+        (group === 'overall' && company === 'Advance Course' && Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit)
+        || (group === 'overall' && company !== 'Advance Course' && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1 && summaryStudentCompany(student) === company)
+        || (group === 'special-platoon' && String(student.special_unit || '').trim() === company)
+        || (group !== 'special-platoon' && summaryStudentCompany(student) === company)
+      ))
+      && (!platoon || (
+        (group === 'overall' && overallSummaryPlatoonLabel(student) === platoon)
+        || (group !== 'overall' && summaryStudentPlatoon(student) === platoon)
+      ))
       && (!query || `${student.last_name} ${student.first_name} ${student.student_id} ${student.course} ${assignment(student)} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase().includes(query))
     ));
 
@@ -529,6 +714,96 @@ function makeAttendanceSummary(_programKey) {
     );
   }
 
+  function renderRows() {
+    const students = visibleStudents();
+    const aggregateMode = Boolean(currentSummary?.aggregate);
+
+    renderVisibleStats(students);
+
+    const rows = students.map((student) => `
+      <tr>
+        ${aggregateMode ? `<td>${esc(`${unit} ${student.mi_number} ${String(student.mi_type || '').toUpperCase()}`)}</td>` : ''}
+        <td>
+          <strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong>
+          <small>${esc(student.student_id)}</small>
+        </td>
+        <td>${esc(student.course || 'â€”')}<small>${esc(student.year_level || '')}</small></td>
+        <td>${esc(assignment(student))}</td>
+        <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
+        <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : 'â€”'}</td>
+        <td>${badge(student.attendance_status)}</td>
+        ${aggregateMode
+    ? '<td><small>Single-session verify only</small></td>'
+    : `
+          <td>
+            <select class="admin-attendance-status" data-student="${student.id}">
+              <option value="present" ${student.attendance_status === 'present' ? 'selected' : ''}>Present</option>
+              <option value="late" ${student.attendance_status === 'late' ? 'selected' : ''}>Late</option>
+              <option value="absent" ${student.attendance_status === 'absent' ? 'selected' : ''}>Absent</option>
+            </select>
+          </td>
+        `}
+      </tr>
+    `);
+
+    $('#attendanceSummaryContent').innerHTML = table(
+      aggregateMode
+        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Distance', 'Status', 'Verify']
+        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Distance', 'Status', 'Verify'],
+      rows
+    );
+
+    if (aggregateMode) {
+      return;
+    }
+
+    $$('.admin-attendance-status', $('#attendanceSummaryContent')).forEach((select) => {
+      select.onchange = async () => {
+        try {
+          const result = await API.patch(
+            `/api/admin/${apiProgram}/attendance-summary/${current.id}/verify`,
+            {
+              student_id: Number(select.dataset.student),
+              status: select.value,
+            }
+          );
+          toast(result.message);
+          await loadSelected();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      };
+    });
+  }
+
+  function renderRows() {
+    const students = visibleStudents();
+    const aggregateMode = Boolean(currentSummary?.aggregate);
+
+    renderVisibleStats(students);
+
+    const rows = students.map((student) => `
+      <tr>
+        ${aggregateMode ? `<td>${esc(`${unit} ${student.mi_number} ${String(student.mi_type || '').toUpperCase()}`)}</td>` : ''}
+        <td>
+          <strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong>
+          <small>${esc(student.student_id)}</small>
+        </td>
+        <td>${esc(student.course || 'â€”')}<small>${esc(student.year_level || '')}</small></td>
+        <td>${esc(assignment(student))}</td>
+        <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
+        <td>${badge(student.attendance_status)}</td>
+      </tr>
+    `);
+
+    $('#attendanceSummaryContent').innerHTML = table(
+      aggregateMode
+        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Status']
+        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Status'],
+      rows
+    );
+  }
+
   function exportMetadata() {
     if (!currentSummary) return null;
 
@@ -536,9 +811,13 @@ function makeAttendanceSummary(_programKey) {
     const session = currentSummary.session || currentSummary.sessions?.[0] || null;
     if (!session) return null;
     const groupSelect = $('#summaryGroup');
-    const groupText = groupSelect && groupSelect.selectedIndex >= 0
+    const battalionSelect = $('#summaryBattalion');
+    const effectiveGroupText = battalionSelect && battalionSelect.style.display !== 'none' && battalionSelect.selectedIndex > 0
+      ? battalionSelect.options[battalionSelect.selectedIndex].text
+      : '';
+    const groupText = effectiveGroupText || (groupSelect && groupSelect.selectedIndex >= 0
       ? groupSelect.options[groupSelect.selectedIndex].text
-      : 'Overall';
+      : 'Overall');
 
     const statusSelect = $('#summaryStatus');
     const statusText = statusSelect && statusSelect.selectedIndex >= 0
@@ -843,7 +1122,7 @@ function makeAttendanceSummary(_programKey) {
     }
 
     function buildRotcSections() {
-      const selectedGroup = $('#summaryGroup').value || 'overall';
+      const selectedGroup = effectiveSummaryGroup();
       const sections = [];
 
       if (selectedGroup === 'advance-course') {
@@ -992,7 +1271,7 @@ function makeAttendanceSummary(_programKey) {
     }
 
     const { session, students } = meta;
-    const selectedGroup = $('#summaryGroup').value || 'overall';
+    const selectedGroup = effectiveSummaryGroup();
     const selectedCompany = $('#summaryCompany')?.value || '';
     const selectedPlatoon = $('#summaryPlatoon')?.value || '';
 
@@ -1247,9 +1526,11 @@ function makeAttendanceSummary(_programKey) {
       $('#summaryGroup').value = queryGroup;
     }
 
-    populate();
+    populateCycleOptions();
+    ensureSummaryBattalionSelect();
+    syncSummaryRosterFilters();
 
-    $('#summaryCycle').onchange = populateMI;
+    $('#summaryCycle').onchange = populateMIOptions;
     $('#summaryMI').onchange = loadSelected;
     $('#summaryType').onchange = loadSelected;
     $('#summaryGroup').onchange = async () => {
@@ -1262,6 +1543,13 @@ function makeAttendanceSummary(_programKey) {
       syncSummaryRosterFilters();
       renderRows();
     };
+    const battalionSelect = $('#summaryBattalion');
+    if (battalionSelect) {
+      battalionSelect.onchange = () => {
+        syncSummaryRosterFilters();
+        renderRows();
+      };
+    }
     $('#summaryPlatoon').onchange = renderRows;
     $('#summaryStatus').onchange = renderRows;
 
