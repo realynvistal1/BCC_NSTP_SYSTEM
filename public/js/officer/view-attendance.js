@@ -1,5 +1,12 @@
 let officerSessions = [];
 const officerRecordStore = new Map();
+let officerAttendanceRows = [];
+let officerAttendanceFilterState = {
+  group: 'all',
+  company: 'all',
+  platoon: 'all',
+  search: '',
+};
 
 function attFmtDate(value) {
   return value
@@ -212,13 +219,203 @@ function filteredOfficerSessions() {
   });
 }
 
-function renderOfficerSessions() {
+function renderOfficerAttendanceTable(container, sessions, program) {
+  const showRosterFilter = program === 'ROTC';
+  const showCompanyFilter = program === 'ROTC' || program === 'CWTS';
+  const showPlatoonFilter = program === 'ROTC';
+  const rosterStudents = officerAttendanceRows;
+  const state = {
+    group: officerAttendanceFilterState.group || 'all',
+    company: officerAttendanceFilterState.company || 'all',
+    platoon: officerAttendanceFilterState.platoon || 'all',
+    search: officerAttendanceFilterState.search || '',
+  };
+
+  function groupRows(group = state.group) {
+    return rosterStudents.filter((student) => (
+      group === 'all' || officerStudentGroup(student) === group
+    ));
+  }
+
+  function companyOptions(group = state.group) {
+    const rows = groupRows(group);
+    if (program === 'CWTS') {
+      return [...new Set(
+        rows.map((student) => officerStudentCompany(student)).filter((value) => value && value !== 'all')
+      )].sort((a, b) => a.localeCompare(b));
+    }
+    return companyOptionsForGroup(group, rows);
+  }
+
+  function platoonOptions(group = state.group, company = state.company) {
+    return [...new Set(
+      groupRows(group)
+        .filter((student) => company === 'all' || officerStudentCompany(student) === company)
+        .map((student) => officerStudentPlatoon(student))
+        .filter((value) => value && value !== 'all')
+    )].sort((a, b) => {
+      const aNum = Number(a);
+      const bNum = Number(b);
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+        return aNum - bNum;
+      }
+      return a.localeCompare(b);
+    });
+  }
+
+  function visibleStudents() {
+    const query = state.search.toLowerCase();
+    return rosterStudents.filter((student) => {
+      const groupOk = !showRosterFilter || state.group === 'all' || officerStudentGroup(student) === state.group;
+      const companyOk = !showCompanyFilter || state.company === 'all' || officerStudentCompany(student) === state.company;
+      const platoonOk = !showPlatoonFilter || state.platoon === 'all' || officerStudentPlatoon(student) === state.platoon;
+      const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${officerAssignment(student) || ''} ${student.session_school_year || ''} ${student.session_ms_level || ''} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase();
+      return groupOk && companyOk && platoonOk && (!query || text.includes(query));
+    }).sort((left, right) => {
+      const byName = `${left.last_name || ''}`.localeCompare(`${right.last_name || ''}`)
+        || `${left.first_name || ''}`.localeCompare(`${right.first_name || ''}`);
+      if (byName) return byName;
+      return `${left.student_id || ''}`.localeCompare(`${right.student_id || ''}`);
+    });
+  }
+
+  function syncStateWithOptions() {
+    const validCompanies = companyOptions(state.group);
+    if (state.company !== 'all' && !validCompanies.includes(state.company)) {
+      state.company = 'all';
+    }
+
+    const validPlatoons = platoonOptions(state.group, state.company);
+    if (state.platoon !== 'all' && !validPlatoons.includes(state.platoon)) {
+      state.platoon = 'all';
+    }
+  }
+
+  function renderFilterOptions() {
+    const companySelect = $('#officerInlineCompany');
+    const platoonSelect = $('#officerInlinePlatoon');
+    const companies = companyOptions(state.group);
+    const platoons = platoonOptions(state.group, state.company);
+
+    if (companySelect) {
+      companySelect.innerHTML = '<option value="all">All</option>'
+        + companies.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+      companySelect.value = state.company;
+      companySelect.disabled = companies.length === 0;
+    }
+
+    if (platoonSelect) {
+      platoonSelect.innerHTML = '<option value="all">All</option>'
+        + platoons.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+      platoonSelect.value = state.platoon;
+      platoonSelect.disabled = platoons.length === 0;
+    }
+  }
+
+  function draw() {
+    syncStateWithOptions();
+    renderFilterOptions();
+
+    officerAttendanceFilterState = { ...state };
+    const filteredStudents = visibleStudents();
+    const counts = summarizeStudents(filteredStudents);
+
+    $('#officerInlineStats').innerHTML = `
+      ${statCard('Sessions', sessions.length)}
+      ${statCard('Students', counts.total)}
+      ${statCard('Present', counts.present, 'present')}
+      ${statCard('Late', counts.late, 'late')}
+      ${statCard('Absent', counts.absent, 'absent')}
+      ${statCard('Not Yet', counts.unmarked, 'unmarked')}
+    `;
+
+    $('#officerInlineTable').innerHTML = filteredStudents.length
+      ? table(
+        ['Student', 'Program', 'School Year', 'Level', 'MI / CS', 'Assignment', 'Time', 'Status', 'Action'],
+        filteredStudents.map((student) => `
+          <tr>
+            <td><strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong><small>${esc(student.student_id)}</small></td>
+            <td>${esc(student.session_program || '-')}</td>
+            <td>${esc(student.session_school_year || '-')}</td>
+            <td>${student.session_program === 'CWTS' ? `CWTS ${esc(student.session_ms_level || '-')}` : `MS ${esc(student.session_ms_level || '-')}`}</td>
+            <td>${esc(`${student.session_program === 'CWTS' ? 'CS' : 'MI'} ${student.mi_number || '-'} ${(student.mi_type || '').toUpperCase()}`)}</td>
+            <td>${esc(officerAssignment(student))}</td>
+            <td>${student.attendance_time ? attFmtTime(student.attendance_time) : '-'}</td>
+            <td>${badge(student.attendance_status)}</td>
+            <td><button class="btn small primary officer-inline-status" data-session="${student.session_id}" data-student="${student.id}" type="button">Update Status</button></td>
+          </tr>
+        `)
+      )
+      : '<div class="attendance-empty"><div class="empty-icon">O</div>No students matched the selected filters.</div>';
+
+    $$('.officer-inline-status', container).forEach((button) => {
+      button.onclick = () => window.__officerPromptStatus(Number(button.dataset.session), Number(button.dataset.student));
+    });
+  }
+
+  container.innerHTML = `
+    <div class="attendance-session-summary">
+      <strong>${sessionCountLabel(sessions.length)}</strong>
+      <span>${esc(program === 'ADVANCE_COURSE' ? 'Advance Course' : program)} attendance results</span>
+    </div>
+    <section class="attendance-summary-card officer-session-table-card">
+      <div class="attendance-record-overview">
+        <div class="attendance-record-stats" id="officerInlineStats"></div>
+        <div class="attendance-record-tools">
+          ${showRosterFilter
+            ? `<label class="attendance-record-filter"><span>Roster Filter</span><select id="officerInlineGroup"><option value="all">All</option><option value="battalion-1">Battalion 1</option><option value="battalion-2">Battalion 2</option><option value="special-platoon">Special Platoon</option></select></label>`
+            : ''}
+          ${showCompanyFilter
+            ? `<label class="attendance-record-filter"><span>Company</span><select id="officerInlineCompany"><option value="all">All</option></select></label>`
+            : ''}
+          ${showPlatoonFilter
+            ? `<label class="attendance-record-filter"><span>Platoon</span><select id="officerInlinePlatoon"><option value="all">All</option></select></label>`
+            : ''}
+          <div class="attendance-record-search">
+            <input id="officerInlineSearch" type="search" placeholder="Search name or student ID...">
+          </div>
+        </div>
+      </div>
+      <div class="attendance-record-table-wrap" id="officerInlineTable"></div>
+    </section>
+  `;
+
+  if ($('#officerInlineGroup')) {
+    $('#officerInlineGroup').value = state.group;
+  }
+  if ($('#officerInlineSearch')) {
+    $('#officerInlineSearch').value = state.search;
+  }
+  draw();
+
+  $('#officerInlineGroup')?.addEventListener('change', () => {
+    state.group = $('#officerInlineGroup').value || 'all';
+    state.company = 'all';
+    state.platoon = 'all';
+    draw();
+  });
+  $('#officerInlineCompany')?.addEventListener('change', () => {
+    state.company = $('#officerInlineCompany').value || 'all';
+    state.platoon = 'all';
+    draw();
+  });
+  $('#officerInlinePlatoon')?.addEventListener('change', () => {
+    state.platoon = $('#officerInlinePlatoon').value || 'all';
+    draw();
+  });
+  $('#officerInlineSearch')?.addEventListener('input', () => {
+    state.search = $('#officerInlineSearch').value || '';
+    draw();
+  });
+}
+
+async function renderOfficerSessions() {
   const list = $('#officerSessionList');
   const sessions = filteredOfficerSessions();
   const program = $('#viewProgram').value;
-  const unit = officerUnitLabel(program === 'ADVANCE_COURSE' ? 'ROTC' : program);
 
   if (!sessions.length) {
+    officerAttendanceRows = [];
     list.innerHTML = `
       <div class="attendance-empty attendance-empty-polished">
         <div class="attendance-empty-icon">O</div>
@@ -229,49 +426,27 @@ function renderOfficerSessions() {
     return;
   }
 
-  list.innerHTML = `
-    <div class="attendance-session-summary">
-      <strong>${sessionCountLabel(sessions.length)}</strong>
-      <span>${esc(program === 'ADVANCE_COURSE' ? 'Advance Course' : program)} attendance results</span>
-    </div>
-  ` + sessions.map((session) => `
-    <article class="officer-session-card ${esc(String(session.effective_status || 'scheduled').toLowerCase())}">
-      <div class="session-card-shell">
-        <div class="session-card-main">
-          <div class="session-card-top">
-            <div class="session-card-heading">
-              <span class="session-program ${session.program.toLowerCase()}">${program === 'ADVANCE_COURSE' ? 'Advance Course' : session.program}</span>
-              <h3>${unit} ${esc(session.mi_number || '-')} <span>-</span> ${(session.mi_type || '').toUpperCase()}</h3>
-              <p>${attFmtDate(session.open_date)} - ${attFmtTime(session.open_date)} - ${attFmtTime(session.close_date)} - Late until ${attFmtTime(session.late_deadline)}</p>
-            </div>
-          </div>
-        <div class="session-card-meta session-meta-grid">
-          <span><b>SY</b>${esc(session.school_year || '-')}</span>
-          <span><b>${program === 'CWTS' ? 'CWTS' : 'MS'}</b>${esc(session.ms_level || '-')}</span>
-          <span><b>Radius</b>100m</span>
-          <span><b>Created by</b>${esc(session.created_by || '-')}</span>
-        </div>
-        <div class="session-card-actions">
-            <button
-              class="btn primary view-session-records"
-              data-id="${session.id}"
-              type="button"
-              style="min-width:180px;min-height:44px;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:800;line-height:1.1;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(59,130,246,.18);"
-            >
-              View Student Records
-            </button>
-        </div>
-      </div>
-        <div class="session-card-accent ${esc(String(session.effective_status || 'scheduled').toLowerCase())}">
-          <span>${sessionStatusLabel(session.effective_status).toUpperCase()}</span>
-        </div>
-      </div>
-    </article>
-  `).join('');
+  list.innerHTML = '<div class="page-loading"><span class="page-spinner"></span><strong>Loading attendance records...</strong></div>';
 
-  $$('.view-session-records', list).forEach((button) => {
-    button.onclick = () => openOfficerRecords(button.dataset.id);
-  });
+  const responses = await Promise.all(
+    sessions.map(async (session) => {
+      const data = await API.get(`/api/officer/attendance/sessions/${session.id}/records`);
+      officerRecordStore.set(Number(session.id), data.students || []);
+      return { session, students: data.students || [] };
+    })
+  );
+
+  officerAttendanceRows = responses.flatMap(({ session, students }) => students.map((student) => ({
+    ...student,
+    session_id: session.id,
+    session_program: session.program,
+    session_school_year: session.school_year,
+    session_ms_level: session.ms_level,
+    mi_number: session.mi_number,
+    mi_type: session.mi_type,
+  })));
+
+  renderOfficerAttendanceTable(list, sessions, program);
 }
 
 function officerAssignment(student) {
@@ -295,7 +470,7 @@ async function saveOfficerStatus(sessionId, student, selected) {
     payload
   );
   toast(out.message);
-  await openOfficerRecords(sessionId);
+  await renderOfficerSessions();
 }
 
 async function promptOfficerStatus(sessionId, student) {
