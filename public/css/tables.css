@@ -1,62 +1,112 @@
 ﻿/* Table-specific overrides can be placed here. Main shared styles are in global.css. */
 .offense-filter-row {
   display: grid;
-  grid-template-columns: auto minmax(150px, 180px) minmax(170px, 210px) minmax(280px, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 18px 20px;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 20px;
   border-bottom: 1px solid #e5e7eb;
   background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
+}
+.offense-filter-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
 }
 .offense-filter-row input {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  min-height: 46px;
   padding: 0 16px;
   border-radius: 14px;
   font-size: 14px;
+  border: 1px solid #d7dfeb;
+  background: #fff;
   box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
 }
 .offense-filter-row select {
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
   padding: 0 14px;
   border-radius: 14px;
   font-size: 14px;
+  border: 1px solid #d7dfeb;
+  background: #fff;
   box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
 }
 .offense-filter-row .status-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;
   flex-wrap: wrap;
-  padding: 4px;
-  border-radius: 16px;
-  background: #edf4ff;
-  border: 1px solid #dbe7fb;
-}
-.offense-filter-row .status-tab {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 800;
-  color: #5b6f91;
+  gap: 10px;
+  padding: 0;
+  border-radius: 0;
   background: transparent;
   border: 0;
-  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  align-items: center;
 }
-.offense-filter-row .status-tab.active {
+.offense-tabs .status-tab {
+  min-height: 46px;
+  min-width: 118px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #4f6484;
+  background: #edf4ff;
+  border: 1px solid #dbe7fb;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, .08);
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.offense-tabs .status-tab span,
+.offense-tabs .status-tab b {
+  display: inline-block;
+  text-align: left;
+}
+.offense-tabs .status-tab span {
+  line-height: 1.15;
+}
+.offense-tabs .status-tab b {
+  margin-top: 0;
+  min-width: 22px;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+.offense-tabs .status-tab.active {
   background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   color: #fff;
   box-shadow: 0 10px 22px rgba(37, 99, 235, .24);
 }
-.offense-filter-row .status-tab:not(.active):hover {
-  background: rgba(255, 255, 255, .85);
+.offense-tabs .status-tab:not(.active):hover {
+  background: #fff;
   color: #1d4ed8;
+  transform: translateY(-1px);
 }
 .offense-row-alert {
   background: #fff5f5
+}
+.offense-stat-card {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.offense-stat-card .dash-label {
+  letter-spacing: .08em;
+}
+.offense-stat-card .value {
+  font-size: 42px;
+  line-height: 1;
+}
+.offense-stat-card .stat-note {
+  font-size: 13px;
+  color: #6b7280;
 }
 .offense-detail-card {
   display: flex;
@@ -154,6 +204,17 @@
 .stat-card.danger .value {
   color: #b91c1c
 }
+@media(max-width: 1100px) {
+  .offense-filter-row {
+    grid-template-columns: 1fr;
+  }
+  .offense-filter-row .status-tabs {
+    width: 100%;
+  }
+  .offense-filter-inputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @media(max-width: 700px) {
   .summary-grid.three {
     grid-template-columns: 1fr
@@ -164,6 +225,9 @@
   }
   .offense-filter-row>* {
     width: 100%;
+  }
+  .offense-filter-inputs {
+    grid-template-columns: 1fr;
   }
   .offense-detail-summary {
     grid-template-columns: 1fr;
