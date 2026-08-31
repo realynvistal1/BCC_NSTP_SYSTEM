@@ -57,7 +57,7 @@
 }
 .grade-tools {
   display: grid;
-  grid-template-columns: 180px 190px 160px 1fr;
+  grid-template-columns: 180px 190px 160px 1fr auto auto;
   gap: 8px;
   padding-bottom: 14px
 }
@@ -70,6 +70,14 @@
   font-size: 11px;
   color: #475569;
   outline: none
+}
+.grade-tools .btn {
+  height: 39px;
+  white-space: nowrap;
+}
+.grade-tools .clear-filter-btn {
+  align-self: center;
+  white-space: nowrap;
 }
 .grade-tools input:focus, .grade-tools select:focus {
   border-color: #8bbde5;
@@ -216,7 +224,9 @@
   .grade-tools {
     grid-template-columns: 1fr 1fr
   }
-  .grade-tools input {
+  .grade-tools input,
+  .grade-tools .btn,
+  .grade-tools .clear-filter-btn {
     grid-column: 1/-1
   }
 }
