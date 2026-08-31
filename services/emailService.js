@@ -1,7 +1,10 @@
 const nodemailer = require('nodemailer');
 
 function hasEmailConfig() {
-  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  return Boolean(
+    String(process.env.GMAIL_USER || '').trim()
+    && String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '')
+  );
 }
 
 function transporter() {
@@ -12,15 +15,15 @@ function transporter() {
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: String(process.env.GMAIL_USER || '').trim(),
+      pass: String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
     },
   });
 }
 
 async function sendPasswordResetCode({ to, code, portalLabel }) {
   const mailer = transporter();
-  const from = process.env.GMAIL_USER;
+  const from = String(process.env.GMAIL_USER || '').trim();
 
   await mailer.sendMail({
     from: `"BCC NSTP System" <${from}>`,
