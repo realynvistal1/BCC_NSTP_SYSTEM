@@ -4,11 +4,21 @@ function serialAssignmentText(student, program) {
   }
 
   if (Number(student.willing_to_take_advance_course)) {
-    return 'Advance Course';
+    return [
+      'Advance Course',
+      student.battalion ? `Battalion ${student.battalion}` : '',
+      student.rotc_company ? `Company ${student.rotc_company}` : '',
+      student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
+    ].filter(Boolean).join(' ');
   }
 
   if (student.special_unit) {
-    return student.special_unit;
+    return [
+      student.special_unit,
+      student.battalion ? `Battalion ${student.battalion}` : '',
+      student.rotc_company ? `Company ${student.rotc_company}` : '',
+      student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
+    ].filter(Boolean).join(' ');
   }
 
   return [
@@ -24,6 +34,10 @@ const ROTC_BATTALION_COMPANIES = {
 };
 
 const ROTC_PLATOONS = ['1', '2', '3', '4'];
+const ROTC_SPECIAL_BATTALION = 'special';
+const ROTC_ADVANCE_BATTALION = 'advance';
+const ROTC_SPECIAL_UNITS = ['HQ', 'Medics', 'MP'];
+const ROTC_ADVANCE_GROUPS = ['Male', 'Female'];
 
 function serialCourseCode(course) {
   const value = String(course || '').trim();
@@ -88,6 +102,7 @@ async function imageData(file) {
 async function renderAdminSerial(content, program) {
   const programLabel = program.toUpperCase();
   let rows = await API.get(`/api/admin/${program}/serial-numbers`);
+  const schedules = await API.get(`/api/admin/${program}/enrollment-schedule`);
   let settings = await API.get(`/api/admin/${program}/certificate-settings`);
   let importReport = null;
   let state = {
@@ -98,19 +113,34 @@ async function renderAdminSerial(content, program) {
     battalion: '',
     company: '',
     platoon: '',
-    special: '',
     cwtsCompany: '',
   };
 
-  const scheduleSY = (row) => {
-    const value = row.ms2_schedule || row.ms1_schedule || '';
-    const parts = value.split('_');
-    return parts.length >= 3 ? parts.slice(2).join('_') : '';
+  const cycleSchoolYears = (row, level = '') => {
+    if (String(level) === '1') {
+      return [String(row.ms1_school_year || '').trim()].filter(Boolean);
+    }
+
+    if (String(level) === '2') {
+      return [String(row.ms2_school_year || '').trim()].filter(Boolean);
+    }
+
+    return [...new Set([
+      String(row.ms1_school_year || '').trim(),
+      String(row.ms2_school_year || '').trim(),
+    ].filter(Boolean))];
   };
 
-  const years = [...new Set(rows.map(scheduleSY).filter(Boolean))]
-    .sort()
-    .reverse();
+  function scheduleYearsForLevel(level = '') {
+    return [...new Set([
+      ...rows
+        .flatMap((row) => cycleSchoolYears(row, level)),
+      ...schedules
+        .filter((item) => !level || String(item.ms_level || '') === String(level))
+        .map((item) => String(item.year || '').trim())
+        .filter(Boolean),
+    ])].sort().reverse();
+  }
 
   window.__openSerialCertificateSettings = () => {
     openSettings();
@@ -125,6 +155,45 @@ async function renderAdminSerial(content, program) {
 
   function isSpecialUnitRow(row) {
     return Boolean(row.special_unit) || isAdvanceRow(row);
+  }
+
+  function matchesRotcBattalion(row, battalion) {
+    if (!battalion) {
+      return true;
+    }
+
+    if (battalion === ROTC_ADVANCE_BATTALION) {
+      return isAdvanceRow(row);
+    }
+
+    if (battalion === ROTC_SPECIAL_BATTALION) {
+      return Boolean(row.special_unit) && !isAdvanceRow(row);
+    }
+
+    return String(row.battalion || '') === battalion;
+  }
+
+  function matchesRotcCompany(row, company, battalion = state.battalion) {
+    if (!company) {
+      return true;
+    }
+
+    if (battalion === ROTC_SPECIAL_BATTALION) {
+      return String(row.special_unit || '') === company;
+    }
+
+    if (battalion === ROTC_ADVANCE_BATTALION) {
+      const sex = String(row.sex || '').trim().toLowerCase();
+      if (company === 'Male') {
+        return sex === 'male';
+      }
+      if (company === 'Female') {
+        return sex === 'female';
+      }
+      return false;
+    }
+
+    return String(row.rotc_company || '') === company;
   }
 
   function filtered() {
@@ -152,7 +221,7 @@ async function renderAdminSerial(content, program) {
         return false;
       }
 
-      if (state.sy && scheduleSY(row) !== state.sy) {
+      if (state.sy && !cycleSchoolYears(row, state.level).includes(state.sy)) {
         return false;
       }
 
@@ -164,24 +233,16 @@ async function renderAdminSerial(content, program) {
         return false;
       }
 
-      if (program === 'rotc' && state.special) {
-        if (state.special === 'Advance Course' && !isAdvanceRow(row)) {
+      if (program === 'rotc') {
+        if (!matchesRotcBattalion(row, state.battalion)) {
           return false;
         }
 
-        if (state.special !== 'Advance Course' && String(row.special_unit || '') !== state.special) {
-          return false;
-        }
-      } else if (program === 'rotc') {
-        if (state.battalion && String(row.battalion || '') !== state.battalion) {
+        if (!matchesRotcCompany(row, state.company)) {
           return false;
         }
 
-        if (state.company && String(row.rotc_company || '') !== state.company) {
-          return false;
-        }
-
-        if (state.platoon) {
+        if (state.platoon && state.battalion !== ROTC_SPECIAL_BATTALION && state.battalion !== ROTC_ADVANCE_BATTALION) {
           const platoonValue = String(row.rotc_platoon || row.platoon || '');
           if (platoonValue !== state.platoon) {
             return false;
@@ -215,28 +276,20 @@ async function renderAdminSerial(content, program) {
     const nextState = { ...state, ...overrides };
 
     return rows.filter((row) => {
-      if (program === 'rotc' && nextState.special) {
-        if (nextState.special === 'Advance Course' && !isAdvanceRow(row)) {
+      if (program === 'rotc') {
+        if (!nextState.battalion && isSpecialUnitRow(row)) {
           return false;
         }
 
-        if (nextState.special !== 'Advance Course' && String(row.special_unit || '') !== nextState.special) {
-          return false;
-        }
-      } else if (program === 'rotc') {
-        if (isSpecialUnitRow(row)) {
+        if (!matchesRotcBattalion(row, nextState.battalion)) {
           return false;
         }
 
-        if (nextState.battalion && String(row.battalion || '') !== nextState.battalion) {
+        if (!matchesRotcCompany(row, nextState.company, nextState.battalion)) {
           return false;
         }
 
-        if (nextState.company && String(row.rotc_company || '') !== nextState.company) {
-          return false;
-        }
-
-        if (nextState.platoon) {
+        if (nextState.platoon && nextState.battalion !== ROTC_SPECIAL_BATTALION && nextState.battalion !== ROTC_ADVANCE_BATTALION) {
           const platoonValue = String(row.rotc_platoon || row.platoon || '');
           if (platoonValue !== nextState.platoon) {
             return false;
@@ -255,28 +308,49 @@ async function renderAdminSerial(content, program) {
   function filterOptions() {
     const regularRotcRows = rows.filter((row) => !isSpecialUnitRow(row));
     const storedBattalions = uniqueSorted(regularRotcRows.map((row) => row.battalion), 'number');
-    const battalions = uniqueSorted([
+    const battalions = [
+      ...uniqueSorted([
       ...storedBattalions,
       ...Object.keys(ROTC_BATTALION_COMPANIES),
-    ], 'number');
+      ], 'number'),
+      ROTC_SPECIAL_BATTALION,
+      ROTC_ADVANCE_BATTALION,
+    ];
     let rotcCompanies = [];
     let rotcPlatoons = [];
 
     if (program === 'rotc') {
-      if (state.special) {
-        rotcCompanies = [];
-        rotcPlatoons = [];
-      } else {
-        const battalionCompanies = state.battalion
-          ? (ROTC_BATTALION_COMPANIES[state.battalion] || [])
-          : uniqueSorted(Object.values(ROTC_BATTALION_COMPANIES).flat());
-
+      if (state.battalion === ROTC_SPECIAL_BATTALION) {
+        const dataCompanies = uniqueSorted(
+          matchingRows({ company: '', platoon: '' }).map((row) => row.special_unit)
+        );
+        rotcCompanies = uniqueSorted([...ROTC_SPECIAL_UNITS, ...dataCompanies]);
+      } else if (state.battalion === ROTC_ADVANCE_BATTALION) {
+        const dataGroups = uniqueSorted(
+          matchingRows({ company: '', platoon: '' })
+            .map((row) => String(row.sex || '').trim())
+            .map((value) => (value ? `${value.charAt(0).toUpperCase()}${value.slice(1).toLowerCase()}` : ''))
+        );
+        rotcCompanies = uniqueSorted([...ROTC_ADVANCE_GROUPS, ...dataGroups]);
+      } else if (state.battalion) {
+        const battalionCompanies = ROTC_BATTALION_COMPANIES[state.battalion] || [];
         const dataCompanies = uniqueSorted(
           matchingRows({ company: '', platoon: '' }).map((row) => row.rotc_company)
         );
 
         rotcCompanies = uniqueSorted([...battalionCompanies, ...dataCompanies]);
+      } else {
+        const battalionCompanies = state.battalion
+          ? []
+          : uniqueSorted(Object.values(ROTC_BATTALION_COMPANIES).flat());
+        const dataCompanies = uniqueSorted(
+          matchingRows({ company: '', platoon: '' }).map((row) => row.rotc_company)
+        );
 
+        rotcCompanies = uniqueSorted([...battalionCompanies, ...dataCompanies]);
+      }
+
+      if (state.battalion !== ROTC_SPECIAL_BATTALION && state.battalion !== ROTC_ADVANCE_BATTALION) {
         const dataPlatoons = uniqueSorted(
           matchingRows({ platoon: '' }).map((row) => row.rotc_platoon || row.platoon),
           'number'
@@ -396,28 +470,23 @@ async function renderAdminSerial(content, program) {
           </select>
           <select id="serialSY">
             <option value="">All School Years</option>
-            ${years.map((year) => `<option>${esc(year)}</option>`).join('')}
+            ${scheduleYearsForLevel(state.level).map((year) => `<option>${esc(year)}</option>`).join('')}
           </select>
           ${program === 'rotc'
             ? `<select id="serialBattalion">
                 <option value="">All Battalions</option>
-                ${options.battalions.map((value) => `<option value="${esc(value)}">Battalion ${esc(value)}</option>`).join('')}
+                ${options.battalions.map((value) => `<option value="${esc(value)}">${value === ROTC_SPECIAL_BATTALION ? 'Special Platoon' : value === ROTC_ADVANCE_BATTALION ? 'Advance Course' : `Battalion ${esc(value)}`}</option>`).join('')}
               </select>
               <select id="serialCompany">
-                <option value="">All Companies</option>
-                ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
+                <option value="">${state.battalion === ROTC_SPECIAL_BATTALION ? 'All Special Units' : state.battalion === ROTC_ADVANCE_BATTALION ? 'All Groups' : 'All Companies'}</option>
+                ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">${state.battalion === ROTC_SPECIAL_BATTALION ? esc(value) : state.battalion === ROTC_ADVANCE_BATTALION ? esc(value) : `Company ${esc(value)}`}</option>`).join('')}
               </select>
-              <select id="serialPlatoon">
-                <option value="">All Platoons</option>
-                ${options.rotcPlatoons.map((value) => `<option value="${esc(value)}">Platoon ${esc(value)}</option>`).join('')}
-              </select>
-              <select id="serialSpecial">
-                <option value="">All Special Assignments</option>
-                <option value="Advance Course">Advance Course</option>
-                <option value="HQ">HQ</option>
-                <option value="Medics">Medics</option>
-                <option value="MP">MP</option>
-              </select>`
+              ${state.battalion === ROTC_SPECIAL_BATTALION || state.battalion === ROTC_ADVANCE_BATTALION
+                ? ''
+                : `<select id="serialPlatoon">
+                    <option value="">All Platoons</option>
+                    ${options.rotcPlatoons.map((value) => `<option value="${esc(value)}">Platoon ${esc(value)}</option>`).join('')}
+                  </select>`}`
             : `<select id="serialCwtsCompany">
                 <option value="">All Companies</option>
                 ${options.cwtsCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
@@ -454,6 +523,10 @@ async function renderAdminSerial(content, program) {
     $('#serialElig').value = state.elig;
     $('#serialLevel').value = state.level;
     $('#serialSY').value = state.sy;
+    if (state.sy && !scheduleYearsForLevel(state.level).includes(state.sy)) {
+      state.sy = '';
+      $('#serialSY').value = '';
+    }
 
     if ($('#serialBattalion')) {
       $('#serialBattalion').value = state.battalion;
@@ -465,10 +538,6 @@ async function renderAdminSerial(content, program) {
 
     if ($('#serialPlatoon')) {
       $('#serialPlatoon').value = state.platoon;
-    }
-
-    if ($('#serialSpecial')) {
-      $('#serialSpecial').value = state.special;
     }
 
     if ($('#serialCwtsCompany')) {
@@ -485,6 +554,9 @@ async function renderAdminSerial(content, program) {
     };
     $('#serialLevel').onchange = (event) => {
       state.level = event.target.value;
+      if (state.sy && !scheduleYearsForLevel(state.level).includes(state.sy)) {
+        state.sy = '';
+      }
       draw();
     };
     $('#serialSY').onchange = (event) => {
@@ -496,9 +568,8 @@ async function renderAdminSerial(content, program) {
       $('#serialBattalion').onchange = (event) => {
         state.battalion = event.target.value;
         state.company = '';
-        state.platoon = '';
-        if (state.battalion) {
-          state.special = '';
+        if (state.battalion === ROTC_SPECIAL_BATTALION || state.battalion === ROTC_ADVANCE_BATTALION) {
+          state.platoon = '';
         }
         draw();
       };
@@ -508,9 +579,6 @@ async function renderAdminSerial(content, program) {
       $('#serialCompany').onchange = (event) => {
         state.company = event.target.value;
         state.platoon = '';
-        if (state.company) {
-          state.special = '';
-        }
         draw();
       };
     }
@@ -518,21 +586,6 @@ async function renderAdminSerial(content, program) {
     if ($('#serialPlatoon')) {
       $('#serialPlatoon').onchange = (event) => {
         state.platoon = event.target.value;
-        if (state.platoon) {
-          state.special = '';
-        }
-        draw();
-      };
-    }
-
-    if ($('#serialSpecial')) {
-      $('#serialSpecial').onchange = (event) => {
-        state.special = event.target.value;
-        if (state.special) {
-          state.battalion = '';
-          state.company = '';
-          state.platoon = '';
-        }
         draw();
       };
     }
