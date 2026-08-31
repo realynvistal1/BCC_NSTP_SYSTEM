@@ -53,6 +53,34 @@ function xmlSafe(value = '') {
     .replace(/"/g, '&quot;');
 }
 
+function courseCode(course) {
+  const value = String(course || '').trim();
+  const upper = value.toUpperCase();
+  const known = {
+    'BS INFORMATION TECHNOLOGY': 'BSIT',
+    'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY': 'BSIT',
+    BEED: 'BEED',
+    'BEED - BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    'BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    BSHM: 'BSHM',
+    'BS HOSPITALITY MANAGEMENT': 'BSHM',
+    'BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT': 'BSHM',
+    BSED: 'BSED',
+    'BSED - MAJOR IN ENGLISH': 'BSED',
+    'BSED - MAJOR IN MATHEMATICS': 'BSED',
+    'BACHELOR OF SECONDARY EDUCATION': 'BSED',
+    'BS TOURISM MANAGEMENT': 'BSTM',
+    'BACHELOR OF SCIENCE IN TOURISM MANAGEMENT': 'BSTM',
+    'BS CRIMINOLOGY': 'BSCRIM',
+    'BACHELOR OF SCIENCE IN CRIMINOLOGY': 'BSCRIM',
+  };
+
+  if (known[upper]) return known[upper];
+
+  const letters = upper.match(/\b[A-Z]/g);
+  return letters && letters.length >= 2 ? letters.join('') : value;
+}
+
 function downloadRecordsExcel(rows, program, level, schoolYear) {
   const prefix = program === 'CWTS' ? 'CWTS' : 'MS';
   const headers = [
@@ -73,31 +101,6 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
     'FINAL',
     'AVERAGE',
   ];
-  const lastColumnIndex = headers.length - 1;
-  const data = rows.map((row, index) => [
-    index + 1,
-    row.last_name,
-    row.first_name,
-    row.middle_name || '',
-    row.suffix || 'N/A',
-    row.course,
-    program === 'ROTC'
-      ? (Number(row.willing_to_take_advance_course)
-        ? 'Advance Course'
-        : row.special_unit || row.rotc_company || '-')
-      : row.company || '-',
-    program === 'ROTC' ? (row.rotc_platoon || '-') : '-',
-    row.student_id,
-    row.birthdate || '-',
-    row.sex || '-',
-    [row.permanent_barangay, row.permanent_municipality, row.permanent_province]
-      .filter(Boolean)
-      .join(', ') || '-',
-    `${prefix} ${row.ms_level}`,
-    row.midterm ?? '-',
-    row.final_term ?? '-',
-    row.grade ?? '-',
-  ]);
   const makeCell = (value, options = {}) => {
     const {
       style = 'Cell',
@@ -107,25 +110,6 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
     const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
     return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="${type}">${xmlSafe(value)}</Data></Cell>`;
   };
-
-  const emptyCells = (count) => new Array(Math.max(count, 0)).fill('<Cell/>').join('');
-  const centerSpan = 4;
-  const rightStart = 12;
-  const rightSpan = 3;
-
-  const topRows = [
-    `<Row ss:Height="22">${makeCell('Region: VII', { style: 'MetaLabel', mergeAcross: 2 })}${emptyCells(2)}${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: centerSpan })}${emptyCells(rightStart - (4 + 1 + centerSpan))}${makeCell(`School Year: SY ${schoolYear || 'All'}`, { style: 'MetaLabel', mergeAcross: rightSpan })}</Row>`,
-    `<Row ss:Height="19">${makeCell(`NSTP Component: ${program}`, { style: 'MetaLabel', mergeAcross: 2 })}${emptyCells(2)}${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: centerSpan })}${emptyCells(rightStart - (4 + 1 + centerSpan))}${makeCell(`${prefix} Level: ${level ? `${prefix} ${level}` : 'All'}`, { style: 'MetaLabel', mergeAcross: rightSpan })}</Row>`,
-    '<Row ss:Height="10"></Row>',
-    `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
-  ].join('');
-
-  const bodyRows = data.map((row) => `
-    <Row ss:Height="21">${row.map((value, index) => {
-      const style = index === 0 ? 'CenterCell' : 'Cell';
-      return makeCell(value, { style });
-    }).join('')}</Row>
-  `).join('');
 
   const columnWidths = [
     34, 92, 92, 92, 54, 86, 86, 64, 92, 78, 58, 150, 74, 62, 62, 66,
@@ -188,18 +172,65 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
   `;
 
   const worksheetOptions = `<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><Selected/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>4</SplitHorizontal><TopRowBottomPane>4</TopRowBottomPane><ActivePane>2</ActivePane><Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>4</ActiveRow></Pane></Panes><ProtectObjects>False</ProtectObjects><ProtectScenarios>False</ProtectScenarios></WorksheetOptions>`;
+  const levels = level ? [String(level)] : ['1', '2'];
+  const worksheetsXml = levels.map((currentLevel) => {
+    const levelRows = rows
+      .filter((row) => String(row.ms_level) === String(currentLevel))
+      .map((row, index) => [
+        index + 1,
+        row.last_name,
+        row.first_name,
+        row.middle_name || '',
+        row.suffix || 'N/A',
+        courseCode(row.course),
+        program === 'ROTC'
+          ? (Number(row.willing_to_take_advance_course)
+            ? 'Advance Course'
+            : row.special_unit || row.rotc_company || '-')
+          : row.company || '-',
+        program === 'ROTC' ? (row.rotc_platoon || '-') : '-',
+        row.student_id,
+        row.birthdate || '-',
+        row.sex || '-',
+        [row.permanent_barangay, row.permanent_municipality, row.permanent_province]
+          .filter(Boolean)
+          .join(', ') || '-',
+        `${prefix} ${row.ms_level}`,
+        row.midterm ?? '-',
+        row.final_term ?? '-',
+        row.grade ?? '-',
+      ]);
+
+    const topRows = [
+      `<Row ss:Height="20">${makeCell('Region: VII', { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`School Year: SY ${schoolYear || 'All'}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      `<Row ss:Height="18">${makeCell(`NSTP Component: ${program}`, { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`${prefix} Level: ${prefix} ${currentLevel}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      '<Row ss:Height="10"></Row>',
+      `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
+    ].join('');
+
+    const bodyRows = levelRows.map((dataRow) => `
+      <Row ss:Height="21">${dataRow.map((value, index) => {
+        const style = index === 0 ? 'CenterCell' : 'Cell';
+        return makeCell(value, { style });
+      }).join('')}</Row>
+    `).join('');
+
+    return `
+      <Worksheet ss:Name="NSTP ${currentLevel}">
+        <Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${levelRows.length + 4}" x:FullColumns="1" x:FullRows="1">
+          ${columnsXml}
+          ${topRows}
+          ${bodyRows}
+        </Table>
+        ${worksheetOptions}
+      </Worksheet>
+    `;
+  }).join('');
 
   const xml = `<?xml version="1.0"?>
   <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">
     ${stylesXml}
-    <Worksheet ss:Name="Records">
-      <Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${data.length + 4}" x:FullColumns="1" x:FullRows="1">
-        ${columnsXml}
-        ${topRows}
-        ${bodyRows}
-      </Table>
-      ${worksheetOptions}
-    </Worksheet>
+    ${worksheetsXml}
   </Workbook>`;
   const blob = new Blob(['\ufeff', xml], {
     type: 'application/vnd.ms-excel;charset=utf-8',
