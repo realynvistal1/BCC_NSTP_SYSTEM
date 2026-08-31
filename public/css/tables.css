@@ -1,44 +1,45 @@
 ﻿/* Table-specific overrides can be placed here. Main shared styles are in global.css. */
 .offense-filter-row {
   display: grid;
-  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 10px;
   align-items: start;
-  padding: 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
   background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
 }
 .offense-filter-inputs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  gap: 12px;
+  grid-template-columns: minmax(150px, .9fr) minmax(170px, 1fr) minmax(220px, 1.3fr) auto;
+  gap: 10px;
   align-items: center;
+  width: 100%;
 }
 .offense-filter-row input {
   width: 100%;
   min-width: 0;
-  min-height: 46px;
-  padding: 0 16px;
-  border-radius: 14px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 12px;
+  font-size: 13px;
   border: 1px solid #d7dfeb;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
 }
 .offense-filter-row select {
   width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
-  border-radius: 14px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
   border: 1px solid #d7dfeb;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
 }
 .offense-filter-row .status-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   border-radius: 0;
   background: transparent;
@@ -46,67 +47,102 @@
   align-items: center;
 }
 .offense-tabs .status-tab {
-  min-height: 46px;
-  min-width: 118px;
-  padding: 10px 14px;
-  border-radius: 18px;
-  font-size: 13px;
+  min-height: 38px;
+  min-width: 78px;
+  padding: 7px 12px;
+  border-radius: 14px;
+  font-size: 12px;
   font-weight: 800;
   color: #4f6484;
   background: #edf4ff;
   border: 1px solid #dbe7fb;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, .08);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, .07);
   transition: background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: center;
   flex: 0 0 auto;
 }
-.offense-tabs .status-tab span,
-.offense-tabs .status-tab b {
-  display: inline-block;
-  text-align: left;
-}
 .offense-tabs .status-tab span {
-  line-height: 1.15;
-}
-.offense-tabs .status-tab b {
-  margin-top: 0;
-  min-width: 22px;
-  font-size: 12px;
-  letter-spacing: .02em;
+  line-height: 1.1;
 }
 .offense-tabs .status-tab.active {
   background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, .24);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
 }
 .offense-tabs .status-tab:not(.active):hover {
   background: #fff;
   color: #1d4ed8;
   transform: translateY(-1px);
 }
+.offense-filter-row .clear-filter-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .offense-row-alert {
   background: #fff5f5
 }
 .offense-stat-card {
-  min-height: 120px;
+  min-height: 82px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 14px 16px !important;
 }
 .offense-stat-card .dash-label {
   letter-spacing: .08em;
+  font-size: 10px;
 }
 .offense-stat-card .value {
-  font-size: 42px;
-  line-height: 1;
+  font-size: 26px;
+  line-height: 1.05;
 }
 .offense-stat-card .stat-note {
-  font-size: 13px;
+  font-size: 11px;
   color: #6b7280;
+}
+.summary-grid#offenseStats {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.summary-grid#offenseStats .stat-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .05);
+}
+.panel:has(.offense-filter-row) {
+  padding: 0;
+  overflow: hidden;
+}
+.panel:has(.offense-filter-row) .table-wrap {
+  margin: 0;
+}
+.panel:has(.offense-filter-row) .data-table th {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  font-size: 11px;
+}
+.panel:has(.offense-filter-row) .data-table td {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  font-size: 13px;
+}
+.panel:has(.offense-filter-row) .data-table td .badge {
+  font-size: 11px;
+  padding: 6px 10px;
+}
+.panel:has(.offense-filter-row) .btn.small {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.panel:has(.offense-filter-row) .table-footer {
+  padding: 8px 16px 14px;
+  font-size: 12px;
 }
 .offense-detail-card {
   display: flex;
@@ -221,7 +257,7 @@
   }
   .offense-filter-row {
     grid-template-columns: 1fr;
-    padding: 16px;
+    padding: 14px;
   }
   .offense-filter-row>* {
     width: 100%;
