@@ -225,9 +225,20 @@ async function renderAdminRecords(_program, content) {
   const apiProgram = 'cwts';
   const prefix = 'CWTS';
   const rows = await API.get(`/api/admin/${apiProgram}/records`);
-  const years = [...new Set(rows.map((row) => row.school_year).filter(Boolean))]
-    .sort()
-    .reverse();
+  const schedules = await API.get(`/api/admin/${apiProgram}/enrollment-schedule`);
+
+  function schoolYearsForLevel(level = '') {
+    return [...new Set([
+      ...rows
+        .filter((row) => !level || String(row.ms_level) === String(level))
+        .map((row) => String(row.school_year || '').trim())
+        .filter(Boolean),
+      ...schedules
+        .filter((schedule) => !level || String(schedule.ms_level || '') === String(level))
+        .map((schedule) => String(schedule.year || '').trim())
+        .filter(Boolean),
+    ])].sort().reverse();
+  }
 
   content.innerHTML = `
     <section class="records-tools">
@@ -242,7 +253,7 @@ async function renderAdminRecords(_program, content) {
       </select>
       <select id="recordSY">
         <option value="">All SY</option>
-        ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
+        ${schoolYearsForLevel().map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
       </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
       <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
@@ -293,6 +304,14 @@ async function renderAdminRecords(_program, content) {
   }
 
   function draw() {
+    const level = $('#recordLevel').value;
+    const currentYear = $('#recordSY').value;
+    const years = schoolYearsForLevel(level);
+    $('#recordSY').innerHTML = `<option value="">All SY</option>${years.map((year) => `<option value="${esc(year)}"${currentYear === year ? ' selected' : ''}>SY ${esc(year)}</option>`).join('')}`;
+    if (currentYear && !years.includes(currentYear)) {
+      $('#recordSY').value = '';
+    }
+
     const data = filtered();
 
     $('#recordRows').innerHTML = data.length
