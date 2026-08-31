@@ -537,17 +537,16 @@ async function renderEnrollmentList(p,c){
   const rows=await API.get(`/api/admin/${p}/enrollments`);
   const schedules=await API.get(`/api/admin/${p}/enrollment-schedule`);
   const program=p.toUpperCase(),prefix=p==='cwts'?'CWTS':'MS';
-  const scheduleMap={
-  }
-  ;
-  schedules.forEach(s=>scheduleMap[`${s.ms_level}|${s.year}`]=s);
-  rows.forEach(x=>{let y='';const sid=String(x.schedule_id||'');const parts=sid.split('_');if(parts.length>=3)y=parts.slice(2).join('_');if(!y){const t=new Date(x.created_at).getTime();const candidates=schedules.filter(s=>String(s.ms_level)===String(x.ms_level));const hit=candidates.find(s=>t>=new Date(s.open_date).getTime()&&t<=new Date(s.deadline).getTime());y=hit?.year||candidates[0]?.year||''}x.school_year=y});
-  const schoolYears=[...new Set(rows.map(x=>x.school_year).filter(Boolean))].sort().reverse();
+  rows.forEach(x=>{x.school_year=String(x.school_year||'').trim()});
+  const schoolYears=[...new Set([
+    ...rows.map(x=>x.school_year).filter(Boolean),
+    ...schedules.map(x=>String(x.year||'').trim()).filter(Boolean)
+  ])].sort().reverse();
   const counts={
     all:rows.length,pending:rows.filter(x=>x.status==='pending').length,approved:rows.filter(x=>x.status==='approved').length,rejected:rows.filter(x=>x.status==='rejected').length
   }
   ;
-  c.innerHTML=`<section class="page-intro-banner ${p}"><div><div class="intro-kicker">${program} Administration</div><h2>Enrollment List</h2><p>View and manage all ${program} enrollments.</p></div><div class="intro-total"><strong>${rows.length}</strong><span>Total Enrollments</span></div></section><section class="enrollment-controls-panel"><div class="enrollment-search-row"><div class="search-box-panel">${icon('records')}<input id="enrollmentSearch" placeholder="Search by name, Student ID, or email..."></div><div class="status-tabs">${['all','pending','approved','rejected'].map(k=>`<button class="status-tab ${k==='all'?'active':''}" data-status="${k}">${
+  c.innerHTML=`<section class="page-intro-banner ${p}"><div><div class="intro-kicker">${program} Administration</div><h2>Enrollment List</h2><p>View and manage all ${program} enrollments.</p></div><div class="intro-total"><strong id="enrollmentTotalValue">${rows.length}</strong><span id="enrollmentTotalLabel">Total Enrollments</span></div></section><section class="enrollment-controls-panel"><div class="enrollment-search-row"><div class="search-box-panel">${icon('records')}<input id="enrollmentSearch" placeholder="Search by name, Student ID, or email..."></div><div class="status-tabs">${['all','pending','approved','rejected'].map(k=>`<button class="status-tab ${k==='all'?'active':''}" data-status="${k}">${
     k[0].toUpperCase()+k.slice(1)
   }
   <span>${
@@ -564,16 +563,70 @@ async function renderEnrollmentList(p,c){
   }
   </option>`).join('')}</select><select id="filterMedical"><option value="">Medical: All</option><option value="yes">With Medical Condition</option><option value="no">No Medical Condition</option></select>${p==='rotc'?`<select id="filterPreference"><option value="">All Preferences</option><option value="medics">Medics</option><option value="mp">MP</option><option value="advance">Advance Course</option></select>`:''}<button class="clear-filter-btn" id="clearFilters">Clear Filters</button></div></section><div class="bulk-action-row"><div id="filterResultText">Showing ${rows.length} enrollment${rows.length===1?'':'s'}</div><div class="actions"><button class="btn danger" id="rejectAllPending">Reject All Pending (<span id="bulkRejectCount">${counts.pending}</span>)</button><button class="btn success" id="approveAllPending">Approve All Pending (<span id="bulkCount">${counts.pending}</span>)</button></div></div><section class="enrollment-table-card"><div class="table-scroll"><table class="data-table enrollment-data-table"><thead><tr><th>Student</th><th>Student ID</th><th>Course & Year</th><th>${p==='cwts'?'CWTS Level':'MS Level'}</th><th>SY</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody id="enrollmentRows"></tbody></table></div><div id="enrollmentEmpty" class="empty-state-card hidden">${icon('enrollment')}<strong>No enrollments found</strong><span>Try adjusting your search or filters.</span></div></section><div id="modalMount"></div>`;
   let activeStatus='all';
-  function getFiltered(){
-    const q=$('#enrollmentSearch').value.toLowerCase().trim(),lvl=$('#filterLevel').value,sy=$('#filterSY').value,yr=$('#filterYear').value,course=$('#filterCourse').value,med=$('#filterMedical').value,pref=p==='rotc'?$('#filterPreference').value:'';
-    return rows.filter(x=>{if(activeStatus!=='all'&&x.status!==activeStatus)return false;if(lvl&&String(x.ms_level)!==lvl)return false;if(sy&&x.school_year!==sy)return false;if(yr&&x.year_level!==yr)return false;if(course&&x.course!==course)return false;if(med==='yes'&&Number(x.has_medical_condition||0)!==1)return false;if(med==='no'&&Number(x.has_medical_condition||0)===1)return false;if(pref==='medics'&&Number(x.willing_to_be_medics||0)!==1)return false;if(pref==='mp'&&Number(x.willing_to_be_military_police||0)!==1)return false;if(pref==='advance'&&Number(x.willing_to_take_advance_course||0)!==1)return false;if(q&&!`${x.first_name} ${x.last_name} ${x.student_id} ${x.email} ${x.course} ${x.year_level}`.toLowerCase().includes(q))return false;return true})
+  function filterValues(overrides={}){
+    return {
+      q:$('#enrollmentSearch').value.toLowerCase().trim(),
+      lvl:$('#filterLevel').value,
+      sy:$('#filterSY').value,
+      yr:$('#filterYear').value,
+      course:$('#filterCourse').value,
+      med:$('#filterMedical').value,
+      pref:p==='rotc'?$('#filterPreference').value:'',
+      ...overrides
+    };
+  }
+  function matchesFilters(x,includeStatus=true,overrides={}){
+    const { q,lvl,sy,yr,course,med,pref }=filterValues(overrides);
+    if(includeStatus&&activeStatus!=='all'&&x.status!==activeStatus)return false;
+    if(lvl&&String(x.ms_level)!==lvl)return false;
+    if(sy&&String(x.school_year||'')!==sy)return false;
+    if(yr&&x.year_level!==yr)return false;
+    if(course&&x.course!==course)return false;
+    if(med==='yes'&&Number(x.has_medical_condition||0)!==1)return false;
+    if(med==='no'&&Number(x.has_medical_condition||0)===1)return false;
+    if(pref==='medics'&&Number(x.willing_to_be_medics||0)!==1)return false;
+    if(pref==='mp'&&Number(x.willing_to_be_military_police||0)!==1)return false;
+    if(pref==='advance'&&Number(x.willing_to_take_advance_course||0)!==1)return false;
+    if(q&&!`${x.first_name} ${x.last_name} ${x.student_id} ${x.email} ${x.course} ${x.year_level}`.toLowerCase().includes(q))return false;
+    return true;
+  }
+  function getFiltered(includeStatus=true,overrides={}){
+    return rows.filter(x=>matchesFilters(x,includeStatus,overrides))
+  }
+  function refreshSchoolYearOptions(){
+    const select=$('#filterSY');
+    const current=select.value;
+    const values=filterValues({sy:''});
+    const rowYears=[...new Set(getFiltered(false,{...values,sy:''}).map(x=>String(x.school_year||'').trim()).filter(Boolean))];
+    const scheduleYears=[...new Set(schedules.filter(x=>{
+      if(values.lvl&&String(x.ms_level)!==values.lvl)return false;
+      return true;
+    }).map(x=>String(x.year||'').trim()).filter(Boolean))];
+    const nextYears=[...new Set([...rowYears,...scheduleYears])].sort().reverse();
+    select.innerHTML=`<option value="">All School Years</option>${nextYears.map(y=>`<option value="${esc(y)}"${current===y?' selected':''}>SY ${esc(y)}</option>`).join('')}`;
+    if(current&&!nextYears.includes(current))select.value='';
   }
   function draw(){
+    refreshSchoolYearOptions();
     const f=getFiltered();
+    const base=getFiltered(false);
+    const visibleCounts={
+      all:base.length,
+      pending:base.filter(x=>x.status==='pending').length,
+      approved:base.filter(x=>x.status==='approved').length,
+      rejected:base.filter(x=>x.status==='rejected').length
+    };
     $('#enrollmentRows').innerHTML=f.map(x=>enrollmentRow(x,p)).join('');
     $('#enrollmentEmpty').classList.toggle('hidden',f.length!==0);
     $('.enrollment-data-table').classList.toggle('hidden',f.length===0);
     $('#filterResultText').textContent=`Showing ${f.length} of ${rows.length} enrollment${rows.length===1?'':'s'}`;
+    $('#enrollmentTotalValue').textContent=String(f.length);
+    $('#enrollmentTotalLabel').textContent=activeStatus==='all'?'Shown Enrollments':`${activeStatus[0].toUpperCase()+activeStatus.slice(1)} Enrollments`;
+    document.querySelectorAll('.status-tab').forEach((button)=>{
+      const key=button.dataset.status;
+      const countNode=button.querySelector('span');
+      if(countNode)countNode.textContent=visibleCounts[key] ?? 0;
+    });
     const pending=f.filter(x=>x.status==='pending');
     $('#bulkCount').textContent=pending.length;
     $('#bulkRejectCount').textContent=pending.length;
