@@ -25,9 +25,8 @@ function offenseLevel(row) {
 
 function offenseTabLabel(label, count, active = false) {
   return `
-    <button class="status-tab ${active ? 'active' : ''}" data-filter="${label === 'All' ? '' : label === 'Warning' ? 'warning' : 'settlement'}">
+    <button class="status-tab ${active ? 'active' : ''}" data-filter="${label === 'All' ? '' : label === 'Warning' ? 'warning' : 'settlement'}" title="${label}: ${count}">
       <span>${label}</span>
-      <b>${count}</b>
     </button>
   `;
 }
@@ -60,7 +59,6 @@ async function renderAdminOffenses(_program, content, auth) {
     <section class="summary-grid three" id="offenseStats"></section>
     <section class="panel">
       <div class="offense-filter-row">
-        <div class="status-tabs offense-tabs" id="offenseTabs"></div>
         <div class="offense-filter-inputs">
           <select id="offenseLevel">
             <option value="">All ${prefix} Levels</option>
@@ -174,27 +172,21 @@ async function renderAdminOffenses(_program, content, auth) {
       settlement: tabBase.filter((row) => Number(row.offend) >= 2).length,
     };
 
-    $('#offenseTabs').innerHTML = [
-      offenseTabLabel('All', tabCounts.all, type === ''),
-      offenseTabLabel('Warning', tabCounts.warning, type === 'warning'),
-      offenseTabLabel('Settlement', tabCounts.settlement, type === 'settlement'),
-    ].join('');
-
     $('#offenseStats').innerHTML = `
-      <div class="stat-card offense-stat-card">
+      <div class="stat-card offense-stat-card compact">
         <div class="dash-label">Total Records</div>
         <div class="value">${data.length}</div>
-        <div class="stat-note">Current filtered results</div>
+        <div class="stat-note">Filtered results</div>
       </div>
-      <div class="stat-card warning offense-stat-card">
+      <div class="stat-card warning offense-stat-card compact">
         <div class="dash-label">Warning</div>
         <div class="value">${warnings}</div>
-        <div class="stat-note">First attendance offense</div>
+        <div class="stat-note">First offense</div>
       </div>
-      <div class="stat-card danger offense-stat-card">
+      <div class="stat-card danger offense-stat-card compact">
         <div class="dash-label">Need Settlement</div>
         <div class="value">${settlement}</div>
-        <div class="stat-note">Second offense awaiting action</div>
+        <div class="stat-note">Second offense</div>
       </div>
     `;
 
@@ -219,15 +211,6 @@ async function renderAdminOffenses(_program, content, auth) {
 
     $$('[data-view-offense]').forEach((button) => {
       button.onclick = () => openDetail(Number(button.dataset.viewOffense));
-    });
-
-    $$('#offenseTabs .status-tab').forEach((button) => {
-      button.onclick = () => {
-        $$('#offenseTabs .status-tab').forEach((tab) => tab.classList.remove('active'));
-        button.classList.add('active');
-        type = button.dataset.filter;
-        draw();
-      };
     });
   }
 
