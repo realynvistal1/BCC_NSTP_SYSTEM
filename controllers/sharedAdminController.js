@@ -2033,6 +2033,7 @@ exports.attendanceSummary = async (req, res) => {
 
     const rosterGroup = normalizedRosterGroup(group);
     const sessionSchoolYear = String(session.school_year || '').trim();
+    const isAdvanceCourseSession = Number(programCode === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0);
     const params = [
       session.id,
       programCode,
@@ -2040,6 +2041,9 @@ exports.attendanceSummary = async (req, res) => {
       String(session.ms_level || '1'),
       sessionSchoolYear,
       sessionSchoolYear,
+      programCode,
+      isAdvanceCourseSession,
+      isAdvanceCourseSession,
       rosterGroup,
       rosterGroup,
       rosterGroup,
@@ -2064,6 +2068,11 @@ exports.attendanceSummary = async (req, res) => {
            LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
          WHERE smr.student_id=s.id AND smr.program=? AND smr.ms_level=? AND smr.status='approved'
              AND (?='' OR es.year=? OR es.year IS NULL)
+         )
+         AND (
+           ?<>'ROTC'
+           OR (?=1 AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
+           OR (?=0 AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0))
          )
          AND (
            ?='overall'
