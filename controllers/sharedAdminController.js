@@ -12,7 +12,6 @@ const {
   readLevel,
   readSchoolYear,
   readSearchTerm,
-  escapeLikePattern,
   readLimitedText,
 } = require('../services/requestValidationService');
 const uploadValidation = require('../services/uploadValidationService');
@@ -299,7 +298,7 @@ async function approvedRecordRows(programCode, filters = {}) {
     return [];
   }
 
-  const query = `%${escapeLikePattern(search)}%`;
+  const query = `%${String(search || '').replace(/[!%_]/g, '!$&')}%`;
   const params = [
     programCode,
     msLevel,
@@ -338,11 +337,11 @@ async function approvedRecordRows(programCode, filters = {}) {
        AND (?='' OR COALESCE(es.year,'')=?)
        AND (
          ?=''
-         OR s.student_id LIKE ? ESCAPE '\\'
-         OR s.first_name LIKE ? ESCAPE '\\'
-         OR s.middle_name LIKE ? ESCAPE '\\'
-         OR s.last_name LIKE ? ESCAPE '\\'
-         OR s.course LIKE ? ESCAPE '\\'
+         OR s.student_id LIKE ? ESCAPE '!'
+         OR s.first_name LIKE ? ESCAPE '!'
+         OR s.middle_name LIKE ? ESCAPE '!'
+         OR s.last_name LIKE ? ESCAPE '!'
+         OR s.course LIKE ? ESCAPE '!'
        )
      ORDER BY s.last_name,s.first_name,smr.ms_level`,
     params
@@ -508,12 +507,14 @@ exports.enrollments = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT
          smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,
+         COALESCE(es.year,'') school_year,
          s.id,s.student_id,s.last_name,s.first_name,s.middle_name,s.suffix,s.email,s.contact_number,
          s.sex,s.course,s.year_level,s.nstp_component,s.has_medical_condition,s.medical_condition,
          s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
          s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
+       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
        WHERE smr.program=? AND s.role='student'
        ORDER BY smr.created_at DESC`,
       [programCode]
@@ -535,9 +536,11 @@ exports.enrollmentDetail = async (req, res) => {
     }
 
     const [[row]] = await db.execute(
-      `SELECT smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,s.*
+      `SELECT smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,
+              COALESCE(es.year,'') school_year,s.*
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
+       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
        WHERE smr.id=? AND smr.program=? AND s.role='student'
        LIMIT 1`,
       [recordId, programCode]
@@ -1231,11 +1234,14 @@ exports.serials = async (req, res) => {
                 MAX(CASE WHEN g.ms_level='2' THEN g.grade END) AS ms2_grade,
                 MAX(CASE WHEN g.ms_level='2' THEN g.status END) AS ms2_status,
                 MAX(CASE WHEN r.ms_level='1' AND r.status='approved' THEN r.schedule_id END) AS ms1_schedule,
-                MAX(CASE WHEN r.ms_level='2' AND r.status='approved' THEN r.schedule_id END) AS ms2_schedule
+                MAX(CASE WHEN r.ms_level='1' AND r.status='approved' THEN COALESCE(es.year,'') END) AS ms1_school_year,
+                MAX(CASE WHEN r.ms_level='2' AND r.status='approved' THEN r.schedule_id END) AS ms2_schedule,
+                MAX(CASE WHEN r.ms_level='2' AND r.status='approved' THEN COALESCE(es.year,'') END) AS ms2_school_year
          FROM students s
          LEFT JOIN serial_numbers sn ON sn.student_id=s.id AND sn.program=?
          LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=?
          LEFT JOIN student_ms_records r ON r.student_id=s.id AND r.program=?
+         LEFT JOIN enrollment_schedules es ON CAST(r.schedule_id AS UNSIGNED)=es.id
          WHERE s.nstp_component=? AND s.role='student'
            AND ${approvedStudentExistsSql()}
          GROUP BY s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,s.sex,s.company,
@@ -2027,7 +2033,6 @@ exports.attendanceSummary = async (req, res) => {
 
     const rosterGroup = normalizedRosterGroup(group);
     const sessionSchoolYear = String(session.school_year || '').trim();
-    const isAdvanceTrack = programCode === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0;
     const params = [
       session.id,
       programCode,
@@ -2035,8 +2040,7 @@ exports.attendanceSummary = async (req, res) => {
       String(session.ms_level || '1'),
       sessionSchoolYear,
       sessionSchoolYear,
-      programCode,
-      isAdvanceTrack,
+      rosterGroup,
       rosterGroup,
       rosterGroup,
       rosterGroup,
@@ -2058,13 +2062,8 @@ exports.attendanceSummary = async (req, res) => {
            SELECT 1
            FROM student_ms_records smr
            LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-           WHERE smr.student_id=s.id AND smr.program=? AND smr.ms_level=? AND smr.status='approved'
+         WHERE smr.student_id=s.id AND smr.program=? AND smr.ms_level=? AND smr.status='approved'
              AND (?='' OR es.year=? OR es.year IS NULL)
-         )
-         AND (
-           ?<>'ROTC'
-           OR (?=1 AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
-           OR (?=0 AND NOT (s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0))
          )
          AND (
            ?='overall'
