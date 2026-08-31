@@ -23,6 +23,15 @@ function offenseLevel(row) {
     : '<span class="badge warning">Warning</span>';
 }
 
+function offenseTabLabel(label, count, active = false) {
+  return `
+    <button class="status-tab ${active ? 'active' : ''}" data-filter="${label === 'All' ? '' : label === 'Warning' ? 'warning' : 'settlement'}">
+      <span>${label}</span>
+      <b>${count}</b>
+    </button>
+  `;
+}
+
 async function renderAdminOffenses(_program, content, auth) {
   const program = 'ROTC';
   const apiProgram = 'rotc';
@@ -51,21 +60,20 @@ async function renderAdminOffenses(_program, content, auth) {
     <section class="summary-grid three" id="offenseStats"></section>
     <section class="panel">
       <div class="offense-filter-row">
-        <div class="status-tabs" id="offenseTabs">
-          <button class="status-tab active" data-filter="">All</button>
-          <button class="status-tab" data-filter="warning">Warning</button>
-          <button class="status-tab" data-filter="settlement">Not following instructions</button>
+        <div class="status-tabs offense-tabs" id="offenseTabs"></div>
+        <div class="offense-filter-inputs">
+          <select id="offenseLevel">
+            <option value="">All ${prefix} Levels</option>
+            <option value="1">${prefix} 1</option>
+            <option value="2">${prefix} 2</option>
+          </select>
+          <select id="offenseSY">
+            <option value="">All School Years</option>
+            ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
+          </select>
+          <input id="offenseSearch" type="search" placeholder="Search by name, student ID, or course...">
+          <button class="clear-filter-btn" id="clearOffenseFilters" type="button">Clear Filters</button>
         </div>
-        <select id="offenseLevel">
-          <option value="">All ${prefix} Levels</option>
-          <option value="1">${prefix} 1</option>
-          <option value="2">${prefix} 2</option>
-        </select>
-        <select id="offenseSY">
-          <option value="">All School Years</option>
-          ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
-        </select>
-        <input id="offenseSearch" type="search" placeholder="Search by name, student ID, or course...">
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -136,19 +144,57 @@ async function renderAdminOffenses(_program, content, auth) {
     const settlement = data.filter(
       (row) => Number(row.offend) >= 2 && !Number(row.settled)
     ).length;
+    const tabBase = rows.filter((row) => {
+      const query = $('#offenseSearch').value.trim().toLowerCase();
+      const level = $('#offenseLevel').value;
+      const schoolYear = $('#offenseSY').value;
+
+      if (level && String(row.ms_level || '') !== level) {
+        return false;
+      }
+
+      if (schoolYear && String(row.school_year || '') !== schoolYear) {
+        return false;
+      }
+
+      if (
+        query
+        && !`${offenseName(row)} ${row.student_no || ''} ${row.course || ''}`
+          .toLowerCase()
+          .includes(query)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+    const tabCounts = {
+      all: tabBase.length,
+      warning: tabBase.filter((row) => Number(row.offend) === 1).length,
+      settlement: tabBase.filter((row) => Number(row.offend) >= 2).length,
+    };
+
+    $('#offenseTabs').innerHTML = [
+      offenseTabLabel('All', tabCounts.all, type === ''),
+      offenseTabLabel('Warning', tabCounts.warning, type === 'warning'),
+      offenseTabLabel('Settlement', tabCounts.settlement, type === 'settlement'),
+    ].join('');
 
     $('#offenseStats').innerHTML = `
-      <div class="stat-card">
-        <div class="dash-label">Total</div>
+      <div class="stat-card offense-stat-card">
+        <div class="dash-label">Total Records</div>
         <div class="value">${data.length}</div>
+        <div class="stat-note">Current filtered results</div>
       </div>
-      <div class="stat-card warning">
+      <div class="stat-card warning offense-stat-card">
         <div class="dash-label">Warning</div>
         <div class="value">${warnings}</div>
+        <div class="stat-note">First attendance offense</div>
       </div>
-      <div class="stat-card danger">
+      <div class="stat-card danger offense-stat-card">
         <div class="dash-label">Need Settlement</div>
         <div class="value">${settlement}</div>
+        <div class="stat-note">Second offense awaiting action</div>
       </div>
     `;
 
@@ -173,6 +219,15 @@ async function renderAdminOffenses(_program, content, auth) {
 
     $$('[data-view-offense]').forEach((button) => {
       button.onclick = () => openDetail(Number(button.dataset.viewOffense));
+    });
+
+    $$('#offenseTabs .status-tab').forEach((button) => {
+      button.onclick = () => {
+        $$('#offenseTabs .status-tab').forEach((tab) => tab.classList.remove('active'));
+        button.classList.add('active');
+        type = button.dataset.filter;
+        draw();
+      };
     });
   }
 
@@ -256,18 +311,16 @@ async function renderAdminOffenses(_program, content, auth) {
     }
   }
 
-  $$('#offenseTabs .status-tab').forEach((button) => {
-    button.onclick = () => {
-      $$('#offenseTabs .status-tab').forEach((tab) => tab.classList.remove('active'));
-      button.classList.add('active');
-      type = button.dataset.filter;
-      draw();
-    };
-  });
-
   $('#offenseLevel').onchange = draw;
   $('#offenseSY').onchange = draw;
   $('#offenseSearch').oninput = draw;
+  $('#clearOffenseFilters').onclick = () => {
+    type = '';
+    $('#offenseLevel').value = '';
+    $('#offenseSY').value = '';
+    $('#offenseSearch').value = '';
+    draw();
+  };
 
   draw();
 }
