@@ -792,10 +792,22 @@
 }
 .attendance-summary-head {
   display: grid;
-  grid-template-columns: minmax(165px, 190px) 1fr;
+  grid-template-columns: minmax(165px, 190px) auto;
+  grid-template-areas:
+    "title action"
+    "filters filters";
   align-items: flex-start;
   gap: 10px;
   margin-bottom: 8px;
+}
+.attendance-summary-head > div:first-child {
+  grid-area: title;
+}
+.attendance-summary-top-action {
+  grid-area: action;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
 }
 .attendance-summary-head h2 {
   font-size: 14px;
@@ -809,7 +821,8 @@
 }
 .summary-actions {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(110px, .7fr)) auto;
+  grid-area: filters;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(110px, .7fr));
   gap: 10px;
   align-items: start;
 }
@@ -867,11 +880,24 @@
     align-items: stretch;
     flex-direction: column
   }
+  .attendance-summary-head {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "title"
+      "action"
+      "filters";
+  }
   .summary-actions {
-    flex-direction: column
+    grid-template-columns: 1fr
   }
   .summary-actions input {
     min-width: 0
+  }
+  .attendance-summary-top-action {
+    justify-content: stretch;
+  }
+  .attendance-summary-top-action .attendance-export-btn {
+    width: 100%;
   }
   .attendance-time-track {
     grid-template-columns: 1fr
@@ -883,14 +909,24 @@
 /* Attendance report export actions */
 .attendance-export-btn {
   white-space: nowrap;
-  min-height: 30px;
-  padding: 6px 11px;
-  font-size: 12px;
+  min-height: 38px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 1px solid #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, .22);
+}
+.attendance-export-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  border-color: #1e40af;
 }
 .attendance-export-btn.secondary {
   background: #ffffff;
   color: #334155;
   border: 1px solid #cbd5e1;
+  box-shadow: none;
 }
 .attendance-export-btn.secondary:hover {
   background: #f8fafc;
@@ -901,7 +937,7 @@
 }
 @media (max-width: 900px) {
   .summary-actions {
-    flex-wrap: wrap;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .session-card-shell {
     grid-template-columns: 1fr;
