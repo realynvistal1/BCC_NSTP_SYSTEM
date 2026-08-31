@@ -185,7 +185,7 @@ function makeAttendanceSummary(_programKey) {
       return;
     }
 
-    if (!selectedMI) {
+    if (!selectedMI || matches.length > 1) {
       const summaries = await Promise.all(matches.map((session) => fetchSummary(session, group)));
       const aggregate = buildAggregateSummary(summaries);
       currentSummary = aggregate;
@@ -548,6 +548,7 @@ function makeAttendanceSummary(_programKey) {
   function render(data) {
     const counts = data.counts || {};
     const aggregateMode = Boolean(data.aggregate);
+    const selectedMI = $('#summaryMI').value;
     const selectedType = $('#summaryType').value;
     const cycleLabel = $('#summaryCycle').selectedOptions[0]?.textContent || 'Selected Cycle';
 
@@ -560,8 +561,12 @@ function makeAttendanceSummary(_programKey) {
 
     if (aggregateMode) {
       const typeLabel = selectedType ? String(selectedType).toUpperCase() : 'ALL';
-      $('#attendanceSummaryTitle').textContent = `All ${unit} ${typeLabel} - ${program}`;
-      $('#attendanceSummaryMeta').textContent = `${cycleLabel} - ${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'} included`;
+      $('#attendanceSummaryTitle').textContent = selectedMI
+        ? `${unit} ${selectedMI} ${typeLabel} - ${program}`
+        : `All ${unit} ${typeLabel} - ${program}`;
+      $('#attendanceSummaryMeta').textContent = selectedMI
+        ? `${cycleLabel} - ${data.sessions.length} matching session${data.sessions.length === 1 ? '' : 's'} combined`
+        : `${cycleLabel} - ${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'} included`;
     } else {
       $('#attendanceSummaryTitle').textContent = `${unit} ${data.session.mi_number} ${(data.session.mi_type || '').toUpperCase()} - ${program}`;
       $('#attendanceSummaryMeta').textContent = `SY ${data.session.school_year || '-'} - ${program === 'CWTS' ? 'CWTS' : 'MS'} ${data.session.ms_level || '-'} - ${fmtTime(data.session.open_date)} - ${fmtTime(data.session.close_date)} - 15-minute late window`;
