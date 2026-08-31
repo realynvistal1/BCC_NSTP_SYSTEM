@@ -44,13 +44,12 @@ function officerInfoItem(label, value) {
 
 async function renderOfficerRecords(content) {
   const rows = await API.get('/api/officer/records');
-  const years = [...new Set(rows.map((row) => row.school_year).filter(Boolean))]
-    .sort()
-    .reverse();
+  const scheduleOptions = await API.get('/api/officer/records/filter-options');
 
   content.innerHTML = `
     <section class="records-tools">
       <select id="recordProgram">
+        <option value="">All Programs</option>
         <option value="ROTC">ROTC</option>
         <option value="CWTS">CWTS</option>
       </select>
@@ -64,9 +63,21 @@ async function renderOfficerRecords(content) {
         <option value="2">Level 2</option>
       </select>
       <select id="recordSY">
-        <option value="">All SY</option>
-        ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
+        <option value="">All School Years</option>
       </select>
+      <select id="recordBattalion">
+        <option value="">All Battalions</option>
+      </select>
+      <select id="recordCompany">
+        <option value="">All Companies</option>
+      </select>
+      <select id="recordPlatoon">
+        <option value="">All Platoons</option>
+      </select>
+      <select id="recordSpecial">
+        <option value="">All Special Assignments</option>
+      </select>
+      <button class="clear-filter-btn" id="clearRecordFilters" type="button">Clear Filters</button>
     </section>
     <section class="panel record-list-panel">
       <div class="table-wrap">
@@ -93,29 +104,210 @@ async function renderOfficerRecords(content) {
     return program === 'CWTS' ? 'CWTS' : 'MS';
   }
 
-  function filtered() {
-    const program = currentProgram();
-    const query = $('#recordSearch').value.trim().toLowerCase();
-    const level = $('#recordLevel').value;
-    const schoolYear = $('#recordSY').value;
+  function currentFilters(overrides = {}) {
+    return {
+      program: currentProgram(),
+      query: $('#recordSearch').value.trim().toLowerCase(),
+      level: $('#recordLevel').value,
+      schoolYear: $('#recordSY').value,
+      battalion: $('#recordBattalion').value,
+      company: $('#recordCompany').value,
+      platoon: $('#recordPlatoon').value,
+      special: $('#recordSpecial').value,
+      ...overrides,
+    };
+  }
 
-    return rows.filter((row) => (
-      row.program === program
-      && (!level || String(row.ms_level) === level)
-      && (!schoolYear || row.school_year === schoolYear)
-      && (
-        !query
-        || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
-          .toLowerCase()
-          .includes(query)
-      )
-    ));
+  function matchesRecord(row, overrides = {}) {
+    const {
+      program,
+      query,
+      level,
+      schoolYear,
+      battalion,
+      company,
+      platoon,
+      special,
+    } = currentFilters(overrides);
+
+    if (program && row.program !== program) {
+      return false;
+    }
+
+    if (level && String(row.ms_level || '') !== level) {
+      return false;
+    }
+
+    if (schoolYear && String(row.school_year || '') !== schoolYear) {
+      return false;
+    }
+
+    if (program === 'ROTC' || (!program && row.program === 'ROTC')) {
+      if (battalion && String(row.battalion || '') !== battalion) {
+        return false;
+      }
+      if (company && String(row.rotc_company || '') !== company) {
+        return false;
+      }
+      if (platoon && String(row.rotc_platoon || '') !== platoon) {
+        return false;
+      }
+      if (special) {
+        if (special === 'advance' && !Number(row.willing_to_take_advance_course || 0)) {
+          return false;
+        }
+        if (special !== 'advance' && String(row.special_unit || '') !== special) {
+          return false;
+        }
+      }
+    } else if (program === 'CWTS' || (!program && row.program === 'CWTS')) {
+      if (company && String(row.company || '') !== company) {
+        return false;
+      }
+      if (battalion || platoon || special) {
+        return false;
+      }
+    }
+
+    if (
+      query
+      && !`${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
+        .toLowerCase()
+        .includes(query)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function filtered(overrides = {}) {
+    return rows.filter((row) => matchesRecord(row, overrides));
+  }
+
+  function optionValues(list, valueFn) {
+    return [...new Set(list.map(valueFn).map((value) => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }
+
+  function setSelectOptions(selectId, placeholder, values, currentValue, labelFn = (value) => value) {
+    const select = $(selectId);
+    select.innerHTML = `<option value="">${placeholder}</option>${values.map((value) => `<option value="${esc(value)}"${currentValue === value ? ' selected' : ''}>${esc(labelFn(value))}</option>`).join('')}`;
+    if (currentValue && !values.includes(currentValue)) {
+      select.value = '';
+    }
+  }
+
+  function refreshFilterOptions() {
+    const filters = currentFilters();
+    const program = filters.program;
+    const base = filtered({
+      schoolYear: '',
+      battalion: '',
+      company: '',
+      platoon: '',
+      special: '',
+    });
+    const scheduleYears = optionValues(
+      scheduleOptions.filter((item) => {
+        if (program && item.program !== program) {
+          return false;
+        }
+        if (filters.level && String(item.ms_level || '') !== String(filters.level)) {
+          return false;
+        }
+        return true;
+      }),
+      (item) => item.year
+    ).sort().reverse();
+    const yearValues = [...new Set([
+      ...optionValues(base, (row) => row.school_year).sort().reverse(),
+      ...scheduleYears,
+    ])];
+    setSelectOptions('#recordSY', 'All School Years', yearValues, filters.schoolYear);
+
+    const isRotc = !program || program === 'ROTC';
+    const isCwts = !program || program === 'CWTS';
+
+    const rotcBase = rows.filter((row) => row.program === 'ROTC' && matchesRecord(row, {
+      program: program === 'CWTS' ? '__none__' : 'ROTC',
+      schoolYear: '',
+      battalion: '',
+      company: '',
+      platoon: '',
+      special: '',
+    }));
+    const cwtsBase = rows.filter((row) => row.program === 'CWTS' && matchesRecord(row, {
+      program: program === 'ROTC' ? '__none__' : 'CWTS',
+      schoolYear: '',
+      battalion: '',
+      company: '',
+      platoon: '',
+      special: '',
+    }));
+
+    const battalions = isRotc ? optionValues(rotcBase, (row) => row.battalion) : [];
+    setSelectOptions('#recordBattalion', 'All Battalions', battalions, filters.battalion, (value) => `Battalion ${value}`);
+
+    const companyValues = program === 'ROTC'
+      ? optionValues(rotcBase, (row) => row.rotc_company)
+      : program === 'CWTS'
+        ? optionValues(cwtsBase, (row) => row.company)
+        : optionValues([
+          ...rotcBase.map((row) => ({ label: row.rotc_company ? `ROTC: ${row.rotc_company}` : '' })),
+          ...cwtsBase.map((row) => ({ label: row.company ? `CWTS: ${row.company}` : '' })),
+        ], (row) => row.label);
+    const companyValue = filters.company && !program
+      ? (rotcBase.some((row) => row.rotc_company === filters.company) ? `ROTC: ${filters.company}` : cwtsBase.some((row) => row.company === filters.company) ? `CWTS: ${filters.company}` : '')
+      : filters.company;
+    setSelectOptions('#recordCompany', 'All Companies', companyValues, companyValue);
+
+    const platoons = isRotc ? optionValues(rotcBase, (row) => row.rotc_platoon) : [];
+    setSelectOptions('#recordPlatoon', 'All Platoons', platoons, filters.platoon, (value) => `Platoon ${value}`);
+
+    const specialValues = isRotc ? optionValues([
+      ...rotcBase.map((row) => ({ value: row.special_unit || '' })),
+      ...rotcBase.filter((row) => Number(row.willing_to_take_advance_course || 0) === 1).map(() => ({ value: 'advance' })),
+    ], (row) => row.value) : [];
+    setSelectOptions('#recordSpecial', 'All Special Assignments', specialValues, filters.special, (value) => value === 'advance' ? 'Advance Course' : value);
+
+    $('#recordBattalion').disabled = !isRotc || !battalions.length;
+    $('#recordCompany').disabled = !(isRotc || isCwts) || !companyValues.length;
+    $('#recordPlatoon').disabled = !isRotc || !platoons.length;
+    $('#recordSpecial').disabled = !isRotc || !specialValues.length;
+  }
+
+  function normalizedBattalionFilter() {
+    return $('#recordBattalion').value;
+  }
+
+  function normalizedCompanyFilter() {
+    const value = $('#recordCompany').value;
+    if (!currentProgram()) {
+      return value.replace(/^ROTC:\s*|^CWTS:\s*/,'');
+    }
+    return value;
+  }
+
+  function normalizedPlatoonFilter() {
+    return $('#recordPlatoon').value;
+  }
+
+  function normalizedSpecialFilter() {
+    return $('#recordSpecial').value;
   }
 
   function draw() {
-    const program = currentProgram();
+    refreshFilterOptions();
+    const program = currentProgram() || 'ROTC';
     const pfx = prefix(program);
-    const data = filtered();
+    const selectedProgram = currentProgram();
+    const data = rows.filter((row) => matchesRecord(row, {
+      program: selectedProgram,
+      battalion: normalizedBattalionFilter(),
+      company: normalizedCompanyFilter(),
+      platoon: normalizedPlatoonFilter(),
+      special: normalizedSpecialFilter(),
+    }));
 
     $('#recordHead').innerHTML = `
       <tr>
@@ -125,7 +317,7 @@ async function renderOfficerRecords(content) {
         <th>Course</th>
         <th>${pfx} Level</th>
         <th>SY</th>
-        ${program === 'ROTC' ? '<th>Battalion / Group</th>' : ''}
+        ${program === 'ROTC' || !selectedProgram ? '<th>Assignment</th>' : ''}
         <th>Action</th>
       </tr>
     `;
@@ -137,17 +329,17 @@ async function renderOfficerRecords(content) {
           <td><strong>${esc(row.student_id)}</strong></td>
           <td>${esc(row.last_name)}, ${esc(row.first_name)}${row.suffix ? ` ${esc(row.suffix)}` : ''}</td>
           <td>${esc(row.course)}</td>
-          <td><span class="level-pill">${pfx} ${esc(row.ms_level)}</span></td>
+          <td><span class="level-pill">${row.program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(row.ms_level)}</span></td>
           <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
-          ${program === 'ROTC'
-            ? `<td>${esc(Number(row.willing_to_take_advance_course) ? 'Advance Course' : row.special_unit ? 'Special Platoon' : row.battalion ? `Battalion ${row.battalion}` : '-')}</td>`
+          ${program === 'ROTC' || !selectedProgram
+            ? `<td>${esc(officerRecordAssignment(row, row.program))}</td>`
             : ''}
-          <td><button class="btn small primary" data-detail="${row.student_db_id}" data-level="${row.ms_level}" data-program="${program}">View Details</button></td>
+          <td><button class="btn small primary" data-detail="${row.student_db_id}" data-level="${row.ms_level}" data-program="${row.program}">View Details</button></td>
         </tr>
       `).join('')
-      : `<tr><td colspan="${program === 'ROTC' ? 8 : 7}"><div class="empty">No students found.</div></td></tr>`;
+      : `<tr><td colspan="${program === 'ROTC' || !selectedProgram ? 8 : 7}"><div class="empty">No students found.</div></td></tr>`;
 
-    $('#recordFooter').textContent = `Showing ${data.length} of ${rows.filter((row) => row.program === program).length} record(s)`;
+    $('#recordFooter').textContent = `Showing ${data.length} of ${rows.filter((row) => !selectedProgram || row.program === selectedProgram).length} record(s)`;
 
     $$('[data-detail]').forEach((button) => {
       button.onclick = () => openRecord(
@@ -275,6 +467,21 @@ async function renderOfficerRecords(content) {
   $('#recordSearch').oninput = draw;
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
+  $('#recordBattalion').onchange = draw;
+  $('#recordCompany').onchange = draw;
+  $('#recordPlatoon').onchange = draw;
+  $('#recordSpecial').onchange = draw;
+  $('#clearRecordFilters').onclick = () => {
+    $('#recordProgram').value = '';
+    $('#recordSearch').value = '';
+    $('#recordLevel').value = '';
+    $('#recordSY').value = '';
+    $('#recordBattalion').value = '';
+    $('#recordCompany').value = '';
+    $('#recordPlatoon').value = '';
+    $('#recordSpecial').value = '';
+    draw();
+  };
   draw();
 }
 
