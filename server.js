@@ -12,6 +12,7 @@ const {
   authConcurrencyLimit,
 } = require("./middleware/rateLimitMiddleware");
 const app = express();
+const HOST = String(process.env.HOST || "127.0.0.1").trim();
 const PORT = Number(process.env.PORT || 3000);
 
 function jwtVerifyOptions() {
@@ -47,7 +48,13 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use("/assets", express.static(path.join(__dirname, "public")));
+app.use("/assets", express.static(path.join(__dirname, "public"), {
+  setHeaders(res) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  },
+}));
 app.use("/api", generalApiConcurrencyLimit);
 app.use("/api", generalApiRateLimit);
 app.use("/api/auth", authConcurrencyLimit);
@@ -196,6 +203,6 @@ return;
 }
 res.status(500).json({ message: "Unexpected server error." });
 });
-app.listen(PORT, "0.0.0.0", () => {
-console.log(`BCC NSTP System running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+console.log(`BCC NSTP System running at http://${HOST}:${PORT}`);
 });
