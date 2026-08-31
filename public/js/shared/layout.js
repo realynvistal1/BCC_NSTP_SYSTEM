@@ -31,22 +31,6 @@ function navIconName(href, label) {
   return 'dashboard';
 }
 
-function navKicker(role, href, label) {
-  const text = `${label} ${href}`.toLowerCase();
-
-  if (role === 'student') return 'Student';
-  if (text.includes('dashboard')) return 'Overview';
-  if (text.includes('attendance')) return 'Monitoring';
-  if (text.includes('grade')) return 'Academic';
-  if (text.includes('record')) return 'Files';
-  if (text.includes('setting')) return 'Preferences';
-  if (text.includes('offense')) return 'Review';
-  if (text.includes('serial')) return 'Certificate';
-  if (text.includes('roster') || text.includes('company') || text.includes('platoon')) return 'Units';
-  if (text.includes('enrollment')) return 'Admissions';
-  return role === 'officer' ? 'Director' : 'Administration';
-}
-
 function decorateSidebar(role) {
   document.body.dataset.portalTheme = role;
 
@@ -56,12 +40,10 @@ function decorateSidebar(role) {
     const href = link.getAttribute('href') || '';
     const label = link.textContent.trim();
     const iconName = navIconName(href, label);
-    const kicker = navKicker(role, href, label);
 
     link.innerHTML = `
       <span class="nav-icon" aria-hidden="true">${icon(iconName)}</span>
       <span class="nav-copy">
-        <small class="nav-kicker">${esc(kicker)}</small>
         <span class="nav-label">${esc(label)}</span>
       </span>
     `;
