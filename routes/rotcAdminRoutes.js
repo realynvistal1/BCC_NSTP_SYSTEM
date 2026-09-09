@@ -29,6 +29,8 @@ router.get('/enrollment-schedule', controller.schedules);
 router.post('/enrollment-schedule', controller.schedules);
 router.get('/enrollments', controller.enrollments);
 router.get('/enrollments/:id', controller.enrollmentDetail);
+router.patch('/enrollments/:id/student', controller.editEnrollmentStudent);
+router.delete('/enrollments/:id/student', controller.deleteEnrollmentStudent);
 router.patch('/enrollments/:id', controller.updateEnrollment);
 router.post('/enrollments/bulk-approve', controller.bulkApprove);
 router.post('/enrollments/bulk-reject', controller.bulkReject);
