@@ -6,8 +6,9 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     const requests = await API.get('/api/admin/rotc/withdrawals');
 
     content.innerHTML = `
-      <div class="withdraw-tabs" id="withdrawTabs"></div>
+      <div class="withdraw-summary-grid" id="withdrawTabs" aria-label="Filter withdrawal requests"></div>
       <div id="withdrawList" class="withdraw-list"></div>
+      <div class="app-dialog hidden" id="recordModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card record-modal-card"><div id="recordModalBody"></div></div></div>
       <div id="withdrawRejectModal" class="app-dialog hidden">
         <div class="app-dialog-backdrop"></div>
         <div class="app-dialog-card small-modal">
@@ -37,12 +38,15 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     let filter = 'all';
 
     function draw() {
-      const pending = requests.filter((request) => request.status === 'pending').length;
+      const counts = { all: requests.length, pending: 0, approved: 0, rejected: 0 };
+      requests.forEach((request) => {
+        if (Object.hasOwn(counts, request.status) && request.status !== 'all') counts[request.status] += 1;
+      });
 
       $('#withdrawTabs').innerHTML = ['all', 'pending', 'approved', 'rejected'].map((status) => `
-        <button class="${filter === status ? 'active' : ''}" data-wfilter="${status}">
-          ${status[0].toUpperCase() + status.slice(1)}
-          ${status === 'pending' && pending ? ` <b>${pending}</b>` : ''}
+        <button type="button" class="withdraw-summary-card ${status}" data-wfilter="${status}" aria-pressed="${filter === status}">
+          <small>${status === 'all' ? 'Total Requests' : status[0].toUpperCase() + status.slice(1)}</small>
+          <strong>${counts[status]}</strong>
         </button>
       `).join('');
 
@@ -72,9 +76,12 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
             ${row.status === 'approved'
               ? '<div class="notice success">Student has been reverted to a regular cadet and assigned to the regular ROTC roster.</div>'
               : ''}
+            <div class="actions">
+              <button class="btn primary" data-wdetails="${row.student_id}" data-level="${esc(row.ms_level || '1')}">View Details</button>
             ${row.status === 'pending'
-              ? '<div class="actions"><button class="btn success" data-wapprove="' + row.id + '">Approve</button><button class="btn danger ghost" data-wreject="' + row.id + '">Reject</button></div>'
+              ? '<button class="btn success" data-wapprove="' + row.id + '">Approve</button><button class="btn danger ghost" data-wreject="' + row.id + '">Reject</button>'
               : ''}
+            </div>
           </article>
         `).join('')
         : `<div class="panel empty">No ${filter === 'all' ? '' : `${filter} `}withdrawal requests.</div>`;
@@ -84,6 +91,10 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
           filter = button.dataset.wfilter;
           draw();
         };
+      });
+
+      $$('[data-wdetails]').forEach((button) => {
+        button.onclick = () => openRotcStudentRecord(Number(button.dataset.wdetails), button.dataset.level);
       });
 
       $$('[data-wapprove]').forEach((button) => {
