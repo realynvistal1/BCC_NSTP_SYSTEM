@@ -176,6 +176,73 @@
 .withdrawal-history small {
   color: #94a3b8
 }
+.withdraw-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.withdraw-summary-card {
+  background: #fff;
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, .04);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.withdraw-summary-card small {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #94a3b8;
+  font-weight: 800;
+}
+.withdraw-summary-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 25px;
+  color: #334155;
+}
+.withdraw-summary-card.approved {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+}
+.withdraw-summary-card.approved small, .withdraw-summary-card.approved strong {
+  color: #047857;
+}
+.withdraw-summary-card.pending {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.withdraw-summary-card.pending small, .withdraw-summary-card.pending strong {
+  color: #b45309;
+}
+.withdraw-summary-card.rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.withdraw-summary-card.rejected small, .withdraw-summary-card.rejected strong {
+  color: #b91c1c;
+}
+.withdraw-summary-card[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #cbd5e1;
+}
+.withdraw-summary-card:hover {
+  border-color: #94a3b8;
+}
+.withdraw-summary-card:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 3px;
+}
+@media(max-width: 900px) {
+  .withdraw-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width: 520px) {
+  .withdraw-summary-grid { grid-template-columns: 1fr; }
+}
 .withdraw-tabs {
   display: flex;
   gap: 7px;
