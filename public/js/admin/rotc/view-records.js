@@ -365,121 +365,8 @@ async function renderAdminRecords(_program, content) {
     $('#recordFooter').textContent = `Showing ${data.length} of ${rows.length} record(s)`;
 
     $$('[data-detail]').forEach((button) => {
-      button.onclick = () => openRecord(Number(button.dataset.detail), button.dataset.level);
+      button.onclick = () => openRotcStudentRecord(Number(button.dataset.detail), button.dataset.level);
     });
-  }
-
-  async function openRecord(id, level) {
-    const modal = $('#recordModal');
-    const body = $('#recordModalBody');
-
-    modal.classList.remove('hidden');
-    body.innerHTML = `
-      <div class="page-loading">
-        <div class="page-spinner"></div>
-        <span>Loading complete student record...</span>
-      </div>
-    `;
-
-    try {
-      const data = await API.get(
-        `/api/admin/${apiProgram}/records/${id}?ms_level=${encodeURIComponent(level)}`
-      );
-      const student = data.student;
-      const cycle = data.cycle;
-      const attendance = data.attendance || [];
-      const grade = (data.grades || []).find((item) => String(item.ms_level) === String(level));
-      const present = attendance.filter((item) => item.status === 'present').length;
-      const late = attendance.filter((item) => item.status === 'late').length;
-      const absent = attendance.filter((item) => item.status === 'absent').length;
-
-      body.innerHTML = `
-        <div class="record-modal-head">
-          <div>
-            <span>Student Record - ${prefix} ${esc(level)}</span>
-            <h2>${esc(student.first_name)} ${esc(student.last_name)}${student.suffix ? ` ${esc(student.suffix)}` : ''}</h2>
-            <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
-          </div>
-          <button class="modal-close" id="recordClose">x</button>
-        </div>
-        <div class="record-modal-scroll">
-          <section class="record-section">
-            <h3>Personal Information</h3>
-            <div class="record-info-grid">
-              ${infoItem('Student ID', student.student_id)}
-              ${infoItem('Name', `${student.last_name}, ${student.first_name} ${student.middle_name || ''}${student.suffix ? ` ${student.suffix}` : ''}`)}
-              ${infoItem('Course', student.course)}
-              ${infoItem('Year Level', student.year_level)}
-              ${infoItem('Sex', student.sex)}
-              ${infoItem('Birthdate', student.birthdate)}
-              ${infoItem('Email', student.email)}
-              ${infoItem('Contact Number', student.contact_number)}
-              ${infoItem('Permanent Address', [student.permanent_barangay, student.permanent_municipality, student.permanent_province].filter(Boolean).join(', '))}
-              ${infoItem('Medical Condition', student.has_medical_condition ? `${student.medical_condition || 'Yes'}` : 'None')}
-            </div>
-          </section>
-          <section class="record-section">
-            <h3>Enrollment & Assignment</h3>
-            <div class="record-info-grid">
-              ${infoItem('Program', program)}
-              ${infoItem(`${prefix} Level`, `${prefix} ${level}`)}
-              ${infoItem('School Year', cycle.school_year ? `SY ${cycle.school_year}` : '-')}
-              ${infoItem('Enrollment Status', cycle.status)}
-              ${program === 'ROTC'
-                ? `${infoItem('Battalion', student.battalion ? `Battalion ${student.battalion}` : '-')}${infoItem('Company', student.rotc_company || '-')}${infoItem('Platoon', student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '-')}${infoItem('Special Unit', student.special_unit || '-')}${infoItem('Advance Course', student.willing_to_take_advance_course ? 'Yes' : 'No')}`
-                : infoItem('CWTS Company', student.company || '-')}
-            </div>
-          </section>
-          <section class="record-section">
-            <h3>Grade - NSTP ${esc(level)}</h3>
-            <div class="record-grade-row">
-              ${infoItem('Midterm', grade ? Number(grade.midterm).toFixed(2) : '-')}
-              ${infoItem('Final', grade ? Number(grade.final_term).toFixed(2) : '-')}
-              ${infoItem('Average', grade ? Number(grade.grade).toFixed(2) : '-')}
-              <div class="record-info-item"><small>Status</small>${grade ? badge(grade.status) : '<strong>-</strong>'}</div>
-            </div>
-          </section>
-          <section class="record-section">
-            <h3>Attendance Summary</h3>
-            <div class="record-attendance-stats">
-              <div class="present"><strong>${present}</strong><span>Present</span></div>
-              <div class="late"><strong>${late}</strong><span>Late</span></div>
-              <div class="absent"><strong>${absent}</strong><span>Absent</span></div>
-            </div>
-            ${attendance.length
-              ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th><th>Distance</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td><td>${item.distance_meters != null ? `${Number(item.distance_meters).toFixed(1)} m` : '-'}</td></tr>`).join('')}</tbody></table></div>`
-              : '<div class="empty compact">No attendance records for this cycle.</div>'}
-          </section>
-          <section class="record-section">
-            <h3>Completion / Certificate Information</h3>
-            <div class="record-info-grid">
-              ${infoItem('Serial Number', data.serial?.serial_number || student.serial_number || 'Not yet issued')}
-              ${infoItem('Certificate Status', (data.serial?.serial_number || student.serial_number) ? 'Serial number available' : 'Not yet available')}
-            </div>
-          </section>
-          ${program === 'ROTC' && (data.withdrawals || []).length
-            ? `<section class="record-section"><h3>Advance Course Withdrawal History</h3>${(data.withdrawals || []).map((withdrawal) => `<div class="withdrawal-history"><div>${badge(withdrawal.status)} <small>${formatRecordDate(withdrawal.created_at)}</small></div><p><strong>Reason:</strong> ${esc(withdrawal.reason)}</p>${withdrawal.admin_remarks ? `<p><strong>Admin Remarks:</strong> ${esc(withdrawal.admin_remarks)}</p>` : ''}</div>`).join('')}</section>`
-            : ''}
-        </div>
-        <div class="app-dialog-actions">
-          <button class="btn" id="recordCloseBottom">Close</button>
-        </div>
-      `;
-
-      const close = () => modal.classList.add('hidden');
-
-      $('#recordClose').onclick = close;
-      $('#recordCloseBottom').onclick = close;
-      modal.querySelector('.app-dialog-backdrop').onclick = close;
-    } catch (error) {
-      body.innerHTML = `
-        <div class="page-load-error">
-          <h3>Unable to load student record</h3>
-          <p>${esc(error.message)}</p>
-          <button class="btn" onclick="document.getElementById('recordModal').classList.add('hidden')">Close</button>
-        </div>
-      `;
-    }
   }
 
   $('#recordSearch').oninput = draw;
@@ -523,4 +410,120 @@ async function renderAdminRecords(_program, content) {
   };
 
   draw();
+}
+
+async function openRotcStudentRecord(id, level) {
+  const program = 'ROTC';
+  const apiProgram = 'rotc';
+  const prefix = 'MS';
+  const modal = $('#recordModal');
+  const body = $('#recordModalBody');
+
+  modal.classList.remove('hidden');
+  body.innerHTML = `
+    <div class="page-loading">
+      <div class="page-spinner"></div>
+      <span>Loading complete student record...</span>
+    </div>
+  `;
+
+  try {
+    const data = await API.get(
+      `/api/admin/${apiProgram}/records/${id}?ms_level=${encodeURIComponent(level)}`
+    );
+    const student = data.student;
+    const cycle = data.cycle;
+    const attendance = data.attendance || [];
+    const grade = (data.grades || []).find((item) => String(item.ms_level) === String(level));
+    const present = attendance.filter((item) => item.status === 'present').length;
+    const late = attendance.filter((item) => item.status === 'late').length;
+    const absent = attendance.filter((item) => item.status === 'absent').length;
+
+    body.innerHTML = `
+      <div class="record-modal-head">
+        <div>
+          <span>Student Record - ${prefix} ${esc(level)}</span>
+          <h2>${esc(student.first_name)} ${esc(student.last_name)}${student.suffix ? ` ${esc(student.suffix)}` : ''}</h2>
+          <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+        </div>
+        <button class="modal-close" id="recordClose">x</button>
+      </div>
+      <div class="record-modal-scroll">
+        <section class="record-section">
+          <h3>Personal Information</h3>
+          <div class="record-info-grid">
+            ${infoItem('Student ID', student.student_id)}
+            ${infoItem('Name', `${student.last_name}, ${student.first_name} ${student.middle_name || ''}${student.suffix ? ` ${student.suffix}` : ''}`)}
+            ${infoItem('Course', student.course)}
+            ${infoItem('Year Level', student.year_level)}
+            ${infoItem('Sex', student.sex)}
+            ${infoItem('Birthdate', student.birthdate)}
+            ${infoItem('Email', student.email)}
+            ${infoItem('Contact Number', student.contact_number)}
+            ${infoItem('Permanent Address', [student.permanent_barangay, student.permanent_municipality, student.permanent_province].filter(Boolean).join(', '))}
+            ${infoItem('Medical Condition', student.has_medical_condition ? `${student.medical_condition || 'Yes'}` : 'None')}
+          </div>
+        </section>
+        <section class="record-section">
+          <h3>Enrollment & Assignment</h3>
+          <div class="record-info-grid">
+            ${infoItem('Program', program)}
+            ${infoItem(`${prefix} Level`, `${prefix} ${level}`)}
+            ${infoItem('School Year', cycle.school_year ? `SY ${cycle.school_year}` : '-')}
+            ${infoItem('Enrollment Status', cycle.status)}
+            ${program === 'ROTC'
+              ? `${infoItem('Battalion', student.battalion ? `Battalion ${student.battalion}` : '-')}${infoItem('Company', student.rotc_company || '-')}${infoItem('Platoon', student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '-')}${infoItem('Special Unit', student.special_unit || '-')}${infoItem('Advance Course', student.willing_to_take_advance_course ? 'Yes' : 'No')}`
+              : infoItem('CWTS Company', student.company || '-')}
+          </div>
+        </section>
+        <section class="record-section">
+          <h3>Grade - NSTP ${esc(level)}</h3>
+          <div class="record-grade-row">
+            ${infoItem('Midterm', grade ? Number(grade.midterm).toFixed(2) : '-')}
+            ${infoItem('Final', grade ? Number(grade.final_term).toFixed(2) : '-')}
+            ${infoItem('Average', grade ? Number(grade.grade).toFixed(2) : '-')}
+            <div class="record-info-item"><small>Status</small>${grade ? badge(grade.status) : '<strong>-</strong>'}</div>
+          </div>
+        </section>
+        <section class="record-section">
+          <h3>Attendance Summary</h3>
+          <div class="record-attendance-stats">
+            <div class="present"><strong>${present}</strong><span>Present</span></div>
+            <div class="late"><strong>${late}</strong><span>Late</span></div>
+            <div class="absent"><strong>${absent}</strong><span>Absent</span></div>
+          </div>
+          ${attendance.length
+            ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th><th>Distance</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td><td>${item.distance_meters != null ? `${Number(item.distance_meters).toFixed(1)} m` : '-'}</td></tr>`).join('')}</tbody></table></div>`
+            : '<div class="empty compact">No attendance records for this cycle.</div>'}
+        </section>
+        <section class="record-section">
+          <h3>Completion / Certificate Information</h3>
+          <div class="record-info-grid">
+            ${infoItem('Serial Number', data.serial?.serial_number || student.serial_number || 'Not yet issued')}
+            ${infoItem('Certificate Status', (data.serial?.serial_number || student.serial_number) ? 'Serial number available' : 'Not yet available')}
+          </div>
+        </section>
+        ${program === 'ROTC' && (data.withdrawals || []).length
+          ? `<section class="record-section"><h3>Advance Course Withdrawal History</h3>${(data.withdrawals || []).map((withdrawal) => `<div class="withdrawal-history"><div>${badge(withdrawal.status)} <small>${formatRecordDate(withdrawal.created_at)}</small></div><p><strong>Reason:</strong> ${esc(withdrawal.reason)}</p>${withdrawal.admin_remarks ? `<p><strong>Admin Remarks:</strong> ${esc(withdrawal.admin_remarks)}</p>` : ''}</div>`).join('')}</section>`
+          : ''}
+      </div>
+      <div class="app-dialog-actions">
+        <button class="btn" id="recordCloseBottom">Close</button>
+      </div>
+    `;
+
+    const close = () => modal.classList.add('hidden');
+
+    $('#recordClose').onclick = close;
+    $('#recordCloseBottom').onclick = close;
+    modal.querySelector('.app-dialog-backdrop').onclick = close;
+  } catch (error) {
+    body.innerHTML = `
+      <div class="page-load-error">
+        <h3>Unable to load student record</h3>
+        <p>${esc(error.message)}</p>
+        <button class="btn" onclick="document.getElementById('recordModal').classList.add('hidden')">Close</button>
+      </div>
+    `;
+  }
 }
