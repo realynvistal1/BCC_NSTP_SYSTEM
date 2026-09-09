@@ -526,6 +526,97 @@ exports.enrollments = async (req, res) => {
   }
 };
 
+exports.deleteEnrollmentStudent = async (req, res) => {
+  const recordId = parsePositiveInt(req.params.id);
+  if (!recordId) return res.status(400).json({ message: 'Select a valid enrollment record.' });
+
+  let connection;
+  try {
+    const programCode = program(req);
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [[student]] = await connection.execute(
+      `SELECT s.id,s.student_id,smr.status FROM students s
+       JOIN student_ms_records smr ON smr.student_id=s.id
+       WHERE smr.id=? AND smr.program=? AND s.nstp_component=? AND s.role='student'
+       FOR UPDATE`,
+      [recordId, programCode, programCode]
+    );
+    if (!student) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Student enrollment not found in this program.' });
+    }
+    if (!['pending', 'rejected'].includes(student.status)) {
+      await connection.rollback();
+      return res.status(409).json({ message: 'Only pending or rejected students can be deleted.' });
+    }
+    const [approvedEnrollments] = await connection.execute(
+      "SELECT id FROM student_ms_records WHERE student_id=? AND status='approved' LIMIT 1 FOR UPDATE",
+      [student.id]
+    );
+    if (approvedEnrollments.length) {
+      await connection.rollback();
+      return res.status(409).json({ message: 'This student has an approved enrollment in another level. Their account cannot be deleted.' });
+    }
+    if (String(req.body?.confirm_student_id || '').trim() !== student.student_id) {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Enter the matching Student ID to confirm deletion.' });
+    }
+    // Foreign keys cascade to the student's enrollments, attendance, grades,
+    // offenses, serial numbers, reset codes, and withdrawal requests.
+    await connection.execute(
+      "DELETE FROM students WHERE id=? AND nstp_component=? AND role='student'",
+      [student.id, programCode]
+    );
+    await connection.commit();
+    return res.json({ message: 'Student account and linked records deleted.' });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    return res.status(500).json({ message: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+exports.editEnrollmentStudent = async (req, res) => {
+  try {
+    const recordId = parsePositiveInt(req.params.id);
+    if (!recordId) return res.status(400).json({ message: 'Select a valid enrollment record.' });
+    const fields = {
+      first_name: 100, middle_name: 100, last_name: 100, suffix: 20,
+      contact_number: 30, email: 255, course: 255, year_level: 20,
+      temporary_barangay: 255, temporary_municipality: 255, temporary_province: 255,
+      permanent_barangay: 255, permanent_municipality: 255, permanent_province: 255,
+    };
+    const updates = [];
+    const values = [];
+    for (const [field, limit] of Object.entries(fields)) {
+      if (!Object.hasOwn(req.body || {}, field)) continue;
+      if (typeof req.body[field] !== 'string') return res.status(400).json({ message: 'Enter valid student information.' });
+      const value = req.body[field].trim();
+      if (value.length > limit || (['first_name', 'last_name', 'email', 'course', 'year_level'].includes(field) && !value)) {
+        return res.status(400).json({ message: `Enter a valid ${field.replace(/_/g, ' ')} (maximum ${limit} characters).` });
+      }
+      if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return res.status(400).json({ message: 'Enter a valid email address.' });
+      if (field === 'year_level' && !['1st Year', '2nd Year', '3rd Year', '4th Year'].includes(value)) return res.status(400).json({ message: 'Select a valid year level.' });
+      updates.push(`s.${field}=?`);
+      values.push(value);
+    }
+    if (!updates.length) return res.status(400).json({ message: 'No editable information was provided.' });
+    const programCode = program(req);
+    const [result] = await db.execute(
+      `UPDATE students s JOIN student_ms_records smr ON smr.student_id=s.id
+       SET ${updates.join(',')},s.updated_at=CURRENT_TIMESTAMP
+       WHERE smr.id=? AND smr.program=? AND s.nstp_component=? AND s.role='student'`,
+      [...values, recordId, programCode, programCode]
+    );
+    if (!result.affectedRows) return res.status(404).json({ message: 'Student enrollment not found in this program.' });
+    return res.json({ message: 'Student information updated.' });
+  } catch (error) {
+    return res.status(error.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ message: error.code === 'ER_DUP_ENTRY' ? 'That email address is already used by another account.' : error.message });
+  }
+};
+
 exports.enrollmentDetail = async (req, res) => {
   try {
     const programCode = program(req);
@@ -903,6 +994,15 @@ exports.roster = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
        FROM students s
+       LEFT JOIN (
+         SELECT student_id,MAX(updated_at) AS approved_at
+         FROM advance_course_withdrawals
+         WHERE status='approved'
+         GROUP BY student_id
+       ) withdrawal_order ON withdrawal_order.student_id=s.id
+         AND s.nstp_component='ROTC'
+         AND COALESCE(s.willing_to_take_advance_course,0)=0
+         AND s.special_unit IS NULL
        JOIN student_ms_records smr ON smr.student_id=s.id
        LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
        WHERE s.nstp_component=? AND smr.program=? AND smr.status='approved'
@@ -910,7 +1010,9 @@ exports.roster = async (req, res) => {
          AND (?='' OR smr.ms_level=?)
          AND (?='' OR COALESCE(es.year,'')=?)
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
-       ORDER BY s.last_name,s.first_name`,
+       ORDER BY (withdrawal_order.approved_at IS NOT NULL),withdrawal_order.approved_at,
+                CASE WHEN withdrawal_order.approved_at IS NOT NULL THEN s.id END,
+                s.last_name,s.first_name,s.id`,
       params
     );
 
@@ -1856,7 +1958,10 @@ exports.withdrawals = async (req, res) => {
   try {
     if (req.method === 'GET') {
       const [rows] = await db.execute(
-        `SELECT w.*,s.student_id student_no,s.first_name,s.middle_name,s.last_name,s.suffix,s.course,s.year_level,s.sex,s.battalion,s.rotc_company,s.rotc_platoon
+        `SELECT w.*,s.student_id student_no,s.first_name,s.middle_name,s.last_name,s.suffix,s.course,s.year_level,s.sex,s.battalion,s.rotc_company,s.rotc_platoon,
+                (SELECT smr.ms_level FROM student_ms_records smr
+                 WHERE smr.student_id=s.id AND smr.program='ROTC' AND smr.status='approved'
+                 ORDER BY smr.created_at DESC,smr.id DESC LIMIT 1) AS ms_level
          FROM advance_course_withdrawals w
          JOIN students s ON s.id=w.student_id
          ORDER BY FIELD(w.status,'pending','rejected','approved'),w.created_at DESC`
