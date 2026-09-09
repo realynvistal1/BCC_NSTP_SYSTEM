@@ -684,6 +684,15 @@ exports.roster = async (req, res) => {
       `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
               latest.ms_level, COALESCE(latest.school_year,'') school_year
          FROM students s
+       LEFT JOIN (
+         SELECT student_id,MAX(updated_at) AS approved_at
+         FROM advance_course_withdrawals
+         WHERE status='approved'
+         GROUP BY student_id
+       ) withdrawal_order ON withdrawal_order.student_id=s.id
+         AND s.nstp_component='ROTC'
+         AND COALESCE(s.willing_to_take_advance_course,0)=0
+         AND s.special_unit IS NULL
          LEFT JOIN (
            SELECT smr.student_id,
                   smr.program,
@@ -717,7 +726,9 @@ exports.roster = async (req, res) => {
                AND smr.program=?
                AND smr.status='approved'
            )
-         ORDER BY s.last_name,s.first_name`,
+         ORDER BY (withdrawal_order.approved_at IS NOT NULL),withdrawal_order.approved_at,
+                CASE WHEN withdrawal_order.approved_at IS NOT NULL THEN s.id END,
+                s.last_name,s.first_name,s.id`,
       [
         scope.recordProgram,
         scope.group,
