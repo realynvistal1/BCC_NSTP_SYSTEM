@@ -12,6 +12,8 @@ module.exports = {
   schedules: withProgram(shared.schedules),
   enrollments: withProgram(shared.enrollments),
   enrollmentDetail: withProgram(shared.enrollmentDetail),
+  editEnrollmentStudent: withProgram(shared.editEnrollmentStudent),
+  deleteEnrollmentStudent: withProgram(shared.deleteEnrollmentStudent),
   updateEnrollment: withProgram(shared.updateEnrollment),
   bulkApprove: withProgram(shared.bulkApprove),
   bulkReject: withProgram(shared.bulkReject),
