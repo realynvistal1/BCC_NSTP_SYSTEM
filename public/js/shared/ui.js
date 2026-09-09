@@ -358,7 +358,7 @@ function enrollmentRow(x, p) {
       <td>${esc(x.school_year || x.schedule_year || '-')}</td>
       <td>${oldDateTime(x.created_at)}</td>
       <td>${badge(x.status)}</td>
-      <td><button class="view-edit-link" data-record="${x.record_id}">View / Edit</button></td>
+      <td><div class="actions"><button class="view-edit-link" data-record="${x.record_id}">View / Edit</button>${['pending', 'rejected'].includes(x.status) ? `<button type="button" class="btn small danger" data-delete-student="${x.record_id}">Delete Student</button>` : ''}</div></td>
     </tr>`;
 }
 function detailSection(title, fields) {
@@ -511,6 +511,7 @@ function enrollmentDetailModal(x, p) {
       </div>
 
       <div class="modal-review-actions">
+        <button class="btn primary" id="editEnrollmentInformation" type="button">Edit Information</button>
         ${x.status==='pending'?`<button class="btn danger" id="rejectEnrollment" type="button">Reject</button><button class="btn success" id="approveEnrollment" type="button">Approve Enrollment</button>`:`<button class="btn" id="resetPending" type="button">Set as Pending</button>`}
         <button class="btn" id="closeEnrollmentBottom" type="button">Close</button>
       </div>
@@ -531,6 +532,78 @@ function enrollmentDetailModal(x, p) {
       </div>
     </div>
   </div>`;
+}
+
+function openDeleteStudentDialog(student, program, trigger) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'delete-student-dialog';
+  dialog.setAttribute('aria-labelledby', 'deleteStudentTitle');
+  dialog.setAttribute('aria-describedby', 'deleteStudentWarning');
+  dialog.innerHTML = `
+    <form class="delete-student-form">
+      <div class="delete-student-heading">
+        <span class="delete-student-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></span>
+        <button type="button" class="delete-student-close" aria-label="Close delete confirmation">&times;</button>
+      </div>
+      <span class="delete-student-eyebrow">Student account</span>
+      <h2 id="deleteStudentTitle">Delete this student?</h2>
+      <p class="delete-student-subtitle">Review the account below before continuing.</p>
+      <div class="delete-student-person">
+        <span class="student-avatar">${esc(studentInitials(student))}</span>
+        <div><strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong><small>${esc(student.student_id)} &middot; ${esc(program.toUpperCase())}</small></div>
+      </div>
+      <div class="delete-student-warning" id="deleteStudentWarning">
+        <strong>This action cannot be undone.</strong>
+        <p>The account and all linked enrollments, grades, attendance, offenses, serial numbers, and withdrawal requests will be permanently deleted across every level.</p>
+      </div>
+      <label for="deleteStudentConfirm">Type <strong>${esc(student.student_id)}</strong> to confirm</label>
+      <input id="deleteStudentConfirm" name="studentId" type="text" autocomplete="off" spellcheck="false" placeholder="Enter Student ID" required autofocus>
+      <p class="delete-student-error" role="alert" hidden></p>
+      <div class="delete-student-actions">
+        <button type="button" class="btn delete-student-cancel">Cancel</button>
+        <button type="submit" class="btn danger" disabled>Delete Student</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dialog);
+  const form = dialog.querySelector('form');
+  const input = dialog.querySelector('input');
+  const submit = dialog.querySelector('[type="submit"]');
+  const errorMessage = dialog.querySelector('.delete-student-error');
+  let busy = false;
+  const close = () => { if (!busy) dialog.close(); };
+  dialog.querySelector('.delete-student-close').onclick = close;
+  dialog.querySelector('.delete-student-cancel').onclick = close;
+  dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+  dialog.addEventListener('close', () => { dialog.remove(); trigger?.focus(); });
+  input.oninput = () => {
+    submit.disabled = busy || input.value.trim() !== String(student.student_id);
+    errorMessage.hidden = true;
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if (busy || input.value.trim() !== String(student.student_id)) return;
+    busy = true;
+    dialog.querySelectorAll('button, input').forEach(element => { element.disabled = true; });
+    submit.textContent = 'Deleting…';
+    errorMessage.hidden = true;
+    try {
+      const result = await API.req(`/api/admin/${program}/enrollments/${student.record_id}/student`, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirm_student_id: input.value.trim() }),
+      });
+      toast(result.message);
+      dialog.close();
+      setTimeout(() => location.reload(), 500);
+    } catch (error) {
+      busy = false;
+      dialog.querySelectorAll('button, input').forEach(element => { element.disabled = false; });
+      submit.textContent = 'Delete Student';
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+      input.focus();
+    }
+  };
+  dialog.showModal();
 }
 
 async function renderEnrollmentList(p,c){
@@ -632,7 +705,14 @@ async function renderEnrollmentList(p,c){
     $('#bulkRejectCount').textContent=pending.length;
     $('#approveAllPending').disabled=pending.length===0;
     $('#rejectAllPending').disabled=pending.length===0;
-    document.querySelectorAll('.view-edit-link').forEach(btn=>btn.onclick=()=>openDetail(Number(btn.dataset.record)))
+    document.querySelectorAll('.view-edit-link').forEach(btn=>btn.onclick=()=>openDetail(Number(btn.dataset.record)));
+    $$('[data-delete-student]').forEach(button => {
+      button.onclick = async () => {
+        const student = rows.find(row => Number(row.record_id) === Number(button.dataset.deleteStudent));
+        if (!student) return;
+        openDeleteStudentDialog(student, p, button);
+      };
+    });
   }
   async function openDetail(id){
     const listRow=rows.find(r=>Number(r.record_id)===id);
@@ -655,6 +735,44 @@ async function renderEnrollmentList(p,c){
     $('#closeEnrollmentModal').onclick=close;
     $('#closeEnrollmentBottom').onclick=close;
     modal.querySelector('.app-dialog-backdrop').onclick=close;
+    $('#editEnrollmentInformation').onclick = () => {
+      const scroll = modal.querySelector('.student-record-scroll');
+      const actions = modal.querySelector('.modal-review-actions');
+      const groups = [
+        ['Name & Contact', [['first_name','First Name',100],['middle_name','Middle Name',100],['last_name','Last Name',100],['suffix','Suffix',20],['contact_number','Contact Number',30],['email','Email',255]]],
+        ['Academic Information', [['course','Course',255],['year_level','Year Level',20]]],
+        ['Temporary Address', [['temporary_barangay','Barangay',255],['temporary_municipality','Municipality',255],['temporary_province','Province',255]]],
+        ['Permanent Address', [['permanent_barangay','Barangay',255],['permanent_municipality','Municipality',255],['permanent_province','Province',255]]],
+      ];
+      actions.classList.add('hidden');
+      $('#rejectBox').classList.add('hidden');
+      scroll.innerHTML = `<form id="editStudentInformationForm"><p class="notice">Changes update this student's profile across their enrollment records.</p>${groups.map(([title, fields]) => `<section class="student-detail-section"><h4>${title}</h4><div class="student-detail-grid">${fields.map(([name,label,max]) => `<label class="field">${label}${name === 'year_level' ? `<select name="${name}" required>${['','1st Year','2nd Year','3rd Year','4th Year'].map(value => `<option value="${value}" ${value === x[name] ? 'selected' : ''}>${value || 'Select year level'}</option>`).join('')}</select>` : `<input name="${name}" type="${name === 'email' ? 'email' : 'text'}" maxlength="${max}" value="${esc(x[name] || '')}" ${['first_name','last_name','email','course'].includes(name) ? 'required' : ''}>`}</label>`).join('')}</div></section>`).join('')}<div class="notice error hidden" id="editStudentError" role="alert"></div><div class="app-dialog-actions"><button type="button" class="btn" id="cancelStudentEdit">Cancel</button><button type="submit" class="btn primary">Save Changes</button></div></form>`;
+      scroll.scrollTop = 0;
+      scroll.querySelector('input').focus();
+      $('#cancelStudentEdit').onclick = () => { openDetail(id); };
+      $('#editStudentInformationForm').onsubmit = async event => {
+        event.preventDefault();
+        const form = event.target;
+        const save = form.querySelector('[type="submit"]');
+        if (save.disabled) return;
+        const data = Object.fromEntries(new FormData(form));
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        $('#editStudentError').classList.add('hidden');
+        try {
+          const result = await API.patch(`/api/admin/${p}/enrollments/${id}/student`, data);
+          rows.filter(row => Number(row.id) === Number(x.id)).forEach(row => Object.assign(row, data));
+          draw();
+          toast(result.message);
+          await openDetail(id);
+        } catch (error) {
+          $('#editStudentError').textContent = error.message;
+          $('#editStudentError').classList.remove('hidden');
+          save.disabled = false;
+          save.textContent = 'Save Changes';
+        }
+      };
+    };
 
     const previewOverlay=$('#filePreviewOverlay');
     const previewImage=$('#filePreviewImage');
