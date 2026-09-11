@@ -12,25 +12,27 @@
  <body class="enrollment-page">
   <main class="enrollment-shell">
    <header class="enrollment-header">
-    <div class="enrollment-header-kicker">
-     Buenavista Community College
-    </div>
-    <h1>
-     NSTP ENROLLMENT
-    </h1>
-    <p class="enrollment-header-copy">
-     Complete your registration step by step for ROTC or CWTS.
-    </p>
-    <div class="enrollment-header-orbit orbit-left">
-    </div>
-    <div class="enrollment-header-orbit orbit-right">
-   </div>
-    <div class="enrollment-title-line">
-    </div>
-    <div class="enrollment-header-pills">
-     <span class="enrollment-header-pill">4-step guided form</span>
-     <span class="enrollment-header-pill">ROTC and CWTS intake</span>
-     <span class="enrollment-header-pill">Fast student registration</span>
+    <div class="enrollment-header-content">
+     <div class="enrollment-brand-block">
+      <div class="enrollment-logo-group" aria-label="Buenavista Community College logo">
+       <span class="enrollment-logo-item bcc"><img src="/assets/images/bcclogo-removebg-preview.png" alt="BCC logo"/></span>
+      </div>
+      <div class="enrollment-brand-copy">
+       <div class="enrollment-header-kicker">
+        Buenavista Community College
+       </div>
+       <h1>
+        NSTP Enrollment
+       </h1>
+       <p class="enrollment-header-copy">
+        Complete the form to enroll in ROTC or CWTS.
+       </p>
+      </div>
+     </div>
+     <div class="enrollment-header-step" id="headerStepBadge" aria-live="polite">
+      <span>Current step</span>
+      <strong>1 of 4</strong>
+     </div>
     </div>
    </header>
    <section aria-label="Enrollment progress" class="enrollment-progress-card">
@@ -97,44 +99,13 @@
       </svg>
      </div>
      <h2 id="stepHeading">
-      Step 1 - Academic Info
+      Academic Information
      </h2>
     </div>
     <form id="enrollmentForm" novalidate="">
      <section class="enroll-step enrollment-step-body" data-step="0">
-      <div class="enrollment-form-intro">
-       <div>
-        <span class="enrollment-form-kicker">
-         Academic Details
-        </span>
-        <h3>
-         Start with your school information
-        </h3>
-        <p>
-         Choose your course, year level, and NSTP component so we can match you to the correct enrollment flow.
-        </p>
-       </div>
-       <div class="enrollment-form-badge">
-        <strong>
-         Step 1
-        </strong>
-        <span>
-         Required before continuing
-        </span>
-       </div>
-      </div>
       <div class="enrollment-field-stack">
        <div class="enrollment-form-panel">
-        <div class="enrollment-panel-header">
-         <div>
-          <span class="enrollment-panel-kicker">
-           Program Selection
-          </span>
-          <h4>
-           Academic profile
-          </h4>
-         </div>
-        </div>
         <div class="enrollment-field">
          <label for="course">
           Course
@@ -206,16 +177,6 @@
         </div>
        </div>
        <div class="enrollment-form-panel enrollment-component-panel">
-        <div class="enrollment-panel-header">
-         <div>
-          <span class="enrollment-panel-kicker">
-           Component Choice
-          </span>
-          <h4>
-           Select your NSTP track
-          </h4>
-         </div>
-        </div>
         <div class="enrollment-field enrollment-component-field">
          <label>
           NSTP Component
@@ -333,8 +294,14 @@
         </label>
         <input name="temporary_province" placeholder="Province" required=""/>
        </div>
-       <div class="enrollment-section-label">
-        Permanent Address
+       <div class="enrollment-section-heading">
+        <div class="enrollment-section-label">
+         Permanent Address
+        </div>
+        <label class="enrollment-address-copy">
+         <input id="sameAsTemporary" type="checkbox"/>
+         <span>Same as temporary address</span>
+        </label>
        </div>
        <div class="enrollment-field">
         <label>
@@ -637,13 +604,23 @@
          <label>
           Password
          </label>
-         <input minlength="6" name="password" placeholder="Min. 6 characters" required="" type="password"/>
+         <div class="enrollment-password-field">
+          <input minlength="6" name="password" placeholder="Min. 6 characters" required="" type="password"/>
+          <button aria-label="Show password" class="enrollment-password-toggle" data-password-target="password" type="button">
+           <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+          </button>
+         </div>
         </div>
         <div class="enrollment-field">
          <label>
           Confirm Password
          </label>
-         <input minlength="6" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
+         <div class="enrollment-password-field">
+          <input minlength="6" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
+          <button aria-label="Show confirm password" class="enrollment-password-toggle" data-password-target="confirm_password" type="button">
+           <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+          </button>
+         </div>
         </div>
        </div>
        <div class="enrollment-field">
