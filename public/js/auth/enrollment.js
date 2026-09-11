@@ -1,6 +1,6 @@
 ﻿async function initEnrollment(){
   let step=0;
-  const labels=['Academic Info','Personal Info','Physical & Health','Account Setup'];
+  const labels=['Academic Information','Personal Information','Physical & Health','Account Setup'];
   const sections=$$('.enroll-step'),progress=$$('.enrollment-progress-item'),f=$('#enrollmentForm'),msg=$('#enrollMsg');
   const MAX_FILE=5*1024*1024;
   const fmt=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
@@ -63,8 +63,11 @@
     progress.forEach((x,i)=>{x.classList.toggle('active',i===step);x.classList.toggle('complete',i<step);const c=x.querySelector('.enrollment-progress-circle');if(c)c.innerHTML=i<step?'<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:3"><path d="M5 13l4 4L19 7"/></svg>':String(i+1)});
     $('#backBtn').classList.toggle('hidden',step===0);
     $('#nextBtn').textContent=step===sections.length-1?'Submit Enrollment':'Next';
-    $('#stepHeading').textContent=`Step ${step+1} - ${labels[step]}`;
+    $('#stepHeading').textContent=labels[step];
     $('#mobileStepLabel').textContent=`Step ${step+1} of ${sections.length} - ${labels[step]}`;
+    const headerStepBadge=$('#headerStepBadge');
+    headerStepBadge.innerHTML=`<span>Current step</span><strong>${step+1} of ${sections.length}</strong>`;
+    headerStepBadge.style.setProperty('--header-progress',`${((step+1)/sections.length)*100}%`);
     clearError();
     updateConditionalFields();
     window.scrollTo({top:0,behavior:'smooth'});
@@ -114,6 +117,29 @@
   f.student_id.addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,10);e.target.value=d.length>6?`${d.slice(0,6)}-${d.slice(6)}`:d});
   [f.contact_number,f.emergency_contact_contact_number].forEach(input=>input.addEventListener('input',e=>{let d=e.target.value.replace(/\D/g,'').slice(0,11);if(d.length>=2&&!d.startsWith('09'))d='09'+d.slice(2);e.target.value=d}));
   f.username.addEventListener('input',e=>e.target.value=e.target.value.toUpperCase());
+  const addressFields=['barangay','municipality','province'];
+  const syncPermanentAddress=()=>{
+    if(!$('#sameAsTemporary').checked)return;
+    addressFields.forEach(field=>{
+      f.elements[`permanent_${field}`].value=f.elements[`temporary_${field}`].value;
+    });
+  };
+  $('#sameAsTemporary').addEventListener('change',e=>{
+    addressFields.forEach(field=>{
+      const permanent=f.elements[`permanent_${field}`];
+      permanent.readOnly=e.target.checked;
+      permanent.classList.toggle('address-autofilled',e.target.checked);
+    });
+    syncPermanentAddress();
+  });
+  addressFields.forEach(field=>f.elements[`temporary_${field}`].addEventListener('input',syncPermanentAddress));
+  $$('.enrollment-password-toggle').forEach(button=>button.addEventListener('click',()=>{
+    const input=f.elements[button.dataset.passwordTarget];
+    const showing=input.type==='text';
+    input.type=showing?'password':'text';
+    button.classList.toggle('active',!showing);
+    button.setAttribute('aria-label',`${showing?'Show':'Hide'} ${button.dataset.passwordTarget==='confirm_password'?'confirm password':'password'}`);
+  }));
   $('#heightFeet').addEventListener('change',()=>f.height.value=`${$('#heightFeet').value}'${$('#heightInches').value||0}"`);
   $('#heightInches').addEventListener('change',()=>f.height.value=`${$('#heightFeet').value}'${$('#heightInches').value}"`);
   $$('input[name="has_medical_condition_choice"]').forEach(r=>r.addEventListener('change',e=>{
