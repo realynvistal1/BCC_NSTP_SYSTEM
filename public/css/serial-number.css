@@ -25,6 +25,94 @@
 .serial-toolbar select {
   padding: 0 12px;
 }
+
+/* Compact filters for the ROTC and CWTS serial number lists. */
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar {
+  grid-template-columns: minmax(190px, 1.8fr) minmax(100px, 1fr) minmax(95px, .85fr) minmax(130px, 1.1fr) repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #e2e9f1;
+  border-radius: 12px;
+  background: #f7f9fc;
+}
+
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar .search-box {
+  grid-column: auto;
+  min-width: 0;
+}
+
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select) {
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #d4dfeb;
+  border-radius: 7px;
+  background-color: #fff;
+  box-shadow: none;
+  color: #334b65;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar select {
+  cursor: pointer;
+}
+
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select):hover {
+  border-color: #9db3cc;
+}
+
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select):focus-visible {
+  outline: 2px solid #88b9e4;
+  outline-offset: 2px;
+  border-color: #397bb5;
+}
+
+body[data-role="cwts"][data-page="serial-number"] .serial-toolbar {
+  grid-template-columns: minmax(190px, 1.8fr) minmax(100px, 1fr) minmax(95px, .85fr) minmax(130px, 1.1fr) minmax(120px, 1fr);
+}
+
+@media (max-width: 1400px) {
+
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar .search-box {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1051px) and (max-width: 1400px) {
+  body[data-role="cwts"][data-page="serial-number"] .serial-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1050px) {
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar .search-box {
+    grid-column: auto;
+  }
+
+  body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
 .serial-box {
   padding: 28px;
   border: 1px dashed #b9d8ef;
