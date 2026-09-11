@@ -14,7 +14,7 @@
     ;
     const grade=d.grade?`${esc(d.grade.grade)} - ${esc(d.grade.status)}`:'Not yet released';
     const serial=esc(d.serial?.serial_number||'Not yet released');
-    const welcome=(s.last_name||s.first_name||'Student').trim();
+    const welcome=displayNamePart(s.last_name||s.first_name||'Student');
     const intro=document.querySelector('.intro-copy');
     if(intro){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>Welcome back, ${esc(welcome)}</h1><p>${esc([s.student_id,s.course,s.year_level,s.nstp_component].filter(Boolean).join(' - '))}</p>`;
@@ -31,17 +31,20 @@
     const x=p.student,rec=p.records[0]||{
     }
     ;
+    const enrollmentStatus=String(rec.status||'pending').toLowerCase();
+    const reviewComplete=enrollmentStatus==='approved'||enrollmentStatus==='rejected';
+    const finalState=enrollmentStatus==='approved'?'done':enrollmentStatus==='rejected'?'current rejected':'pending';
     c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Enrollment Status</h2><p class="panel-subtitle">Your latest NSTP enrollment information and review result.</p></div>${badge(rec.status||'pending')}</div>${rec.rejection_reason?`<div class="notice error"><strong>Admin remark:</strong> ${
       esc(rec.rejection_reason)
     }
-    </div>`:''}${rec.status==='rejected'?`<div class="actions" style="justify-content:flex-start;margin:16px 0 0"><button class="btn primary" id="resubmitEnrollment">Submit Enrollment Again</button></div>`:''}<div class="status-timeline"><div class="timeline-step done"><strong>1. Submitted</strong><span>Enrollment form received</span></div><div class="timeline-step ${rec.status==='pending'?'current':'done'}"><strong>2. Admin Review</strong><span>${rec.status==='pending'?'Waiting for review':'Review completed'}</span></div><div class="timeline-step ${rec.status==='approved'?'done':rec.status==='rejected'?'current':''}"><strong>3. ${rec.status==='rejected'?'Needs Action':'Approved & Assignment'}</strong><span>${rec.status==='approved'?'Ready for platoon/company assignment':rec.status==='rejected'?'See administrator remark and submit again':'Pending approval'}</span></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
-      x.first_name
+    </div>`:''}${rec.status==='rejected'?`<div class="actions" style="justify-content:flex-start;margin:16px 0 0"><button class="btn primary" id="resubmitEnrollment">Submit Enrollment Again</button></div>`:''}<div class="status-timeline" aria-label="Enrollment progress"><div class="timeline-step done"><div class="timeline-marker"><span>1</span></div><div class="timeline-copy"><strong>Submitted</strong><span>Enrollment received</span></div></div><div class="timeline-step ${reviewComplete?'done':'current'}" ${reviewComplete?'':'aria-current="step"'}><div class="timeline-marker"><span>2</span></div><div class="timeline-copy"><strong>Admin Review</strong><span>${reviewComplete?'Review completed':'Waiting for review'}</span></div></div><div class="timeline-step ${finalState}" ${enrollmentStatus==='rejected'?'aria-current="step"':''}><div class="timeline-marker"><span>3</span></div><div class="timeline-copy"><strong>${enrollmentStatus==='rejected'?'Needs Action':'Approval & Assignment'}</strong><span>${enrollmentStatus==='approved'?'Enrollment approved':enrollmentStatus==='rejected'?'Review the admin remark':'Next step'}</span></div></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
+      displayNamePart(x.first_name)
     }
     ${
-      x.middle_name||''
+      displayNamePart(x.middle_name||'')
     }
     ${
-      x.last_name
+      displayNamePart(x.last_name)
     }
     `],['Course',x.course],['Year Level',x.year_level],['NSTP Component',x.nstp_component],['MS Level',rec.ms_level?`MS ${
       rec.ms_level
