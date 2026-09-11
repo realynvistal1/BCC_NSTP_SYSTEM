@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/assets/css/forms.css">
   <link rel="stylesheet" href="/assets/css/tables.css">
   <link rel="stylesheet" href="/assets/css/attendance.css">
+  <link rel="stylesheet" href="/assets/css/rotc-attendance-filters.css">
 </head>
 <body data-role="rotc" data-page="attendance-summary" data-title="Attendance Summary" data-subtitle="Review ROTC attendance by battalion, company, platoon, Advance Course, and special units.">
   <div class="top-mobile"><button class="btn" id="mobileMenuButton" type="button">☰</button><strong>BCC NSTP</strong></div>
@@ -22,12 +23,12 @@
       <section class="intro"><div class="intro-brand-row"><img id="portalEmblem" src="/assets/images/nstp-rotc.png" alt="Portal emblem"><div class="intro-copy"><div class="intro-kicker">BCC NSTP Management System</div><h1 id="pageTitle">Attendance Summary</h1><p id="pageSubtitle">Review ROTC attendance by battalion, company, platoon, Advance Course, and special units.</p></div></div></section>
 
       <div id="content">
-        <section class="attendance-toolbar-card">
+        <section class="attendance-toolbar-card rotc-summary-filters" aria-label="Attendance filters">
           <div class="attendance-toolbar-grid attendance-summary-toolbar">
-            <label><span>School Year / Level</span><select id="summaryCycle"><option value="">Select cycle</option></select></label>
+            <label><span>School year &amp; level</span><select id="summaryCycle"><option value="">Select cycle</option></select></label>
             <label><span>MI Number</span><select id="summaryMI"><option value="">All MI</option></select></label>
-            <label><span>IN / OUT</span><select id="summaryType"><option value="">All Sessions</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
-            <label><span>View</span><select id="summaryGroup"><option value="overall">Overall Summary</option><option value="battalion-1">Battalion 1 - Male</option><option value="battalion-2">Battalion 2 - Female</option><option value="advance-course">Advance Course</option><option value="special-platoon">Special Units (Medics / HQ / MP)</option></select></label>
+            <label><span>Session type</span><select id="summaryType"><option value="">All Sessions</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
+            <label><span>Attendance group</span><select id="summaryGroup"><option value="overall">Overall Summary</option><option value="battalion-1">Battalion 1 - Male</option><option value="battalion-2">Battalion 2 - Female</option><option value="advance-course">Advance Course</option><option value="special-platoon">Special Units (Medics / HQ / MP)</option></select></label>
           </div>
         </section>
 
