@@ -311,6 +311,12 @@ async function renderEnrollmentSchedule(p,c){
   };
 }
 const COURSE_OPTIONS=['BS Criminology','BS Hospitality Management','BS Information Technology','BS Tourism Management','BEED - Bachelor of Elementary Education','BSED - Major in English','BSED - Major in Mathematics'];
+function displayNamePart(value='') {
+  return String(value || '').trim().replace(
+    /(^|[\s'-])(\p{L})/gu,
+    (match, separator, letter) => `${separator}${letter.toLocaleUpperCase()}`
+  );
+}
 function studentInitials(x){
   return `${String(x.first_name||'').charAt(0)}${String(x.last_name||'').charAt(0)}`.toUpperCase()||'ST'
 }
@@ -337,7 +343,7 @@ function enrollmentRow(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
   const photo = `<span class="student-avatar">${esc(studentInitials(x))}</span>`;
   const level = p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`;
-  const fullName = x.last_name + ', ' + x.first_name + (x.suffix ? ` ${x.suffix}` : '');
+  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}${x.suffix ? ` ${displayNamePart(x.suffix)}` : ''}`;
 
   return `
     <tr class="${medical ? 'medical-row' : ''}" data-status="${esc(x.status)}">
@@ -358,7 +364,7 @@ function enrollmentRow(x, p) {
       <td>${esc(x.school_year || x.schedule_year || '-')}</td>
       <td>${oldDateTime(x.created_at)}</td>
       <td>${badge(x.status)}</td>
-      <td><div class="actions"><button class="view-edit-link" data-record="${x.record_id}">View / Edit</button>${['pending', 'rejected'].includes(x.status) ? `<button type="button" class="btn small danger" data-delete-student="${x.record_id}">Delete Student</button>` : ''}</div></td>
+      <td><div class="actions enrollment-row-actions"><button type="button" class="view-edit-link enrollment-view-btn" data-record="${x.record_id}">View</button>${x.status === 'pending' ? `<button type="button" class="btn small success" data-approve-enrollment="${x.record_id}">Approve</button>` : ''}${['pending', 'rejected'].includes(x.status) ? `<div class="enrollment-action-menu"><button type="button" class="enrollment-menu-toggle" data-row-menu-toggle aria-label="More actions" aria-expanded="false">&#8942;</button><div class="enrollment-row-menu hidden"><button type="button" class="enrollment-delete-option" data-delete-student="${x.record_id}">Delete Student</button></div></div>` : ''}</div></td>
     </tr>`;
 }
 function detailSection(title, fields) {
@@ -412,7 +418,7 @@ function documentPreviewCard(label, url) {
 function enrollmentDetailModal(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
   const assignment = enrollmentAssignment(x, p);
-  const fullName = `${x.last_name || ''}, ${x.first_name || ''} ${x.middle_name || ''} ${x.suffix || ''}`
+  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)} ${displayNamePart(x.middle_name)} ${displayNamePart(x.suffix)}`
     .replace(/\s+/g, ' ')
     .trim();
   const personal = [
@@ -550,7 +556,7 @@ function openDeleteStudentDialog(student, program, trigger) {
       <p class="delete-student-subtitle">Review the account below before continuing.</p>
       <div class="delete-student-person">
         <span class="student-avatar">${esc(studentInitials(student))}</span>
-        <div><strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong><small>${esc(student.student_id)} &middot; ${esc(program.toUpperCase())}</small></div>
+        <div><strong>${esc(displayNamePart(student.last_name))}, ${esc(displayNamePart(student.first_name))}</strong><small>${esc(student.student_id)} &middot; ${esc(program.toUpperCase())}</small></div>
       </div>
       <div class="delete-student-warning" id="deleteStudentWarning">
         <strong>This action cannot be undone.</strong>
@@ -706,6 +712,46 @@ async function renderEnrollmentList(p,c){
     $('#approveAllPending').disabled=pending.length===0;
     $('#rejectAllPending').disabled=pending.length===0;
     document.querySelectorAll('.view-edit-link').forEach(btn=>btn.onclick=()=>openDetail(Number(btn.dataset.record)));
+    $$('[data-row-menu-toggle]').forEach(button => {
+      button.onclick = event => {
+        event.stopPropagation();
+        const menu = button.nextElementSibling;
+        const willOpen = menu.classList.contains('hidden');
+        $$('.enrollment-row-menu').forEach(item => item.classList.add('hidden'));
+        $$('[data-row-menu-toggle]').forEach(item => item.setAttribute('aria-expanded', 'false'));
+        menu.classList.toggle('hidden', !willOpen);
+        button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (willOpen) {
+          const buttonRect = button.getBoundingClientRect();
+          const menuRect = menu.getBoundingClientRect();
+          const left = Math.max(8, buttonRect.left - menuRect.width - 8);
+          const top = Math.max(8, Math.min(
+            window.innerHeight - menuRect.height - 8,
+            buttonRect.top + (buttonRect.height - menuRect.height) / 2
+          ));
+          menu.style.left = `${left}px`;
+          menu.style.top = `${top}px`;
+        }
+      };
+    });
+    $$('.enrollment-row-menu').forEach(menu => menu.onclick = event => event.stopPropagation());
+    $$('[data-approve-enrollment]').forEach(button => {
+      button.onclick = async () => {
+        const recordId = Number(button.dataset.approveEnrollment);
+        if (!recordId || button.disabled) return;
+        button.disabled = true;
+        button.textContent = 'Approving...';
+        try {
+          const result = await API.patch(`/api/admin/${p}/enrollments/${recordId}`, { status: 'approved' });
+          toast(result.message);
+          setTimeout(() => location.reload(), 450);
+        } catch (error) {
+          button.disabled = false;
+          button.textContent = 'Approve';
+          toast(error.message, true);
+        }
+      };
+    });
     $$('[data-delete-student]').forEach(button => {
       button.onclick = async () => {
         const student = rows.find(row => Number(row.record_id) === Number(button.dataset.deleteStudent));
@@ -898,11 +944,15 @@ async function renderEnrollmentList(p,c){
     openBulkRejectModal(ids);
   }
   ;
+  c.addEventListener('click', () => {
+    $$('.enrollment-row-menu').forEach(menu => menu.classList.add('hidden'));
+    $$('[data-row-menu-toggle]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  });
   draw()
 }
 function rosterName(x){
-  return `${esc(x.last_name||'')}, ${esc(x.first_name||'')}${x.middle_name?` ${
-    esc(x.middle_name[0])
+  return `${esc(displayNamePart(x.last_name||''))}, ${esc(displayNamePart(x.first_name||''))}${x.middle_name?` ${
+    esc(displayNamePart(x.middle_name[0]))
   }
   .`:''}${x.suffix?` ${
     esc(x.suffix)
@@ -1084,7 +1134,7 @@ async function renderROTCRoster(c,specialOnly=false){
   draw();
 }
 function enrollmentTable(rows,p){
-  return table(['Student ID','Name','Course','MS','Status','Action'],rows.map(x=>`<tr><td><strong>${esc(x.student_id)}</strong></td><td>${esc(x.last_name+', '+x.first_name)}</td><td>${esc(x.course)}</td><td>MS ${x.ms_level}</td><td>${badge(x.status)}</td><td><div class="actions"><button class="btn small success" onclick="setEnrollment('${p}',${x.record_id},'approved')">Approve</button><button class="btn small danger" onclick="setEnrollment('${p}',${x.record_id},'rejected')">Reject</button></div></td></tr>`))
+  return table(['Student ID','Name','Course','MS','Status','Action'],rows.map(x=>`<tr><td><strong>${esc(x.student_id)}</strong></td><td>${esc(`${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}`)}</td><td>${esc(x.course)}</td><td>MS ${x.ms_level}</td><td>${badge(x.status)}</td><td><div class="actions"><button class="btn small success" onclick="setEnrollment('${p}',${x.record_id},'approved')">Approve</button><button class="btn small danger" onclick="setEnrollment('${p}',${x.record_id},'rejected')">Reject</button></div></td></tr>`))
 }
 async function setEnrollment(p,id,status){
   let reason='';
@@ -1140,7 +1190,7 @@ async function withdraw(id,status){
   }
 }
 function recordsTable(rows){
-  return table(['Student ID','Name','Course','Year','Program','Assignment','Email'],rows.map(x=>`<tr><td><strong>${esc(x.student_id)}</strong></td><td>${esc(x.last_name+', '+x.first_name)}</td><td>${esc(x.course)}</td><td>${esc(x.year_level)}</td><td>${esc(x.nstp_component)}</td><td>${esc(x.company||x.special_unit||x.rotc_company||'-')}</td><td>${esc(x.email)}</td></tr>`))
+  return table(['Student ID','Name','Course','Year','Program','Assignment','Email'],rows.map(x=>`<tr><td><strong>${esc(x.student_id)}</strong></td><td>${esc(`${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}`)}</td><td>${esc(x.course)}</td><td>${esc(x.year_level)}</td><td>${esc(x.nstp_component)}</td><td>${esc(x.company||x.special_unit||x.rotc_company||'-')}</td><td>${esc(x.email)}</td></tr>`))
 }
 
 function settingsHtml() {
