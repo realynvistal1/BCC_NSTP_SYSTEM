@@ -129,6 +129,11 @@ const Captcha = {
       return '';
     }
 
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (config.localhostBypass && isLocalHost) {
+      return '';
+    }
+
     if (!config.siteKey) {
       throw new Error('Security check is not configured correctly.');
     }
@@ -136,7 +141,6 @@ const Captcha = {
     try {
       await this.load(config.siteKey);
     } catch (error) {
-      const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
       if (config.localhostBypass && isLocalHost) {
         return '';
       }
