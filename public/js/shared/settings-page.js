@@ -74,10 +74,10 @@ function assignment(student) {
 
 function studentProfile(student) {
   const name = [
-    student.first_name,
-    student.middle_name,
-    student.last_name,
-    student.suffix,
+    displayNamePart(student.first_name),
+    displayNamePart(student.middle_name),
+    displayNamePart(student.last_name),
+    displayNamePart(student.suffix),
   ].filter(Boolean).join(' ');
   const temporaryAddress = [
     student.temporary_barangay,
@@ -177,10 +177,10 @@ async function renderSettingsPage(content, role) {
   applySettingsAppearance();
 
   if (role === 'student') {
-    const auth = await API.get('/api/auth/me');
+    const profile = await API.get('/api/student/profile');
     content.innerHTML = `
       <div class="settings-stack">
-        ${studentProfile(auth.user)}
+        ${studentProfile(profile.student || {})}
         ${passwordCard()}
       </div>
     `;
