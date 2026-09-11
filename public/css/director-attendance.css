@@ -1,0 +1,155 @@
+.director-attendance .attendance-toolbar-card {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #dce5ef;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 3px 14px rgba(37, 74, 120, .04);
+}
+
+.director-attendance .attendance-toolbar-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) repeat(2, minmax(0, .8fr));
+  gap: 10px;
+}
+
+.director-attendance :is(.attendance-toolbar-grid label, .attendance-record-filter, .attendance-record-search) {
+  min-width: 0;
+}
+
+.director-attendance .attendance-record-filter {
+  gap: 6px;
+}
+
+.director-attendance :is(.attendance-toolbar-grid label span, .attendance-record-filter span) {
+  color: #52657c;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.4;
+}
+
+.director-attendance :is(.attendance-toolbar-grid select, .attendance-record-filter select, .attendance-record-search input) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cfdbe8;
+  border-radius: 8px;
+  background: #fff;
+  color: #2d435d;
+  box-shadow: none;
+  font-family: inherit;
+  font-size: 13px;
+  text-overflow: ellipsis;
+}
+
+.director-attendance select { cursor: pointer; }
+
+.director-attendance :is(.attendance-toolbar-grid select, .attendance-record-filter select, .attendance-record-search input):focus-visible {
+  outline: 2px solid #8db9dd;
+  outline-offset: 2px;
+  border-color: #397bb5;
+}
+
+.director-attendance .attendance-record-filter select:disabled {
+  background: #f1f4f8;
+  color: #758397;
+  cursor: not-allowed;
+}
+
+.director-attendance .attendance-session-summary {
+  padding: 4px 2px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.director-attendance .attendance-session-summary strong { font-size: 12px; }
+
+.director-attendance .officer-session-table-card {
+  padding: 16px;
+  border: 1px solid #dce5ef;
+  border-radius: 14px;
+  box-shadow: 0 3px 14px rgba(37, 74, 120, .04);
+}
+
+.director-attendance .officer-session-table-card .attendance-record-overview {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.director-attendance .officer-session-table-card .attendance-record-stats {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 0 16px;
+}
+
+.director-attendance .attendance-record-stats > div {
+  min-width: 0;
+  padding: 12px 8px;
+  border: 1px solid #d9e5f2;
+  border-radius: 10px;
+  background: #edf4fc;
+  box-shadow: none;
+}
+
+.director-attendance .attendance-record-stats span {
+  color: #48617e;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.director-attendance .attendance-record-stats strong {
+  display: block;
+  margin-top: 5px;
+  color: #274969;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.director-attendance .attendance-record-stats .present { background: #edf8f2; border-color: #cde8d9; }
+.director-attendance .attendance-record-stats .present :is(span, strong) { color: #24734c; }
+.director-attendance .attendance-record-stats .late { background: #fff7e8; border-color: #f1dfb8; }
+.director-attendance .attendance-record-stats .late :is(span, strong) { color: #906015; }
+.director-attendance .attendance-record-stats .absent { background: #fdf0f1; border-color: #f0d2d7; }
+.director-attendance .attendance-record-stats .absent :is(span, strong) { color: #aa3c4e; }
+.director-attendance .attendance-record-stats .unmarked { background: #f2f3f7; border-color: #dfe2ea; }
+.director-attendance .attendance-record-stats .unmarked :is(span, strong) { color: #5f687e; }
+
+.director-attendance .officer-session-table-card .attendance-record-tools {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e3e9f1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.director-attendance .officer-session-table-card .attendance-record-table-wrap { padding: 0; }
+
+@media (max-width: 1100px) {
+  .director-attendance .officer-session-table-card .attendance-record-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .director-attendance .attendance-toolbar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 550px) {
+  .director-attendance .officer-session-table-card .attendance-record-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .director-attendance .attendance-toolbar-grid,
+  .director-attendance .officer-session-table-card .attendance-record-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .director-attendance :is(.attendance-toolbar-grid select, .attendance-record-filter select, .attendance-record-search input) {
+    height: 44px;
+    font-size: 16px;
+  }
+}
