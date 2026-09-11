@@ -665,34 +665,114 @@ body {
 .status-timeline {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 16px
+  gap: 22px;
+  margin: 20px 0 4px
 }
 .timeline-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 66px;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #f8fafc;
-  border: 1px solid #e5e7eb
+  border: 1px solid #e0e7f0
+}
+.timeline-step:not(:last-child):after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -23px;
+  width: 23px;
+  height: 2px;
+  background: #d8e1ec;
+  transform: translateY(-50%)
+}
+.timeline-marker {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ccd7e5;
+  border-radius: 50%;
+  background: #fff;
+  color: #74839a;
+  font-size: 13px;
+  font-weight: 800
 }
 .timeline-step.done {
-  background: #ecfdf5;
-  border-color: #a7f3d0
+  background: #f1fbf6;
+  border-color: #bce8cf
+}
+.timeline-step.done:not(:last-child):after {
+  background: #79c99e
+}
+.timeline-step.done .timeline-marker {
+  border-color: #24a565;
+  background: #24a565;
+  color: #fff
+}
+.timeline-step.done .timeline-marker span {
+  font-size: 0
+}
+.timeline-step.done .timeline-marker span:after {
+  content: "✓";
+  font-size: 17px
 }
 .timeline-step.current {
-  background: #fffbeb;
-  border-color: #fde68a
+  background: #fff9e9;
+  border-color: #efd275;
+  box-shadow: 0 0 0 3px rgba(239, 210, 117, .18)
+}
+.timeline-step.current .timeline-marker {
+  border-color: #e2a927;
+  background: #fff;
+  color: #a56d08;
+  box-shadow: inset 0 0 0 4px #fff3c9
+}
+.timeline-step.pending {
+  opacity: .78
+}
+.timeline-step.rejected {
+  background: #fff3f3;
+  border-color: #f0b9c0;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .08)
+}
+.timeline-step.rejected .timeline-marker {
+  border-color: #d95060;
+  color: #b42335;
+  box-shadow: inset 0 0 0 4px #ffe4e7
 }
 .timeline-step strong {
   display: block;
-  font-size: 12px
+  color: #20344f;
+  font-size: 13px;
+  line-height: 1.3
 }
 .timeline-step span {
   font-size: 11px;
   color: #64748b
 }
+.timeline-copy span {
+  display: block;
+  margin-top: 3px;
+  line-height: 1.35
+}
 @media(max-width: 700px) {
   .status-timeline {
-    grid-template-columns: 1fr
+    grid-template-columns: 1fr;
+    gap: 12px
+  }
+  .timeline-step:not(:last-child):after {
+    top: auto;
+    right: auto;
+    bottom: -13px;
+    left: 29px;
+    width: 2px;
+    height: 13px;
+    transform: none
   }
 }
 /* Shared portal layout helpers */
