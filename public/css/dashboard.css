@@ -1040,6 +1040,84 @@ body[data-portal-theme="officer"] .progress-meta span {
 .view-edit-link:hover {
   text-decoration: underline
 }
+.enrollment-row-actions {
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.enrollment-row-actions .enrollment-view-btn {
+  min-width: 54px;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid #bdd5ed;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: #28679e;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.enrollment-row-actions .enrollment-view-btn:hover {
+  border-color: #8db8df;
+  background: #e2f0ff;
+  text-decoration: none;
+}
+.enrollment-row-actions .btn.small {
+  min-width: 76px;
+  justify-content: center;
+}
+.enrollment-action-menu {
+  position: relative;
+}
+.enrollment-menu-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #d8e2ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #52657c;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.enrollment-menu-toggle:hover,
+.enrollment-menu-toggle[aria-expanded="true"] {
+  border-color: #9db4cf;
+  background: #f1f6fc;
+  color: #245f9f;
+}
+.enrollment-row-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 128px;
+  padding: 5px;
+  border: 1px solid #e0e6ee;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+}
+.enrollment-delete-option {
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #c52f3e;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.enrollment-delete-option:hover {
+  background: #fff0f2;
+}
+.enrollment-delete-option:before {
+  content: "🗑";
+  margin-right: 8px;
+  filter: grayscale(1);
+}
 .enrollment-detail-card {
   width: min(900px, 96vw)
 }
