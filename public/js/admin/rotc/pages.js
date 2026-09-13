@@ -25,46 +25,21 @@ async function adminPage(_role, page, content) {
     }
 
     content.innerHTML = `
-      <div class="summary-grid">
-        ${summaryTile('Approved Students', approved, `Students approved in the current ${program} enrollment cycle`, 'blue')}
+      <div class="summary-grid three">
         ${summaryTile('Approved', approved, `${approvalRate}% of students cleared`, 'green')}
         ${summaryTile('Pending', pending, `${pendingRate}% still need review`, 'orange')}
         ${summaryTile('Rejected Students', rejected, 'Students who were not approved', 'red')}
       </div>
-      <div class="admin-analytics">
-        <section class="section-card">
-          <div class="section-heading">
-            <h2>Enrollment Pipeline</h2>
-            <p>A quick snapshot of how student applications are moving through review.</p>
-          </div>
-          ${progressRow('Approved', approved, total, 'green')}
-          ${progressRow('Pending', pending, total, 'orange')}
-          ${progressRow('Rejected', rejected, total, 'red')}
-        </section>
-        <section class="section-card">
-          <div class="section-heading">
-            <h2>What Needs Attention</h2>
-            <p>Use these numbers to decide what to review first.</p>
-          </div>
-          <div class="insight-list">
-            ${insight('Pending Reviews', pending, 'Students waiting for enrollment approval')}
-            ${insight('Rejected Cases', rejected, 'Applications that may need follow-up or re-submission')}
-            ${insight('Approval Rate', `${approvalRate}%`, 'Current success rate across student records')}
-          </div>
-        </section>
-      </div>
       <section class="section-card distribution-card">
         <div class="section-heading">
           <h2>${program} Distribution</h2>
-          <p>${program === 'ROTC'
-            ? 'Current view highlights approved cadets and assignment readiness.'
-            : 'Company analytics show how students are spread across available CWTS units.'}
-          </p>
+          <p>Approved students in each group for the current enrollment cycle.</p>
         </div>
-        <div class="distribution-insights">
-          ${insight(program === 'ROTC' ? 'Assigned Cadets' : 'Assigned Students', assigned, `Out of ${approved} approved students`)}
-          ${insight(program === 'ROTC' ? 'Needs Assignment' : 'Needs Company', Math.max(approved - assigned, 0), 'Approved students still waiting for placement')}
-          ${insight('Assignment Rate', approved ? `${Math.round((assigned / approved) * 100)}%` : '0%', 'Current approved-student assignment coverage')}
+        <div class="distribution-insights rotc-group-counts">
+          ${insight('Battalion 1', Number(data.distribution?.battalion_1 || 0), 'Students in Battalion 1')}
+          ${insight('Battalion 2', Number(data.distribution?.battalion_2 || 0), 'Students in Battalion 2')}
+          ${insight('Advance Course', Number(data.distribution?.advance_course || 0), 'Students in Advance Course')}
+          ${insight('Special Platoons', Number(data.distribution?.special_platoons || 0), 'Students across all special platoons')}
         </div>
       </section>
       <section class="section-card">
