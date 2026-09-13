@@ -401,18 +401,6 @@ officerPage = async function(page, c) {
       ${summaryTile('Active Attendance', activeSessions, `Live session${activeSessions === 1 ? '' : 's'} being monitored`, 'orange')}
       ${summaryTile('Recorded Attendance', recordedAttendance, 'All saved attendance entries across sessions', 'red')}
     </div>`;
-  const capacityMarkup = `
-    <section class="section-card distribution-card">
-      <div class="section-heading">
-        <h2>Roster Capacity Snapshot</h2>
-        <p>Monitor how ROTC battalions, CWTS companies, and special ROTC groups are filling up.</p>
-      </div>
-      ${progressRow('Battalion 1', b1.length, battalionCap, 'blue')}
-      ${progressRow('Battalion 2', b2.length, battalionCap, 'purple')}
-      ${progressRow('CWTS Companies', cwts.length, cwtsCap, 'green')}
-      ${progressRow('Advance Course', adv.length, Math.max(rotcTotal, adv.length || 1), 'orange')}
-      ${progressRow('Special Platoon', special.length, Math.max(rotcTotal, special.length || 1), 'red')}
-    </section>`;
   const shortcutMarkup = `
     <section class="section-card">
       <div class="section-heading">
@@ -432,7 +420,7 @@ officerPage = async function(page, c) {
       </div>
     </section>`;
 
-  c.innerHTML = `${summaryMarkup}${capacityMarkup}${shortcutMarkup}`;
+  c.innerHTML = `${summaryMarkup}${shortcutMarkup}`;
   bindOfficerEnrollmentLists();
 };
 
