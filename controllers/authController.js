@@ -77,20 +77,6 @@ function shouldUseSecureCookies(req) {
   return req.secure || req.headers['x-forwarded-proto'] === 'https';
 }
 
-function accountQueries(isStudent) {
-  if (isStudent) {
-    return {
-      select: 'SELECT id, password FROM students WHERE id = ? LIMIT 1',
-      update: 'UPDATE students SET password = ? WHERE id = ?',
-    };
-  }
-
-  return {
-    select: 'SELECT id, password FROM admins WHERE id = ? LIMIT 1',
-    update: 'UPDATE admins SET password = ? WHERE id = ?',
-  };
-}
-
 function adminResetLookup(portal) {
   if (portal === 'officer') {
     return {
@@ -470,40 +456,44 @@ exports.me = async (req, res) => {
   res.json({ user: req.user });
 };
 
-exports.changePassword = async (req, res) => {
+async function handlePasswordChange(req, res, sending) {
   try {
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required.' });
-    }
-
-    const validationMessage = authService.newPasswordValidationMessage(newPassword);
-    if (validationMessage) {
-      return res.status(400).json({ message: validationMessage });
-    }
-
-    const isStudent = req.user.role === 'student';
-    const queries = accountQueries(isStudent);
-    const [rows] = await db.execute(queries.select, [req.user.id]);
-
-    const account = rows[0];
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found.' });
-    }
-
-    const match = await authService.comparePassword(currentPassword, account.password);
-    if (!match) {
-      return res.status(400).json({ message: 'Current password is incorrect.' });
-    }
-
-    const hashedPassword = await authService.hashPassword(newPassword);
-    await db.execute(queries.update, [hashedPassword, req.user.id]);
-
-    return res.json({ message: 'Password changed successfully.' });
+    const { status, ...response } = await require('../services/passwordChangeService').run(
+      req.user, req.body, sending, portalLabel(req.user.portal)
+    );
+    return res.status(status).json(response);
   } catch (error) {
     return serverError(res, error);
   }
+}
+
+exports.requestPasswordChangeCode = (req, res) => handlePasswordChange(req, res, true);
+exports.changePassword = (req, res) => handlePasswordChange(req, res, false);
+
+exports.currentAdminEmail = async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT email FROM admins WHERE id=? LIMIT 1', [req.user.id]);
+    if (!rows[0]) return res.status(404).json({ message: 'Account not found.' });
+    return res.json({ email: rows[0].email });
+  } catch (error) { return serverError(res, error); }
+};
+
+exports.changeAdminEmail = async (req, res) => {
+  try {
+    const { status, ...response } = await require('../services/emailChangeService').run(
+      req.user, req.body, req.params.step, portalLabel(req.user.portal)
+    );
+    if (status === 200 && response.email) {
+      // Preserve the session's original expiration while refreshing its email.
+      const token = jwt.sign({ ...req.user, email: response.email }, process.env.JWT_SECRET);
+      clearAuthCookies(res);
+      res.cookie('nstp_token', token, {
+        httpOnly: true, path: '/', sameSite: 'lax', secure: shouldUseSecureCookies(req),
+        maxAge: Math.max(0, req.user.exp * 1000 - Date.now()),
+      });
+    }
+    return res.status(status).json(response);
+  } catch (error) { return serverError(res, error); }
 };
 
 exports.requestStudentResetCode = async (req, res) => {
