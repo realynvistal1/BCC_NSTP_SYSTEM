@@ -384,7 +384,17 @@ exports.dashboard = async (req, res) => {
              WHEN ?='CWTS' THEN s.company IS NOT NULL
               ELSE (s.rotc_company IS NOT NULL OR s.special_unit IS NOT NULL)
            END
-         ) assigned
+         ) assigned,
+         SUM(s.battalion=1 AND COALESCE(s.special_unit,'')='' AND COALESCE(s.willing_to_take_advance_course,0)<>1) battalion_1,
+         SUM(s.battalion=2 AND COALESCE(s.special_unit,'')='' AND COALESCE(s.willing_to_take_advance_course,0)<>1) battalion_2,
+         SUM(COALESCE(s.willing_to_take_advance_course,0)=1 AND COALESCE(s.special_unit,'')='') advance_course,
+         SUM(COALESCE(s.special_unit,'')<>'') special_platoons,
+         SUM(s.company='Alpha') company_alpha,
+         SUM(s.company='Bravo') company_bravo,
+         SUM(s.company='Charlie') company_charlie,
+         SUM(s.company='Delta') company_delta,
+         SUM(s.company='Echo') company_echo,
+         SUM(s.company='Foxtrot') company_foxtrot
        FROM students s
        JOIN student_ms_records smr ON smr.student_id=s.id
        WHERE s.nstp_component=? AND s.role='student'
@@ -406,6 +416,23 @@ exports.dashboard = async (req, res) => {
       program: programCode,
       ...counts,
       assigned: assigned.assigned || 0,
+      ...(programCode === 'ROTC' ? {
+        distribution: {
+          battalion_1: Number(assigned.battalion_1 || 0),
+          battalion_2: Number(assigned.battalion_2 || 0),
+          advance_course: Number(assigned.advance_course || 0),
+          special_platoons: Number(assigned.special_platoons || 0),
+        },
+      } : {
+        distribution: {
+          Alpha: Number(assigned.company_alpha || 0),
+          Bravo: Number(assigned.company_bravo || 0),
+          Charlie: Number(assigned.company_charlie || 0),
+          Delta: Number(assigned.company_delta || 0),
+          Echo: Number(assigned.company_echo || 0),
+          Foxtrot: Number(assigned.company_foxtrot || 0),
+        },
+      }),
       schedule: dashboardSchedule
         ? {
             id: dashboardSchedule.id,
