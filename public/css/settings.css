@@ -3,6 +3,105 @@
   display: grid;
   gap: 18px
 }
+.email-wizard {
+  overflow: hidden;
+  --email-blue: #0369a1;
+}
+.email-wizard [hidden] { display: none !important; }
+.email-wizard-header { display: flex; align-items: center; gap: 14px; }
+.email-wizard .email-wizard-header p { font-size: 14px; line-height: 1.5; }
+.email-wizard-icon {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 48px; height: 48px; border-radius: 14px;
+  background: #eaf5ff; color: var(--email-blue); font-size: 25px; font-weight: 700;
+}
+.email-wizard-progress {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none; margin: 26px 0; padding: 0; gap: 8px;
+}
+.email-wizard-progress li {
+  display: flex; align-items: center; gap: 8px;
+  color: #64748b; border-bottom: 3px solid #e5edf5; padding-bottom: 14px;
+}
+.email-wizard-progress li > span {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  flex-shrink: 0; border-radius: 50%; background: #f1f5f9; font-size: 12px; font-weight: 700;
+}
+.email-wizard-progress strong { font-size: 12px; }
+.email-wizard-progress [aria-current="step"] { color: var(--email-blue); border-color: #0284c7; }
+.email-wizard-progress [aria-current="step"] > span { background: #0284c7; color: #fff; }
+.email-wizard-progress .is-complete { color: #047857; border-color: #6ee7b7; }
+.email-wizard-progress .is-complete > span { background: #d1fae5; color: #047857; }
+.email-wizard-panel { display: grid; gap: 18px; max-width: 560px; margin: 0 auto; }
+.email-step-caption { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--email-blue); }
+.email-wizard .email-step-heading h3 { font-size: 22px; margin: 7px 0 6px; letter-spacing: -.02em; }
+.email-wizard .email-step-heading p { font-size: 14px; line-height: 1.5; }
+.email-current-address { padding: 14px 16px; background: #f5f8fc; border: 1px solid #e5edf5; border-radius: 12px; }
+.email-current-address span { display: block; color: #64748b; font-size: 10px; font-weight: 750; letter-spacing: .08em; margin-bottom: 5px; }
+.email-current-address strong, .email-code-destination { font-size: 14px; color: #334155; overflow-wrap: anywhere; }
+.email-code-destination { padding: 14px 16px; background: #eff8ff; border: 1px solid #d8ecfc; border-radius: 12px; font-weight: 650; }
+.email-wizard .field input { box-sizing: border-box; min-height: 46px; font: inherit; font-size: 14px; }
+.email-wizard .field .email-otp-input { font-size: 26px; text-align: center; letter-spacing: .32em; padding: 15px 12px; font-weight: 700; }
+.email-wizard .email-step-hint { font-size: 12px; line-height: 1.6; }
+.email-resend, .email-start-over {
+  border: 0; background: transparent; color: var(--email-blue); font: inherit;
+  font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; min-height: 40px;
+}
+.email-resend { justify-self: start; padding-left: 0; }
+.email-wizard button:disabled { opacity: .55; cursor: not-allowed; }
+.email-wizard button:focus-visible { outline: 2px solid #0284c7; outline-offset: 3px; }
+.email-wizard-actions { display: grid; gap: 6px; max-width: 560px; margin: 24px auto 0; }
+.email-wizard-actions .btn.primary { min-height: 46px; width: 100%; background: #0369a1; color: #fff; border-color: #0369a1; }
+.email-wizard-actions .btn.primary:hover:not(:disabled) { background: #075985; }
+.email-wizard-status { max-width: 560px; margin: 18px auto 0; padding: 12px 14px; border-radius: 10px; background: #eff8ff; color: #075985; font-size: 13px; line-height: 1.5; box-sizing: border-box; }
+.email-wizard-status.is-error { background: #fff1f2; color: #b91c1c; border: 1px solid #fecdd3; }
+.email-wizard-success { display: grid; justify-items: center; gap: 12px; padding: 12px 0 20px; text-align: center; }
+.email-success-icon { display: grid; place-items: center; height: 60px; width: 60px; border-radius: 50%; background: #d1fae5; color: #047857; font-size: 28px; }
+.email-wizard .email-wizard-success h3 { font-size: 24px; margin: 4px 0 0; }
+.email-wizard-success strong { overflow-wrap: anywhere; max-width: 100%; }
+.email-wizard-success .btn { margin-top: 8px; min-width: 140px; }
+@media (max-width: 520px) {
+  .email-wizard-progress li { flex-direction: column; align-items: flex-start; gap: 7px; }
+  .email-wizard-progress strong { font-size: 11px; }
+  .email-wizard-header { align-items: flex-start; }
+  .email-wizard-icon { width: 38px; height: 38px; font-size: 21px; }
+}
+html[data-theme="dark"] .email-wizard { --email-blue: #7dd3fc; }
+html[data-theme="dark"] .email-current-address,
+html[data-theme="dark"] .email-code-destination { background: #172337; border-color: #334155; color: #e2e8f0; }
+html[data-theme="dark"] .email-current-address strong { color: #e2e8f0; }
+.settings-password-input {
+  position: relative;
+  min-width: 0;
+}
+.settings-password-input input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 68px;
+}
+.settings-password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 56px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0369a1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.settings-password-toggle:hover {
+  background: #e0f2fe;
+}
+.settings-password-toggle:focus-visible {
+  outline: 2px solid var(--accent-1, #0284c7);
+  outline-offset: 1px;
+}
 .settings-card {
   background: #fff;
   border: 1px solid #e5edf5;
