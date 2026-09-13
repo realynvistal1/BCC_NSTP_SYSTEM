@@ -13,7 +13,9 @@
     "db:setup": "node database/setup.js",
     "db:seed": "node database/seed-admins.js",
     "db:seed:students": "node database/seed-students.js",
-    "verify:sqli": "node scripts/verify-sqli-hardening.js"
+    "verify:sqli": "node scripts/verify-sqli-hardening.js",
+    "verify:password-otp": "node scripts/verify-password-change-otp.js",
+    "verify:email-change": "node scripts/verify-email-change.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
