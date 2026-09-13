@@ -14,6 +14,9 @@ function transporter() {
 
   return nodemailer.createTransport({
     service: 'gmail',
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     auth: {
       user: String(process.env.GMAIL_USER || '').trim(),
       pass: String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
@@ -49,7 +52,43 @@ async function sendPasswordResetCode({ to, code, portalLabel }) {
   });
 }
 
+async function sendPasswordChangeCode({ to, code, portalLabel }) {
+  await transporter().sendMail({
+    from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,
+    to,
+    subject: `${portalLabel} Password Change Code`,
+    text: [
+      `You requested to change your password in Settings for the ${portalLabel}.`,
+      '',
+      `Your verification code is: ${code}`,
+      '',
+      'This code expires in 10 minutes and can only be used once.',
+      'Do not share this code with anyone.',
+      'If you did not request this change, secure your account and contact your administrator.',
+    ].join('\n'),
+  });
+}
+
+async function sendEmailChangeCode({ to, code, portalLabel, destination, newEmail }) {
+  await transporter().sendMail({
+    from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,
+    to,
+    subject: `${portalLabel} Email Change Verification`,
+    text: [
+      destination === 'old'
+        ? `You requested to change your account email to ${newEmail} in the ${portalLabel}.`
+        : `Verify this new email address for your account in the ${portalLabel}.`,
+      `Your verification code is: ${code}`,
+      'Complete this verification step within 10 minutes. Resending does not extend a verified email change.',
+      'Do not share this code. Your account email will change only after both email addresses are verified.',
+      'If you did not request this change, do not use this code and contact your administrator.',
+    ].join('\n\n'),
+  });
+}
+
 module.exports = {
   hasEmailConfig,
   sendPasswordResetCode,
+  sendPasswordChangeCode,
+  sendEmailChangeCode,
 };
