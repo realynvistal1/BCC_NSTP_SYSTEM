@@ -203,6 +203,16 @@ return;
 }
 res.status(500).json({ message: "Unexpected server error." });
 });
-app.listen(PORT, HOST, () => {
-console.log(`BCC NSTP System running at http://${HOST}:${PORT}`);
+app.listen(PORT, HOST, (error) => {
+  if (error) {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Cannot start BCC NSTP: ${HOST}:${PORT} is already in use. Stop the existing server before starting another copy.`);
+    } else {
+      console.error('Cannot start BCC NSTP:', error.message);
+    }
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`BCC NSTP System running at http://${HOST}:${PORT}`);
+  console.log('Keep this terminal open. Press Ctrl+C to stop the server.');
 });
