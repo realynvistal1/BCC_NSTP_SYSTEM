@@ -15,12 +15,24 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         : student.nstp_component === 'CWTS'
           ? `Company ${student.company || 'Not assigned'}`
           : [
+            student.rotc_company ? `${student.rotc_company} Company` : '',
             student.battalion ? `Battalion ${student.battalion}` : '',
-            student.rotc_company || '',
             student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
           ].filter(Boolean).join(' - ') || 'Not assigned';
 
     let withdrawal = null;
+    const hasAssignment = Boolean(isAdvance || student.special_unit || (
+      student.nstp_component === 'CWTS' ? student.company : student.rotc_platoon
+    ));
+    const assignmentDetails = isAdvance
+      ? [['Program', 'ROTC'], ['Course', 'Advance Course']]
+      : student.special_unit
+        ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit]]
+        : student.nstp_component === 'CWTS'
+          ? [['Program', 'CWTS'], ['Company', student.company || 'Awaiting assignment']]
+          : [['Company', student.rotc_company || 'Awaiting assignment'],
+            ['Battalion', student.battalion || 'Awaiting assignment'],
+            ['Platoon', student.rotc_platoon || 'Awaiting assignment']];
 
     if (isAdvance) {
       try {
@@ -29,11 +41,29 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     }
 
     content.innerHTML = `
-      <div class="hero-assignment">
-        <div class="assignment-icon">${icon('platoon')}</div>
-        <div class="dash-label">Current Assignment</div>
-        <h2>${esc(assignment)}</h2>
-        <p class="muted">Your assignment is based on your approved NSTP enrollment.</p>
+      <section class="student-assignment" aria-labelledby="assignmentTitle">
+        <div class="student-assignment-header">
+          <span class="student-assignment-eyebrow">${esc(student.nstp_component || 'NSTP')} &bull; UNIT ASSIGNMENT</span>
+          <span class="student-assignment-status ${hasAssignment ? 'is-assigned' : 'is-waiting'}">
+            <span aria-hidden="true">${icon(hasAssignment ? 'check' : 'attendance')}</span>
+            ${hasAssignment ? 'Assigned' : 'Awaiting assignment'}
+          </span>
+        </div>
+        <div class="student-assignment-body">
+          <div class="student-assignment-heading">
+            <div class="student-assignment-emblem" aria-hidden="true">${icon('platoon')}</div>
+            <div>
+              <p class="student-assignment-label">Current assignment</p>
+              <h2 id="assignmentTitle">${esc(assignment)}</h2>
+              <p class="student-assignment-description">${hasAssignment
+                ? 'Your unit. Your team. Serve and grow together.'
+                : 'Your unit will appear here after enrollment approval and administrator assignment.'}</p>
+            </div>
+          </div>
+          <dl class="student-assignment-details">
+            ${assignmentDetails.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(String(value))}</dd></div>`).join('')}
+          </dl>
+        </div>
         ${isAdvance ? `
           <div class="advance-withdraw-box">
             <h3>Advance Course Withdrawal</h3>
@@ -51,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
               : ''}
           </div>
         ` : ''}
-      </div>
+      </section>
       <div id="studentWithdrawModal" class="app-dialog hidden">
         <div class="app-dialog-backdrop"></div>
         <div class="app-dialog-card small-modal">
