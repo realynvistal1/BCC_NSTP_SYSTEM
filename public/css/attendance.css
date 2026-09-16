@@ -1131,3 +1131,10 @@
   color: #b91c1c
 }
 
+
+.student-attendance-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.student-attendance-header-actions .btn { background: #fff; color: #245580; white-space: nowrap; }
+@media (max-width: 640px) {
+  .student-attendance-header { flex-wrap: wrap; gap: 14px; }
+  .student-attendance-header-actions { justify-content: flex-start; }
+}
