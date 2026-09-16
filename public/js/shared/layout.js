@@ -94,6 +94,11 @@ function shell(role, title, subtitle, auth) {
   });
 
   document.getElementById('logoutButton')?.addEventListener('click', logout);
+  if (role === 'student') {
+    loadScriptOnce('/assets/js/student/attendance-alerts.js')
+      .then(() => window.StudentAttendanceAlerts.start(auth.user))
+      .catch((error) => console.warn('Attendance alerts unavailable:', error.message));
+  }
 }
 
 function portalLogin(expected) {
