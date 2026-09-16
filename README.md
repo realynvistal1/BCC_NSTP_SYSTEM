@@ -49,6 +49,8 @@ For a stronger external layer in front of Node.js:
 
 ## Main features
 
+For an existing database, run `node database/migrate-platoon-assignment.js` before starting this version. ROTC platoon assignment runs once per MS level and school year, only after its enrollment schedule closes. A successful run stores its completion timestamp; failed runs roll back and can be retried. Earlier assignment runs have no stored timestamp and are not automatically marked complete by the migration.
+
 - student enrollment and re-enrollment
 - separate role-based login portals
 - enrollment schedule management
