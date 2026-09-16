@@ -1,6 +1,22 @@
 let officerSessions = [];
 const officerRecordStore = new Map();
 let officerAttendanceRows = [];
+function attendanceDisplayName(value) {
+  return String(value || '').trim().replace(/(^|[\s'\-])\p{L}/gu, letter => letter.toLocaleUpperCase());
+}
+
+function attendanceStudentIdentity(student) {
+  const last = attendanceDisplayName(student.last_name);
+  const first = attendanceDisplayName(student.first_name);
+  const initials = `${first.charAt(0)}${last.charAt(0)}` || '?';
+  return `<div class="director-student-identity"><span class="director-student-avatar" aria-hidden="true">${esc(initials)}</span><div><strong>${esc(last)}, ${esc(first)}</strong><small>${esc(student.student_id)}</small></div></div>`;
+}
+
+function attendanceRecordBadge(status) {
+  const states = { present: ['Present', 'success'], late: ['Late', 'warning'], absent: ['Absent', 'danger'], unmarked: ['Not Marked', 'info'] };
+  const [label, tone] = states[String(status || '').toLowerCase()] || states.unmarked;
+  return `<span class="attendance-status-badge ${tone}">${label}</span>`;
+}
 let officerAttendanceFilterState = {
   group: 'all',
   company: 'all',
@@ -326,22 +342,22 @@ function renderOfficerAttendanceTable(container, sessions, program) {
       ${statCard('Present', counts.present, 'present')}
       ${statCard('Late', counts.late, 'late')}
       ${statCard('Absent', counts.absent, 'absent')}
-      ${statCard('Not Yet', counts.unmarked, 'unmarked')}
+      ${statCard('Not Marked', counts.unmarked, 'unmarked')}
     `;
 
     $('#officerInlineTable').innerHTML = filteredStudents.length
       ? table(
-        ['Student', 'Program', 'School Year', 'Level', 'MI / CS', 'Assignment', 'Time', 'Status', 'Action'],
+        ['Student', 'Program', 'School Year', 'Level', 'Session', 'Assignment', 'Recorded At', 'Status', 'Action'],
         filteredStudents.map((student) => `
           <tr>
-            <td><strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong><small>${esc(student.student_id)}</small></td>
-            <td>${esc(student.session_program || '-')}</td>
+            <td>${attendanceStudentIdentity(student)}</td>
+            <td><span class="director-program-chip ${student.session_program === 'CWTS' ? 'cwts' : 'rotc'}">${esc(student.session_program || '-')}</span></td>
             <td>${esc(student.session_school_year || '-')}</td>
             <td>${student.session_program === 'CWTS' ? `CWTS ${esc(student.session_ms_level || '-')}` : `MS ${esc(student.session_ms_level || '-')}`}</td>
             <td>${esc(`${student.session_program === 'CWTS' ? 'CS' : 'MI'} ${student.mi_number || '-'} ${(student.mi_type || '').toUpperCase()}`)}</td>
             <td>${esc(officerAssignment(student))}</td>
             <td>${student.attendance_time ? attFmtTime(student.attendance_time) : '-'}</td>
-            <td>${badge(student.attendance_status)}</td>
+            <td>${attendanceRecordBadge(student.attendance_status)}</td>
             <td><button class="btn small primary officer-inline-status" data-session="${student.session_id}" data-student="${student.id}" type="button">Update Status</button></td>
           </tr>
         `)
@@ -359,6 +375,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
       <span>${esc(program === 'ADVANCE_COURSE' ? 'Advance Course' : program)} attendance results</span>
     </div>
     <section class="attendance-summary-card officer-session-table-card">
+      <div class="director-attendance-heading"><div><span>STUDENT ATTENDANCE</span><h2>Attendance Overview</h2><p>Review attendance and update student records for the selected sessions.</p></div></div>
       <div class="attendance-record-overview">
         <div class="attendance-record-stats" id="officerInlineStats"></div>
         <div class="attendance-record-tools">
@@ -478,7 +495,7 @@ async function promptOfficerStatus(sessionId, student) {
     ? ''
     : String(student.attendance_status || '').toLowerCase();
   const input = window.prompt(
-    `Update attendance for ${student.last_name}, ${student.first_name}.\nType present, late, or absent:`,
+    `Update attendance for ${attendanceDisplayName(student.last_name)}, ${attendanceDisplayName(student.first_name)}.\nType present, late, or absent:`,
     current
   );
 
@@ -530,7 +547,7 @@ async function openStatusModal(sessionId, student) {
       <div class="record-modal-head">
         <div>
           <span>Update Attendance</span>
-          <h2>${esc(student.last_name)}, ${esc(student.first_name)}</h2>
+          <h2>${esc(attendanceDisplayName(student.last_name))}, ${esc(attendanceDisplayName(student.first_name))}</h2>
           <p>${esc(student.student_id)} - ${esc(student.course || '-')}</p>
         </div>
         <button class="modal-close" id="statusModalClose">x</button>
@@ -605,10 +622,10 @@ async function openOfficerRecords(id) {
 
     const rows = data.students.map((student) => `
       <tr data-group="${officerStudentGroup(student)}" data-company="${esc(officerStudentCompany(student))}" data-platoon="${esc(officerStudentPlatoon(student))}">
-        <td><strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong><small>${esc(student.student_id)}</small></td>
+        <td>${attendanceStudentIdentity(student)}</td>
         <td>${esc(officerAssignment(student))}</td>
         <td>${student.attendance_time ? attFmtTime(student.attendance_time) : '-'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${attendanceRecordBadge(student.attendance_status)}</td>
         <td><button class="btn small primary officer-update-status" type="button" onclick="window.__officerPromptStatus(${Number(id)}, ${Number(student.id)})">Update Status</button></td>
       </tr>
     `);
