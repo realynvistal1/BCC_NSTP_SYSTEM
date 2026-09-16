@@ -911,3 +911,17 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* Shared student attendance notification controls and live session banner. */
+.student-attendance-alerts { margin: 0 0 24px; }
+.attendance-live-alert { display: flex; align-items: center; gap: 14px; padding: 20px; margin-top: 12px; border: 1px solid #9cc4ed; border-left: 5px solid #286fae; border-radius: 16px; background: #eaf5ff; box-shadow: 0 8px 24px rgba(32,76,125,.08); }
+.attendance-live-alert[hidden] { display: none; }
+.attendance-live-alert > div { flex: 1; min-width: 0; }
+.attendance-live-alert strong { color: #173b69; }
+.attendance-live-copy { margin: 6px 0 0; font-size: 13px; line-height: 1.6; color: #365778; overflow-wrap: anywhere; }
+.attendance-live-alert .btn { flex-shrink: 0; }
+.student-attendance-alerts .btn:focus-visible { outline: 2px solid #24639c; outline-offset: 3px; }
+@media (max-width: 640px) {
+  .attendance-live-alert { flex-wrap: wrap; }
+  .attendance-live-alert > div { flex-basis: 100%; }
+}
