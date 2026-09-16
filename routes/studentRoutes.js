@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const controller = require('../controllers/studentController');
-const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const { requireAuth, requireRole, requirePortal } = require('../middleware/authMiddleware');
 
 router.get('/enrollment-schedule', controller.checkSchedule);
 router.get('/check-student-id', controller.checkStudentId);
 router.post('/register', controller.register);
 
-router.use(requireAuth, requireRole('student'));
+router.use(requireAuth, requireRole('student'), requirePortal('student'));
 
 router.get('/dashboard', controller.dashboard);
 router.get('/profile', controller.profile);
