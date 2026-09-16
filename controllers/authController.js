@@ -43,8 +43,9 @@ async function ensureCaptcha(req, res, token, action) {
 
 function adminPortal(program, storedRole) {
   if (storedRole === 'director' || storedRole === 'officer') return 'officer';
-  if (program === 'CWTS') return 'cwts-admin';
-  return 'rotc-admin';
+  if (storedRole === 'admin' && program === 'CWTS') return 'cwts-admin';
+  if (storedRole === 'admin' && program === 'ROTC') return 'rotc-admin';
+  return null;
 }
 
 function runtimeRoleForAdmin(storedRole) {
@@ -303,11 +304,17 @@ async function clearSecurityEvent(eventKey) {
   );
 }
 
-async function findAdmin(identifier) {
+async function findAdmin(identifier, portal) {
+  const scope = {
+    'rotc-admin': "role='admin' AND program='ROTC'",
+    'cwts-admin': "role='admin' AND program='CWTS'",
+    officer: "role IN ('director','officer')",
+  }[portal];
+  if (!scope) return null;
   const [rows] = await db.execute(
     `SELECT id, email, username, password, role, program
      FROM admins
-     WHERE email = ? OR username = ?
+     WHERE (email = ? OR username = ?) AND ${scope}
      LIMIT 1`,
     [identifier, identifier]
   );
@@ -319,7 +326,7 @@ async function findStudent(identifier) {
   const [rows] = await db.execute(
     `SELECT id, email, username, password, role, nstp_component
      FROM students
-     WHERE email = ? OR username = ?
+     WHERE (email = ? OR username = ?) AND role='student'
      LIMIT 1`,
     [identifier, identifier]
   );
@@ -334,10 +341,16 @@ exports.login = async (req, res) => {
       username,
       email,
       password,
+      portal: requestedPortal,
       recaptcha_token: recaptchaToken,
     } = req.body;
     const loginValue = String(identifier || username || email || '').trim();
     const plainPassword = String(password || '');
+
+    if (typeof requestedPortal !== 'string'
+      || !['student', 'rotc-admin', 'cwts-admin', 'officer'].includes(requestedPortal)) {
+      return res.status(400).json({ message: 'Select a valid login portal and try again.' });
+    }
 
     if (!await ensureCaptcha(req, res, recaptchaToken, 'login')) {
       return;
@@ -360,17 +373,14 @@ exports.login = async (req, res) => {
       });
     }
 
-    let source = 'admin';
-    let user = await findAdmin(loginValue);
-
-    if (!user) {
-      source = 'student';
-      user = await findStudent(loginValue);
-    }
+    const source = requestedPortal === 'student' ? 'student' : 'admin';
+    const user = source === 'student'
+      ? await findStudent(loginValue)
+      : await findAdmin(loginValue, requestedPortal);
 
     if (!user) {
       const failed = await recordFailedLogin(loginKey);
-      return res.status(401).json({ message: 'Invalid login credentials.' });
+      return res.status(401).json({ message: 'Invalid credentials for this portal. Use your account’s designated login portal.' });
     }
 
     const match = await authService.comparePassword(plainPassword, user.password);
@@ -390,6 +400,11 @@ exports.login = async (req, res) => {
       });
     }
 
+    const accountPortal = source === 'student' ? 'student' : adminPortal(user.program, user.role);
+    if (accountPortal !== requestedPortal) {
+      await recordFailedLogin(loginKey);
+      return res.status(403).json({ message: 'This account cannot sign in to the selected portal.' });
+    }
     await clearFailedLogins(loginKey);
 
     let payload;
