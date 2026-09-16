@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `enrollment_schedules` (
   `year` VARCHAR(20) NOT NULL,
   `open_date` VARCHAR(50) NOT NULL,
   `deadline` VARCHAR(50) NOT NULL,
+  `platoons_assigned_at` DATETIME DEFAULT NULL,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_program_ms_year` (`program`, `ms_level`, `year`)
