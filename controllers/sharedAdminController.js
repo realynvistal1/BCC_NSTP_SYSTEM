@@ -1050,6 +1050,8 @@ exports.roster = async (req, res) => {
 };
 
 exports.autoAssign = async (req, res) => {
+  let connection;
+  let transactionOpen = false;
   try {
     const programCode = program(req);
 
@@ -1066,36 +1068,43 @@ exports.autoAssign = async (req, res) => {
       return res.status(400).json({ message: 'Select a valid MS level.' });
     }
 
-    if (requestedYear === null) {
+    if (!requestedYear) {
       return res.status(400).json({ message: 'Select a valid school year.' });
     }
 
-    const [scheduleRows] = await db.execute(
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    transactionOpen = true;
+    const [scheduleRows] = await connection.execute(
       `SELECT * FROM enrollment_schedules
        WHERE program='ROTC' AND ms_level=?
          AND (?='' OR year=?)
-       ORDER BY id DESC LIMIT 1`,
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`,
       [msLevel, requestedYear, requestedYear]
     );
     const selectedSchedule = scheduleRows[0] || null;
 
-    if (selectedSchedule && Date.now() <= new Date(selectedSchedule.deadline).getTime()) {
+    if (selectedSchedule && !(Date.now() > new Date(selectedSchedule.deadline).getTime())) {
       return res.status(400).json({
         message: `Wait until the MS ${msLevel}${selectedSchedule.year ? ` (${selectedSchedule.year})` : ''} enrollment schedule closes before assigning platoons.`,
       });
     }
 
-    if (requestedYear && !selectedSchedule) {
+    if (!selectedSchedule) {
       return res.status(400).json({
         message: `No ROTC enrollment schedule found for MS ${msLevel} in school year ${requestedYear}.`,
       });
+    }
+
+    if (selectedSchedule.platoons_assigned_at) {
+      return res.status(409).json({ message: 'Platoons have already been assigned for this enrollment schedule. Assignment can only run once.' });
     }
 
     const selectedScheduleId = selectedSchedule ? Number(selectedSchedule.id) : null;
     const requestedYearFilter = selectedSchedule ? '' : requestedYear;
     const queryParams = [msLevel, selectedScheduleId, selectedScheduleId, requestedYearFilter, requestedYearFilter, msLevel];
 
-    const [rows] = await db.execute(
+    const [rows] = await connection.execute(
       `SELECT s.id,s.last_name,s.first_name,s.middle_name,s.suffix,s.sex,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police
        FROM students s
        JOIN student_ms_records r ON r.student_id=s.id
@@ -1170,7 +1179,7 @@ exports.autoAssign = async (req, res) => {
 
         if (!choice) break;
 
-        await db.execute(
+        await connection.execute(
           'UPDATE students SET battalion=?,rotc_company=?,rotc_platoon=?,platoon=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',
           [battalion, choice.company, choice.platoon, `${choice.company} - Platoon ${choice.platoon}`, student.id]
         );
@@ -1197,6 +1206,10 @@ exports.autoAssign = async (req, res) => {
       countsFor(femaleCompanies, 'Female')
     );
 
+    await connection.execute('UPDATE enrollment_schedules SET platoons_assigned_at=CURRENT_TIMESTAMP WHERE id=?', [selectedScheduleId]);
+    await connection.commit();
+    transactionOpen = false;
+
     return res.json({
       message: `Automatic platoon assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${battalionOneAssigned + battalionTwoAssigned} cadet(s) assigned.`,
       assigned: battalionOneAssigned + battalionTwoAssigned,
@@ -1205,6 +1218,10 @@ exports.autoAssign = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: error.message });
+  } finally {
+    if (connection) {
+      try { if (transactionOpen) await connection.rollback(); } finally { connection.release(); }
+    }
   }
 };
 
