@@ -1,8 +1,8 @@
 const router = require("express").Router();
 const controller = require("../controllers/officerController");
-const { requireAuth, requireRole } = require("../middleware/authMiddleware");
+const { requireAuth, requireRole, requirePortal } = require("../middleware/authMiddleware");
 
-router.use(requireAuth, requireRole("officer"));
+router.use(requireAuth, requireRole("officer"), requirePortal("officer"));
 
 router.get("/dashboard", controller.dashboard);
 router.get("/enrollments", controller.enrollments);
