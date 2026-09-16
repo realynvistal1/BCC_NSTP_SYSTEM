@@ -1,4 +1,5 @@
 let studentAttendanceMap = null;
+let studentLocationCapture = 0;
 
 function fmtA(value) {
   return value
@@ -80,7 +81,7 @@ function renderStudentMap(nodeId, session, latitude = null, longitude = null) {
       fillOpacity: 0.9,
     })
       .addTo(map)
-      .bindPopup('Your current location');
+      .bindPopup('Student location (reported by your device)');
 
     const bounds = L.latLngBounds([[targetLat, targetLng], [latitude, longitude]]);
     map.fitBounds(bounds.pad(0.35));
@@ -102,14 +103,35 @@ function showStudentLocation(session, latitude, longitude, accuracyMeters) {
   if (!text) return;
 
   if (Number.isFinite(meters)) {
-    text.textContent = `Your location is shown in red - ${Math.round(meters)}m from the attendance point - accuracy +/-${Math.round(accuracyMeters || 0)}m`;
+    const uncertain = !Number.isFinite(accuracyMeters) || accuracyMeters <= 0
+      || Math.abs(meters - Number(session.radius_meters || 100)) <= accuracyMeters;
+    text.textContent = uncertain
+      ? `Location uncertain: the red dot is an estimate, not confirmed outside or inside. Estimated distance: ${Math.round(meters)}m; device uncertainty: +/-${Math.round(accuracyMeters || 0)}m. On a laptop, try a phone with precise location enabled, then recapture.`
+      : `Latest device estimate shown in red - ${Math.round(meters)}m from the attendance point - accuracy +/-${Math.round(accuracyMeters)}m`;
   } else {
     text.textContent = 'Your location is shown in red.';
   }
 }
 
+// Called from a student click; the browser owns the location permission prompt.
+function captureStudentPosition(success, failure) {
+  navigator.geolocation.getCurrentPosition(success, failure, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000,
+  });
+}
+
 function updateStudentLocationPreview(session) {
   const text = $('#studentLocationText');
+  const button = $('#recaptureLocationButton');
+  const capture = ++studentLocationCapture;
+  const finish = () => {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Recapture location';
+    }
+  };
 
   if (!navigator.geolocation) {
     if (text) text.textContent = 'Geolocation is not supported on this device.';
@@ -117,27 +139,39 @@ function updateStudentLocationPreview(session) {
     return;
   }
 
-  if (text) text.textContent = 'Getting your location...';
-  navigator.geolocation.getCurrentPosition(
+  if (text) text.textContent = 'Allow location access if your browser asks. Getting your device location...';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Capturing location...';
+  }
+  captureStudentPosition(
     (position) => {
-      showStudentLocation(
-        session,
-        position.coords.latitude,
-        position.coords.longitude,
-        position.coords.accuracy
-      );
+      if (capture !== studentLocationCapture) return;
+      try {
+        showStudentLocation(
+          session,
+          position.coords.latitude,
+          position.coords.longitude,
+          position.coords.accuracy
+        );
+      } finally { finish(); }
     },
-    () => {
+    (error) => {
+      if (capture !== studentLocationCapture) return;
       if (text) {
-        text.textContent = 'Unable to load your current location. You can still try marking attendance.';
+        text.textContent = error.code === 1
+          ? 'Location is blocked. Open this site?s browser permissions, allow Location, then tap Recapture location.'
+          : error.code === 3
+            ? 'Your device did not return a location within 10 seconds. Tap Recapture location to try again.'
+            : 'Device location is unavailable. Check that location services are on, then recapture.';
       }
-      renderStudentMap('studentSessionMap', session);
-    },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      try { renderStudentMap('studentSessionMap', session); } finally { finish(); }
+    }
   );
 }
 
 async function loadStudentAttendance() {
+  studentLocationCapture += 1;
   const [profile, sessions, history] = await Promise.all([
     API.get('/api/student/profile'),
     API.get('/api/student/attendance/sessions'),
@@ -149,6 +183,14 @@ async function loadStudentAttendance() {
   const historyNode = $('#studentAttendanceHistory');
   const latest = profile.records?.[0];
   const student = profile.student || {};
+  const attendanceLabel = student.nstp_component === 'CWTS'
+    ? 'CS (Community Service)'
+    : student.nstp_component === 'ROTC'
+      ? 'MI (Military Instruction)'
+      : '';
+  $('#studentAttendanceHistoryDescription').textContent = attendanceLabel
+    ? `Your recorded ${attendanceLabel} attendance.`
+    : 'Your recorded attendance.';
 
   if (student.serial_number) {
     state.innerHTML = '<div class="attendance-state-card success"><h3>NSTP Completed</h3><p>You already have a serial number. Attendance is no longer required.</p></div>';
@@ -175,7 +217,10 @@ async function loadStudentAttendance() {
             <h2>${unit} ${esc(session.mi_number || '-')} ${(session.mi_type || '').toUpperCase()}</h2>
             <p>${fmtA(session.open_date)}</p>
           </div>
-          <span class="attendance-status-badge ${status === 'open' ? 'success' : status === 'late' ? 'warning' : 'info'}">${esc(status)}</span>
+          <div class="student-attendance-header-actions">
+            <span class="attendance-status-badge ${status === 'open' ? 'success' : status === 'late' ? 'warning' : 'info'}">${esc(status)}</span>
+            <button class="btn" id="recaptureLocationButton" type="button">Recapture location</button>
+          </div>
         </div>
 
         <div class="attendance-time-track">
@@ -215,8 +260,11 @@ async function loadStudentAttendance() {
       </article>
     `;
 
-    setTimeout(() => updateStudentLocationPreview(session), 20);
+    renderStudentMap('studentSessionMap', session);
+    $('#recaptureLocationButton').onclick = () => updateStudentLocationPreview(session);
     $('#markAttendanceButton').onclick = () => markStudentAttendance(session);
+    // Preview the device location on entry; this does not record attendance.
+    updateStudentLocationPreview(session);
   }
 
   const rows = history.map((row) => `
@@ -246,7 +294,7 @@ function markStudentAttendance(session) {
   button.disabled = true;
   button.textContent = 'Getting location...';
 
-  navigator.geolocation.getCurrentPosition(
+  captureStudentPosition(
     async (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
@@ -282,8 +330,7 @@ function markStudentAttendance(session) {
       );
       button.disabled = false;
       button.textContent = 'Try Again';
-    },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    }
   );
 }
 
