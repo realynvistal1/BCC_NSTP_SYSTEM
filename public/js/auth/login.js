@@ -15,6 +15,7 @@ async function initLogin() {
     try {
       const recaptchaToken = await Captcha.token('login');
       const data = await API.post('/api/auth/login', {
+        portal: form.dataset.portal,
         email: form.email.value,
         password: form.password.value,
         recaptcha_token: recaptchaToken,
