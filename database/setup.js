@@ -151,6 +151,7 @@ async function ensureAttendanceColumns(db) {
 
   const db = await mysql.createConnection({ ...config, database: DB_NAME, multipleStatements: false });
   await ensureAttendanceColumns(db);
+  await require("./migrate-platoon-assignment").ensurePlatoonAssignmentColumn(db);
 
   for (const [email, username, password, role, program] of admins) {
     const hash = await bcrypt.hash(password, 10);
