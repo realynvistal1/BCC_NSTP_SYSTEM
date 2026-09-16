@@ -94,7 +94,8 @@ function readSession(req) {
 function requirePagePortal(...portals) {
   return (req, res, next) => {
     const session = readSession(req);
-    if (session && portals.includes(session.portal)) {
+    const portalRoles = { student: 'student', 'rotc-admin': 'admin', 'cwts-admin': 'admin', officer: 'officer' };
+    if (session && portals.includes(session.portal) && session.role === portalRoles[session.portal]) {
       req.user = session;
       return next();
     }
