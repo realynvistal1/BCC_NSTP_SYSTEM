@@ -1,3 +1,123 @@
+body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card {
+  --stat-background: #dceafb;
+  --stat-border: #376da8;
+  --stat-text: #24476c;
+  min-width: 0;
+  padding: 16px 12px;
+  border: 1px solid var(--stat-border);
+  border-top-width: 4px;
+  border-radius: 14px;
+  background: var(--stat-background);
+  box-shadow: 0 5px 14px rgba(30, 64, 100, .07);
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card span {
+  color: var(--stat-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .035em;
+  line-height: 1.4;
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--stat-text);
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .present {
+  --stat-background: #d5f0e2;
+  --stat-border: #4b9772;
+  --stat-text: #155338;
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .late {
+  --stat-background: #ffebbf;
+  --stat-border: #be8a29;
+  --stat-text: #754b08;
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .absent {
+  --stat-background: #fbdce1;
+  --stat-border: #bd6374;
+  --stat-text: #8b263b;
+}
+
+body[data-role="rotc"] #attendanceSummaryStats .unmarked {
+  --stat-background: #e2e5ed;
+  --stat-border: #8792a8;
+  --stat-text: #3d4960;
+}
+
+body[data-role="rotc"] .attendance-summary-head {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "filters";
+}
+
+body[data-role="rotc"] .summary-status-export {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body[data-role="rotc"] .summary-status-export select {
+  width: min(100%, 340px);
+}
+
+body[data-role="rotc"] .summary-status-export button {
+  min-height: 38px;
+}
+
+body[data-role="rotc"] #attendanceSummaryTitle {
+  color: #204e7b;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+body[data-role="rotc"] #attendanceSummaryMeta {
+  color: #48617b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+body[data-role="rotc"] .summary-actions select {
+  color: #24476c;
+  font-weight: 700;
+  border-color: #b3c9e0;
+  background-color: #f0f6fc;
+}
+
+body[data-role="rotc"] #attendanceSummaryContent th {
+  color: #294e75;
+  background: #e7f0fa;
+  font-weight: 800;
+}
+
+body[data-role="rotc"] #attendanceSummaryContent td {
+  color: #29425e;
+  font-weight: 600;
+}
+
+body[data-role="rotc"] #attendanceSummaryContent td strong {
+  color: #173f69;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+body[data-role="rotc"] #attendanceSummaryContent td small {
+  display: block;
+  margin-top: 4px;
+  color: #52677e;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .rotc-summary-filters.attendance-toolbar-card {
   padding: 12px 14px;
   border: 1px solid #dde6f0;
@@ -16,9 +136,9 @@
 
 .rotc-summary-filters .attendance-summary-toolbar label span {
   margin-bottom: 5px;
-  color: #455b75;
+  color: #294e75;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   line-height: 1.4;
 }
 
@@ -37,7 +157,7 @@
   color: #243b57;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.5;
   text-overflow: ellipsis;
   cursor: pointer;
