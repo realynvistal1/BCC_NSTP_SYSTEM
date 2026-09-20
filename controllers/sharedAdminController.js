@@ -1904,7 +1904,7 @@ exports.downloadRecordProfiles = async (req, res) => {
       return res.status(404).json({ message: 'No approved student records matched the selected filters.' });
     }
 
-    return certificateService.registrationFormsPdf(res, {
+    return await certificateService.registrationFormsPdf(res, {
       records: rows,
       program: programCode,
       assets: path.join(__dirname, '../public/images'),
