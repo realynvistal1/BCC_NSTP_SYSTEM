@@ -1,10 +1,24 @@
 .director-attendance .attendance-toolbar-card {
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  border: 1px solid #dce5ef;
-  border-radius: 14px;
-  background: #f8fafc;
-  box-shadow: 0 3px 14px rgba(37, 74, 120, .04);
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  margin-bottom: 18px;
+  border: 1px solid #bed7f0;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 92% 15%, rgba(37, 99, 235, .14), transparent 28%),
+    linear-gradient(135deg, #f8fbff 0%, #eef6ff 55%, #f7f3ff 100%);
+  box-shadow: 0 12px 30px rgba(30, 64, 175, .09);
+}
+
+.director-attendance .attendance-toolbar-card::before {
+  content: "ATTENDANCE FILTERS";
+  display: block;
+  margin-bottom: 14px;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
 }
 
 .director-attendance .attendance-toolbar-grid {
@@ -21,11 +35,11 @@
 }
 
 .director-attendance :is(.attendance-toolbar-grid label span, .attendance-record-filter span) {
-  color: #52657c;
+  color: #334e71;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
   line-height: 1.4;
 }
 
@@ -33,16 +47,17 @@
   display: block;
   width: 100%;
   min-width: 0;
-  height: 38px;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid #cfdbe8;
-  border-radius: 8px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #bfd0e4;
+  border-radius: 11px;
   background: #fff;
-  color: #2d435d;
-  box-shadow: none;
+  color: #102a4c;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, .05);
   font-family: inherit;
   font-size: 13px;
+  font-weight: 650;
   text-overflow: ellipsis;
 }
 
@@ -61,23 +76,75 @@
 }
 
 .director-attendance .attendance-session-summary {
-  padding: 4px 2px;
+  padding: 0 3px;
+  margin-bottom: 10px;
+  color: #52657c;
   font-size: 12px;
   flex-wrap: wrap;
 }
 
-.director-attendance .attendance-session-summary strong { font-size: 12px; }
+.director-attendance .attendance-session-summary strong {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 12px;
+}
+
+.director-attendance .attendance-session-summary span {
+  color: #47617f;
+  font-weight: 700;
+}
 
 .director-attendance .officer-session-table-card {
-  padding: 16px;
-  border: 1px solid #dce5ef;
-  border-radius: 14px;
-  box-shadow: 0 3px 14px rgba(37, 74, 120, .04);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #d5e1ef;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(30, 64, 175, .08);
+}
+
+.director-attendance .director-attendance-heading {
+  position: relative;
+  padding: 22px 24px 20px;
+  background: linear-gradient(125deg, #edf5fc, #e2edf7);
+  color: #234766;
+  border-bottom: 1px solid #cbddeb;
+}
+
+.director-attendance .director-attendance-heading::after {
+  content: none;
+  position: absolute;
+  top: -45px;
+  right: -25px;
+  width: 180px;
+  height: 180px;
+  border: 34px solid rgba(255, 255, 255, .08);
+  border-radius: 50%;
+}
+
+.director-attendance .director-attendance-heading span {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.director-attendance .director-attendance-heading h2 {
+  margin: 5px 0 4px;
+  color: #234766;
+  font-size: clamp(24px, 3vw, 32px);
+}
+
+.director-attendance .director-attendance-heading p {
+  margin: 0;
+  color: #dbeafe;
+  font-weight: 500;
 }
 
 .director-attendance .officer-session-table-card .attendance-record-overview {
-  padding: 0;
-  margin-bottom: 16px;
+  padding: 20px 20px 0;
+  margin-bottom: 18px;
 }
 
 .director-attendance .officer-session-table-card .attendance-record-stats {
@@ -89,16 +156,17 @@
 .director-attendance .attendance-record-stats > div {
   min-width: 0;
   padding: 12px 8px;
-  border: 1px solid #d9e5f2;
-  border-radius: 10px;
-  background: #edf4fc;
-  box-shadow: none;
+  border: 1px solid #96b7dd;
+  border-top: 4px solid #376da8;
+  border-radius: 13px;
+  background: #dceafb;
+  box-shadow: 0 7px 16px rgba(30, 64, 175, .06);
 }
 
 .director-attendance .attendance-record-stats span {
-  color: #48617e;
-  font-size: 11px;
-  font-weight: 600;
+  color: #24476c;
+  font-size: 12px;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -107,29 +175,88 @@
   display: block;
   margin-top: 5px;
   color: #274969;
-  font-size: 22px;
+  font-size: 28px;
   font-variant-numeric: tabular-nums;
 }
 
-.director-attendance .attendance-record-stats .present { background: #edf8f2; border-color: #cde8d9; }
-.director-attendance .attendance-record-stats .present :is(span, strong) { color: #24734c; }
-.director-attendance .attendance-record-stats .late { background: #fff7e8; border-color: #f1dfb8; }
-.director-attendance .attendance-record-stats .late :is(span, strong) { color: #906015; }
-.director-attendance .attendance-record-stats .absent { background: #fdf0f1; border-color: #f0d2d7; }
-.director-attendance .attendance-record-stats .absent :is(span, strong) { color: #aa3c4e; }
-.director-attendance .attendance-record-stats .unmarked { background: #f2f3f7; border-color: #dfe2ea; }
-.director-attendance .attendance-record-stats .unmarked :is(span, strong) { color: #5f687e; }
+.director-attendance .attendance-record-stats .present { background: #d5f0e2; border-color: #4b9772; }
+.director-attendance .attendance-record-stats .present :is(span, strong) { color: #155338; }
+.director-attendance .attendance-record-stats .late { background: #ffebbf; border-color: #be8a29; }
+.director-attendance .attendance-record-stats .late :is(span, strong) { color: #754b08; }
+.director-attendance .attendance-record-stats .absent { background: #fbdce1; border-color: #bd6374; }
+.director-attendance .attendance-record-stats .absent :is(span, strong) { color: #8b263b; }
+.director-attendance .attendance-record-stats .unmarked { background: #e2e5ed; border-color: #8792a8; }
+.director-attendance .attendance-record-stats .unmarked :is(span, strong) { color: #3d4960; }
 
 .director-attendance .officer-session-table-card .attendance-record-tools {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
-  padding: 12px;
-  border: 1px solid #e3e9f1;
-  border-radius: 10px;
-  background: #f8fafc;
+  padding: 16px;
+  border: 1px solid #d8e5f3;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8fbff, #f1f6fc);
 }
 
-.director-attendance .officer-session-table-card .attendance-record-table-wrap { padding: 0; }
+.director-attendance .attendance-roster-filter select {
+  border-color: #7aa7dc;
+  background: #eff6ff;
+  color: #123f73;
+}
+
+.director-attendance .officer-session-table-card .attendance-record-table-wrap {
+  padding: 0 20px 22px;
+}
+
+.director-attendance .attendance-record-table-wrap thead th {
+  background: #eaf2fc;
+  color: #183b63;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.director-attendance .attendance-record-table-wrap tbody tr:hover {
+  background: #f5f9ff;
+}
+
+.director-attendance .director-student-identity strong {
+  color: #102a4c;
+  font-weight: 850;
+}
+
+.director-attendance .director-student-avatar {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .14);
+}
+
+.director-attendance .director-assignment-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid #cbd9e9;
+  border-radius: 999px;
+  background: #f3f7fc;
+  color: #294766;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.director-attendance .director-assignment-chip.battalion-1 { background: #eaf3ff; border-color: #bfdbfe; color: #1d4ed8; }
+.director-attendance .director-assignment-chip.battalion-2 { background: #f2edff; border-color: #d8c8ff; color: #6d28d9; }
+.director-attendance .director-assignment-chip.special-platoon { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+.director-attendance .director-assignment-chip.advance-course { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+
+.director-attendance .attendance-record-search input::placeholder {
+  color: #8292a8;
+  font-weight: 500;
+}
+
+.director-attendance [hidden] {
+  display: none !important;
+}
 
 @media (max-width: 1100px) {
   .director-attendance .officer-session-table-card .attendance-record-stats {
@@ -151,5 +278,13 @@
   .director-attendance :is(.attendance-toolbar-grid select, .attendance-record-filter select, .attendance-record-search input) {
     height: 44px;
     font-size: 16px;
+  }
+  .director-attendance .director-attendance-heading,
+  .director-attendance .officer-session-table-card .attendance-record-overview {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .director-attendance .officer-session-table-card .attendance-record-table-wrap {
+    padding: 0 16px 18px;
   }
 }
