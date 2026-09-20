@@ -36,10 +36,7 @@
 
         <section class="attendance-summary-card">
           <div class="attendance-summary-head">
-            <div><h2 id="attendanceSummaryTitle">Attendance Summary</h2><p id="attendanceSummaryMeta">Choose a session to view attendance.</p></div>
-            <div class="attendance-summary-top-action">
-              <button class="btn attendance-export-btn" id="downloadAttendancePdf" type="button">Download Word</button>
-            </div>
+            <div hidden><h2 id="attendanceSummaryTitle">Attendance Summary</h2><p id="attendanceSummaryMeta">Choose a session to view attendance.</p></div>
             <div class="summary-actions">
               <input id="summarySearch" type="search" placeholder="Search name or student ID">
               <select id="summaryCompany">
@@ -48,13 +45,16 @@
               <select id="summaryPlatoon">
                 <option value="">All Platoon</option>
               </select>
-              <select id="summaryStatus">
+              <div class="summary-status-export">
+              <select id="summaryStatus" aria-label="Attendance status">
                 <option value="">All Status</option>
                 <option value="present">Present</option>
                 <option value="late">Late</option>
                 <option value="absent">Absent</option>
                 <option value="unmarked">Not Yet Marked</option>
               </select>
+              <button class="btn attendance-export-btn" id="downloadAttendancePdf" type="button">Download Word</button>
+              </div>
             </div>
           </div>
           <div id="attendanceSummaryContent"></div>
