@@ -1,5 +1,6 @@
 const PDFDocument = require('pdfkit');
 const path = require('path');
+const sharp = require('sharp');
 
 function dataUrlBuffer(value) {
   if (!value || !/^data:image\//.test(value)) return null;
@@ -448,15 +449,24 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
 
   drawCenteredHeader(doc, 'RESTRICTED', 32, 13, { bold: false });
   drawCenteredHeader(doc, 'ANNEX A - ROTC Form 1 - Cadet Registration Card', 50, 10.5, { bold: false });
-  drawCenteredHeader(doc, 'DEPARTMENT OF MILITARY SCIENCE AND TACTICS', 67, 10.5, { bold: false });
-  drawCenteredHeader(doc, 'BUENAVISTA COMMUNITY COLLEGE ROTC UNIT', 82, 15, { bold: true });
-  drawCenteredHeader(doc, '702ND (BHL) COMMUNITY DEFENSE CENTER, 7RCDG, RESCOM, PA', 98, 10.3, { bold: false });
+  drawCenteredHeader(doc, 'DEPARTMENT OF MILITARY SCIENCE AND TACTICS', 67, 9, { bold: false });
+  drawCenteredHeader(doc, 'BUENAVISTA COMMUNITY COLLEGE ROTC UNIT', 82, 10.5, { bold: true });
+  drawCenteredHeader(doc, '702ND (BHL) COMMUNITY DEFENSE CENTER, 7RCDG, RESCOM, PA', 98, 8.5, { bold: false });
   drawCenteredHeader(doc, 'Cangawa, Buenavista, Bohol', 111, 9.8, { bold: false });
-  drawCenteredHeader(doc, 'ROTC REGISTRATION FORM', 140, 13.5, { bold: true });
-  drawCenteredHeader(doc, '(Print all Entries)', 156, 10, { bold: true });
+  doc.font('Helvetica-Bold').fontSize(13.5)
+    .text('ROTC REGISTRATION FORM', leftMargin, 148, { width: photoX - leftMargin - 16, align: 'center' });
+  doc.fontSize(10)
+    .text('(Print all Entries)', leftMargin, 166, { width: photoX - leftMargin - 16, align: 'center' });
 
-  putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 70, 74, 54, 54);
-  putImage(doc, path.join(assets, 'republika-rotc.png'), width - 156, 76, 50, 50);
+  const logoSize = 72;
+  for (const [filename, logoX] of [['Rescom.png', 40], ['BCCrotcu.png', width - 112]]) {
+    doc.save();
+    doc.circle(logoX + logoSize / 2, 64 + logoSize / 2, logoSize / 2).clip();
+    doc.image(path.join(assets, filename), logoX, 64, {
+      cover: [logoSize, logoSize], align: 'center', valign: 'center',
+    });
+    doc.restore();
+  }
 
   doc.rect(photoX, photoY, photoSize, photoSize)
     .lineWidth(0.8)
@@ -528,16 +538,6 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
   y += 34;
   const advanceText = Number(student.willing_to_take_advance_course) ? '[ / ] YES      [ ] NO' : '[ ] YES      [ / ] NO';
   lineField(doc, 'Are you willing to take the advance course?', advanceText, leftMargin, y, 360, { labelWidth: 210, valueFontSize: 8.8, labelFontSize: 8.2 });
-
-  const signatureY = y + 40;
-  doc.moveTo(width - 232, signatureY)
-    .lineTo(width - 74, signatureY)
-    .lineWidth(0.8)
-    .stroke('#111827');
-  doc.font('Helvetica')
-    .fontSize(9.5)
-    .fillColor('#111827')
-    .text('(Signature of Student)', width - 232, signatureY + 4, { width: 158, align: 'center' });
 
   doc.font('Helvetica')
     .fontSize(9.5)
@@ -669,7 +669,25 @@ function drawCwtsRegistrationPage(doc, record, assets, pageIndex, total) {
     .text(`Page ${pageIndex + 1} of ${total}`, 0, pageHeight - 28, { align: 'center' });
 }
 
-function registrationFormsPdf(res, { records, program, assets, filters }) {
+async function registrationFormsPdf(res, { records, program, assets, filters }) {
+  const preparedRecords = [];
+  for (const record of records) {
+    let photo = null;
+    if (record.photo) {
+      const source = dataUrlBuffer(record.photo);
+      if (!source) throw new Error('Student photo is invalid. Please upload the photo again.');
+      try {
+        photo = await sharp(source, { limitInputPixels: 40000000 })
+          .rotate()
+          .resize(600, 600, { fit: 'contain', background: '#ffffff' })
+          .png()
+          .toBuffer();
+      } catch {
+        throw new Error('Student photo could not be added to the profile. Please upload a valid JPG, PNG, or WebP photo.');
+      }
+    }
+    preparedRecords.push({ ...record, photo });
+  }
   const filename = `${program}-approved-profile-forms.pdf`.replace(/[^a-zA-Z0-9._-]/g, '-');
   const doc = new PDFDocument({
     size: program === 'CWTS' ? 'LETTER' : 'LEGAL',
@@ -681,7 +699,7 @@ function registrationFormsPdf(res, { records, program, assets, filters }) {
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   doc.pipe(res);
 
-  records.forEach((record, index) => {
+  preparedRecords.forEach((record, index) => {
     if (program === 'CWTS') {
       drawCwtsRegistrationPage(doc, record, assets, index, records.length);
       return;
