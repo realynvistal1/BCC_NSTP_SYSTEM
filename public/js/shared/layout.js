@@ -298,11 +298,6 @@ async function requestStudentResetCode(event) {
     const result = await API.post('/api/auth/forgot-password/request-code-student', payload);
     message.textContent = result.message;
     message.className = 'notice';
-    $('#studentResetStep1')?.classList.add('step-complete');
-    $('#studentResetStep2')?.classList.remove('step-disabled', 'hidden');
-    form.querySelectorAll('[data-step="2"]').forEach((input) => {
-      input.disabled = false;
-    });
     $('#studentVerificationCode')?.focus();
   } catch (error) {
     message.textContent = error.message;
@@ -373,9 +368,11 @@ async function submitAdminForgotPassword(event) {
 function showForgotMessage() {
   const loginForm = $('#loginForm');
   const portal = loginForm?.dataset?.portal || 'student';
-  const body = $('#forgotModalBody');
   const modal = ensureForgotModal();
+  const body = $('#forgotModalBody');
   if (!body) return;
+
+  modal.classList.toggle('student-reset-mode', portal === 'student');
 
   if (portal !== 'student') {
     body.innerHTML = `
@@ -429,62 +426,43 @@ function showForgotMessage() {
   body.innerHTML = `
     <div class="forgot-header">
       <h3>Reset Student Password</h3>
-      <p>Follow the steps below: send the code first, then verify it and create a new password.</p>
+      <p>Request a verification code through Gmail, then enter the code to create a new password.</p>
     </div>
     <div class="notice hidden" id="forgotPasswordMsg"></div>
-    <form class="auth-form forgot-form" id="forgotPasswordForm">
+    <form class="auth-form forgot-form student-forgot-form" id="forgotPasswordForm">
       <input type="hidden" name="portal" value="student">
-      <section class="forgot-step-card" id="studentResetStep1">
-        <div class="forgot-step-heading">
-          <strong>Step 1</strong>
-          <span>Enter your Student ID and registered email, then send the Gmail verification code.</span>
+      <label>
+        Registered Email
+        <div class="input-shell">
+          <span class="field-icon">@</span>
+          <input name="email" placeholder="Enter your email" required type="email">
         </div>
-        <label>
-          Student ID
-          <div class="input-shell">
-            <span class="field-icon">#</span>
-            <input name="student_id" placeholder="000000-0000" required type="text">
-          </div>
-        </label>
-        <label>
-          Registered Email
-          <div class="input-shell">
-            <span class="field-icon">@</span>
-            <input name="email" placeholder="Enter your email" required type="email">
-          </div>
-        </label>
-        <div class="forgot-action-row">
-          <button class="auth-submit student-submit" id="sendStudentResetCodeBtn" type="button">Send Code</button>
+      </label>
+      <div class="forgot-action-row">
+        <button class="auth-submit student-submit" id="sendStudentResetCodeBtn" type="button">Send Code</button>
+      </div>
+      <label>
+        Verification Code
+        <div class="input-shell">
+          <span class="field-icon">#</span>
+          <input id="studentVerificationCode" name="verification_code" placeholder="Enter 6-digit code" required type="text">
         </div>
-      </section>
-      <section class="forgot-step-card step-disabled hidden" id="studentResetStep2">
-        <div class="forgot-step-heading">
-          <strong>Step 2</strong>
-          <span>Enter the verification code from Gmail, then create and confirm your new password.</span>
+      </label>
+      <label>
+        New Password
+        <div class="input-shell">
+          <span class="field-icon">*</span>
+          <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
         </div>
-        <label>
-          Verification Code
-          <div class="input-shell">
-            <span class="field-icon">#</span>
-            <input data-step="2" disabled id="studentVerificationCode" name="verification_code" placeholder="Enter 6-digit code" required type="text">
-          </div>
-        </label>
-        <label>
-          New Password
-          <div class="input-shell">
-            <span class="field-icon">*</span>
-            <input data-step="2" disabled name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
-          </div>
-        </label>
-        <label>
-          Confirm New Password
-          <div class="input-shell">
-            <span class="field-icon">*</span>
-            <input data-step="2" disabled name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
-          </div>
-        </label>
-        <button class="auth-submit student-submit" id="resetStudentPasswordBtn" type="submit">Reset Password</button>
-      </section>
+      </label>
+      <label>
+        Confirm New Password
+        <div class="input-shell">
+          <span class="field-icon">*</span>
+          <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
+        </div>
+      </label>
+      <button class="auth-submit student-submit" id="resetStudentPasswordBtn" type="submit">Reset Password</button>
     </form>
   `;
 
