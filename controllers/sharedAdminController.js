@@ -293,8 +293,12 @@ async function approvedRecordRows(programCode, filters = {}) {
   const msLevel = readLevel(filters.msLevel, { allowBlank: true });
   const schoolYear = readSchoolYear(filters.schoolYear, { allowBlank: true });
   const search = readSearchTerm(filters.search, { allowBlank: true });
+  const battalion = readLimitedText(filters.battalion, 10);
+  const company = readLimitedText(filters.company, 30);
+  const platoon = readLimitedText(filters.platoon, 10);
+  const special = readLimitedText(filters.special, 50);
 
-  if (msLevel === null || schoolYear === null || search === null) {
+  if ([msLevel, schoolYear, search, battalion, company, platoon, special].includes(null)) {
     return [];
   }
 
@@ -347,7 +351,15 @@ async function approvedRecordRows(programCode, filters = {}) {
     params
   );
 
-  return rows;
+  return rows.filter((row) => (
+    (programCode !== 'ROTC' || !battalion || String(row.battalion || '') === battalion)
+    && (programCode !== 'ROTC' || !company || String(row.rotc_company || '') === company)
+    && (programCode !== 'ROTC' || !platoon || String(row.rotc_platoon || '') === platoon)
+    && (programCode !== 'ROTC' || !special
+      || (special === 'advance'
+        ? Number(row.willing_to_take_advance_course || 0) === 1
+        : String(row.special_unit || '') === special))
+  ));
 }
 
 exports.dashboard = async (req, res) => {
@@ -548,6 +560,66 @@ exports.enrollments = async (req, res) => {
     );
 
     return res.json(rows);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.enrollmentPhoto = async (req, res) => {
+  try {
+    const programCode = program(req);
+    const recordId = parsePositiveInt(req.params.id);
+
+    if (!recordId) {
+      return res.status(400).json({ message: 'Select a valid enrollment.' });
+    }
+
+    const [rows] = await db.execute(
+      `SELECT s.photo
+       FROM student_ms_records smr
+       JOIN students s ON s.id=smr.student_id
+       WHERE smr.id=? AND smr.program=? AND s.role='student'
+       LIMIT 1`,
+      [recordId, programCode]
+    );
+    const photo = uploadValidation.parseDataUrl(rows[0]?.photo);
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+    if (!photo || !allowedTypes.has(photo.mimeType)) {
+      return res.status(404).json({ message: 'Student photo is not available.' });
+    }
+
+    res.set('Cache-Control', 'private, max-age=300');
+    res.type(photo.mimeType);
+    return res.send(photo.buffer);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.studentPhoto = async (req, res) => {
+  try {
+    const programCode = program(req);
+    const studentId = parsePositiveInt(req.params.id);
+
+    if (!studentId) {
+      return res.status(400).json({ message: 'Select a valid student.' });
+    }
+
+    const [rows] = await db.execute(
+      "SELECT photo FROM students WHERE id=? AND nstp_component=? AND role='student' LIMIT 1",
+      [studentId, programCode]
+    );
+    const photo = uploadValidation.parseDataUrl(rows[0]?.photo);
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+    if (!photo || !allowedTypes.has(photo.mimeType)) {
+      return res.status(404).json({ message: 'Student photo is not available.' });
+    }
+
+    res.set('Cache-Control', 'private, max-age=300');
+    res.type(photo.mimeType);
+    return res.send(photo.buffer);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -1880,6 +1952,14 @@ exports.downloadRecordProfiles = async (req, res) => {
     const msLevel = readLevel(req.query.ms_level, { allowBlank: true });
     const schoolYear = readSchoolYear(req.query.school_year, { allowBlank: true });
     const search = readSearchTerm(req.query.search, { allowBlank: true });
+    const battalion = readLimitedText(req.query.battalion, 10);
+    const company = readLimitedText(req.query.company, 30);
+    const platoon = readLimitedText(req.query.platoon, 10);
+    const special = readLimitedText(req.query.special, 50);
+    const commandantNameInput = readLimitedText(req.query.commandant_name, 100);
+    const commandantName = commandantNameInput === null
+      ? null
+      : commandantNameInput.replace(/\s+/g, ' ');
 
     if (msLevel === null) {
       return res.status(400).json({ message: 'Select a valid enrollment level.' });
@@ -1893,10 +1973,23 @@ exports.downloadRecordProfiles = async (req, res) => {
       return res.status(400).json({ message: 'Search text is too long.' });
     }
 
+    if ([battalion, company, platoon, special].includes(null)) {
+      return res.status(400).json({ message: 'Select valid ROTC assignment filters.' });
+    }
+
+    if (programCode === 'ROTC' && !commandantName) {
+      return res.status(400).json({ message: 'Enter a valid commandant name before downloading.' });
+    }
+
     const filters = {
       msLevel,
       schoolYear,
       search,
+      battalion,
+      company,
+      platoon,
+      special,
+      commandantName,
     };
 
     const rows = await approvedRecordRows(programCode, filters);
