@@ -1,11 +1,64 @@
+const path = require('path');
 const db = require('../config/database');
 const attendance = require('../services/attendanceService');
+const certificateService = require('../services/certificateService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const {
   parsePositiveInt,
   readLevel,
+  readSchoolYear,
+  readSearchTerm,
+  readLimitedText,
 } = require('../services/requestValidationService');
+
+async function officerApprovedRecordRows(programCode, filters = {}) {
+  const msLevel = readLevel(filters.msLevel, { allowBlank: true });
+  const schoolYear = readSchoolYear(filters.schoolYear, { allowBlank: true });
+  const search = readSearchTerm(filters.search, { allowBlank: true });
+  const photoColumn = filters.includePhoto ? ',s.photo' : '';
+
+  if (msLevel === null || schoolYear === null || search === null) {
+    return [];
+  }
+
+  const query = `%${String(search || '').replace(/[!%_]/g, '!$&')}%`;
+  const [rows] = await db.execute(
+    `SELECT smr.id record_id,smr.ms_level,smr.status,smr.program,smr.created_at,
+            COALESCE(es.year,'') school_year,
+            s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
+            s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,
+            s.place_of_birth,s.religion,s.height,s.weight,s.blood_type,s.complexion${photoColumn},
+            s.temporary_barangay,s.temporary_municipality,s.temporary_province,
+            s.permanent_barangay,s.permanent_municipality,s.permanent_province,
+            s.father_name,s.father_occupation,s.mother_name,s.mother_occupation,
+            s.emergency_contact_name,s.emergency_contact_address,s.emergency_contact_relationship,s.emergency_contact_contact_number,
+            s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
+            s.serial_number,
+            g.midterm,g.final_term,g.grade,g.status grade_status
+     FROM student_ms_records smr
+     JOIN students s ON s.id=smr.student_id
+     LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+     LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=smr.program AND g.ms_level=smr.ms_level
+     WHERE smr.program=?
+       AND smr.status='approved'
+       AND s.role='student'
+       AND (?='' OR smr.ms_level=?)
+       AND (?='' OR COALESCE(es.year,'')=?)
+       AND (
+         ?=''
+         OR s.student_id LIKE ? ESCAPE '!'
+         OR s.first_name LIKE ? ESCAPE '!'
+         OR s.middle_name LIKE ? ESCAPE '!'
+         OR s.last_name LIKE ? ESCAPE '!'
+         OR s.course LIKE ? ESCAPE '!'
+       )
+     ORDER BY s.last_name,s.first_name,smr.ms_level`,
+    [programCode, msLevel, msLevel, schoolYear, schoolYear, search, query, query, query, query, query]
+  );
+
+  return rows;
+}
 
 function readAttendanceProgram(value) {
   const normalized = String(value || '').trim().toUpperCase();
@@ -44,7 +97,7 @@ function rosterScope(group) {
   return { group: 'rotc', recordProgram: 'ROTC' };
 }
 
-async function approvedStudentsForSession(session) {
+async function approvedStudentsForSession(session, { includeCompleted = false } = {}) {
   const schoolYear = String(session.school_year || '').trim();
   const isAdvanceCourse = Number(session.program === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0);
 
@@ -83,7 +136,11 @@ async function approvedStudentsForSession(session) {
     ]
   );
 
-  return rows.filter((student) => !student.serial_number);
+  // Keep completed students out of automatic absence/offense processing, but
+  // allow the Director's historical attendance view to include them.
+  return includeCompleted
+    ? rows
+    : rows.filter((student) => !student.serial_number);
 }
 
 async function markMissingAbsent(session) {
@@ -533,7 +590,7 @@ exports.sessionRecords = async (req, res) => {
       return res.status(404).json({ message: 'Attendance session not found.' });
     }
 
-    const students = await approvedStudentsForSession(session);
+    const students = await approvedStudentsForSession(session, { includeCompleted: true });
     const [records] = await db.execute(
       'SELECT * FROM attendance_records WHERE attendance_session_id=?',
       [session.id]
@@ -792,26 +849,61 @@ exports.enrollments = async (req, res) => {
 
 exports.records = async (req, res) => {
   try {
-    const [rows] = await db.execute(
-      `SELECT smr.id record_id,smr.ms_level,smr.status,smr.program,smr.created_at,
-              COALESCE(es.year,'') school_year,
-              s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
-              s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,
-              s.permanent_barangay,s.permanent_municipality,s.permanent_province,
-              s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
-              s.serial_number,
-              g.midterm,g.final_term,g.grade,g.status grade_status
-       FROM student_ms_records smr
-       JOIN students s ON s.id=smr.student_id
-       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-       LEFT JOIN student_grades g ON g.student_id=s.id AND g.program=smr.program AND g.ms_level=smr.ms_level
-       WHERE s.role='student'
-       ORDER BY smr.program,s.last_name,s.first_name,smr.ms_level`
-    );
+    const [rotcRows, cwtsRows] = await Promise.all([
+      officerApprovedRecordRows('ROTC'),
+      officerApprovedRecordRows('CWTS'),
+    ]);
 
-    return res.json(rows);
+    return res.json([...rotcRows, ...cwtsRows]);
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.downloadRecordProfiles = async (req, res) => {
+  try {
+    const programCode = String(req.query.program || '').trim().toUpperCase();
+    const msLevel = readLevel(req.query.ms_level, { allowBlank: true });
+    const schoolYear = readSchoolYear(req.query.school_year, { allowBlank: true });
+    const search = readSearchTerm(req.query.search, { allowBlank: true });
+    const commandantNameInput = readLimitedText(req.query.commandant_name, 100);
+    const commandantName = commandantNameInput === null
+      ? null
+      : commandantNameInput.replace(/\s+/g, ' ');
+
+    if (!['ROTC', 'CWTS'].includes(programCode)) {
+      return res.status(400).json({ message: 'Select ROTC or CWTS before downloading.' });
+    }
+    if (msLevel === null) {
+      return res.status(400).json({ message: 'Select a valid enrollment level.' });
+    }
+    if (schoolYear === null) {
+      return res.status(400).json({ message: 'Select a valid school year.' });
+    }
+    if (search === null) {
+      return res.status(400).json({ message: 'Search text is too long.' });
+    }
+    if (programCode === 'ROTC' && !commandantName) {
+      return res.status(400).json({ message: 'Enter a valid commandant name before downloading.' });
+    }
+
+    const filters = { msLevel, schoolYear, search, commandantName, includePhoto: true };
+    const rows = await officerApprovedRecordRows(programCode, filters);
+
+    if (!rows.length) {
+      return res.status(404).json({ message: 'No approved student records matched the selected filters.' });
+    }
+
+    return await certificateService.registrationFormsPdf(res, {
+      records: rows,
+      program: programCode,
+      assets: path.join(__dirname, '../public/images'),
+      filters,
+    });
+  } catch (error) {
+    if (!res.headersSent) {
+      return res.status(500).json({ message: error.message });
+    }
   }
 };
 
