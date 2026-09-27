@@ -361,13 +361,20 @@ async function renderAdminRecords(_program, content) {
       const present = attendance.filter((item) => item.status === 'present').length;
       const late = attendance.filter((item) => item.status === 'late').length;
       const absent = attendance.filter((item) => item.status === 'absent').length;
+      const recordFullName = `${student.first_name} ${student.last_name}${student.suffix ? ` ${student.suffix}` : ''}`;
+      const recordInitials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
       body.innerHTML = `
         <div class="record-modal-head">
-          <div>
-            <span>Student Record - ${prefix} ${esc(level)}</span>
-            <h2>${esc(student.first_name)} ${esc(student.last_name)}${student.suffix ? ` ${esc(student.suffix)}` : ''}</h2>
-            <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+          <div class="record-student-summary">
+            ${student.photo
+              ? `<img class="record-student-photo" src="${esc(student.photo)}" alt="${esc(recordFullName)} 2x2 photo">`
+              : `<div class="record-student-photo fallback" aria-label="No student photo">${esc(recordInitials)}</div>`}
+            <div>
+              <span>Student Record - ${prefix} ${esc(level)}</span>
+              <h2>${esc(recordFullName)}</h2>
+              <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+            </div>
           </div>
           <button class="modal-close" id="recordClose">x</button>
         </div>
