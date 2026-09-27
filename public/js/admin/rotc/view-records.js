@@ -15,7 +15,7 @@ function recordAssignment(row, program) {
     row.battalion ? `Battalion ${row.battalion}` : '',
     row.rotc_company,
     row.rotc_platoon ? `Platoon ${row.rotc_platoon}` : '',
-  ].filter(Boolean).join(' - ') || '-';
+  ].filter(Boolean).join(' ') || '-';
 }
 
 function formatRecordDate(value) {
@@ -272,7 +272,7 @@ async function renderAdminRecords(_program, content) {
   }
 
   content.innerHTML = `
-    <section class="records-tools">
+    <section class="records-tools rotc-record-tools">
       <div class="record-search">
         <span>${icon('records')}</span>
         <input id="recordSearch" placeholder="Search by name, student ID, or course...">
@@ -288,6 +288,19 @@ async function renderAdminRecords(_program, content) {
       </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
       <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
+      <select id="recordBattalion">
+        <option value="">All Battalions</option>
+      </select>
+      <select id="recordCompany">
+        <option value="">All Companies</option>
+      </select>
+      <select id="recordPlatoon">
+        <option value="">All Platoons</option>
+      </select>
+      <select id="recordSpecial">
+        <option value="">All Special Assignments</option>
+      </select>
+      <button class="clear-filter-btn" id="clearRecordFilters" type="button">Clear Filters</button>
     </section>
     <section class="panel record-list-panel">
       <div class="table-wrap">
@@ -315,22 +328,105 @@ async function renderAdminRecords(_program, content) {
         <div id="recordModalBody"></div>
       </div>
     </div>
+    <div class="app-dialog hidden" id="profileDownloadModal">
+      <div class="app-dialog-backdrop"></div>
+      <div class="app-dialog-card small-modal">
+        <div class="app-dialog-head">
+          <div>
+            <span class="modal-eyebrow">ROTC Profile Forms</span>
+            <h3>Commandant Name</h3>
+            <p>Edit the name that will appear on every downloaded profile form.</p>
+          </div>
+          <button type="button" class="modal-close" id="profileDownloadClose" aria-label="Close">x</button>
+        </div>
+        <form id="profileDownloadForm" class="modal-form-body">
+          <label class="field">
+            Commandant Name
+            <input id="profileCommandantName" name="commandant_name" maxlength="100" required autocomplete="off">
+          </label>
+          <div class="app-dialog-actions">
+            <button type="button" class="btn" id="profileDownloadCancel">Cancel</button>
+            <button type="submit" class="btn primary">Download PDF</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
 
-  function filtered() {
+  let commandantName = 'BILVER F. BUTALE';
+
+  function optionValues(list, valueFn) {
+    return [...new Set(list.map(valueFn).map((value) => String(value || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }
+
+  function setFilterOptions(selectId, placeholder, values, currentValue, labelFn = (value) => value) {
+    const select = $(selectId);
+    select.innerHTML = `<option value="">${placeholder}</option>${values.map((value) => `<option value="${esc(value)}"${currentValue === value ? ' selected' : ''}>${esc(labelFn(value))}</option>`).join('')}`;
+    if (currentValue && !values.includes(currentValue)) select.value = '';
+  }
+
+  function coreFiltered() {
     const query = $('#recordSearch').value.trim().toLowerCase();
     const level = $('#recordLevel').value;
     const schoolYear = $('#recordSY').value;
-
     return rows.filter((row) => (
       (!level || String(row.ms_level) === level)
       && (!schoolYear || row.school_year === schoolYear)
-      && (
-        !query
-        || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
-          .toLowerCase()
-          .includes(query)
-      )
+      && (!query || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`.toLowerCase().includes(query))
+    ));
+  }
+
+  function refreshAssignmentFilters() {
+    const base = coreFiltered();
+    const battalion = $('#recordBattalion').value;
+    const company = $('#recordCompany').value;
+    const special = $('#recordSpecial').value;
+    const battalions = optionValues(base, (row) => row.battalion);
+    setFilterOptions('#recordBattalion', 'All Battalions', battalions, battalion, (value) => `Battalion ${value}`);
+
+    const battalionCompanies = {
+      1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
+      2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
+    };
+    const companies = battalionCompanies[battalion] || optionValues(base, (row) => row.rotc_company);
+    setFilterOptions('#recordCompany', 'All Companies', companies, company);
+
+    const platoonBase = base.filter((row) => (
+      (!battalion || String(row.battalion || '') === battalion)
+      && (!company || String(row.rotc_company || '') === company)
+    ));
+    const platoons = optionValues(platoonBase, (row) => row.rotc_platoon);
+    setFilterOptions('#recordPlatoon', 'All Platoons', platoons, $('#recordPlatoon').value, (value) => `Platoon ${value}`);
+
+    const specialValues = optionValues([
+      ...base.map((row) => ({ value: row.special_unit || '' })),
+      ...base.filter((row) => Number(row.willing_to_take_advance_course || 0) === 1).map(() => ({ value: 'advance' })),
+    ], (row) => row.value);
+    setFilterOptions('#recordSpecial', 'All Special Assignments', specialValues, special, (value) => value === 'advance' ? 'Advance Course' : value);
+
+    const hasBattalion = Boolean($('#recordBattalion').value);
+    const hasSpecial = Boolean($('#recordSpecial').value);
+    $('#recordBattalion').disabled = hasSpecial || !battalions.length;
+    $('#recordCompany').disabled = hasSpecial || !companies.length;
+    $('#recordPlatoon').disabled = hasSpecial || !platoons.length;
+    $('#recordSpecial').disabled = hasBattalion || !specialValues.length;
+  }
+
+  function filtered() {
+    const battalion = $('#recordBattalion').value;
+    const company = $('#recordCompany').value;
+    const platoon = $('#recordPlatoon').value;
+    const special = $('#recordSpecial').value;
+
+    return coreFiltered().filter((row) => (
+      (!battalion || String(row.battalion || '') === battalion)
+      && (!company || String(row.rotc_company || '') === company)
+      && (!platoon || String(row.rotc_platoon || '') === platoon)
+      && (!special
+        || (special === 'advance'
+          ? Number(row.willing_to_take_advance_course || 0) === 1
+          : String(row.special_unit || '') === special))
     ));
   }
 
@@ -342,6 +438,8 @@ async function renderAdminRecords(_program, content) {
     if (currentYear && !years.includes(currentYear)) {
       $('#recordSY').value = '';
     }
+
+    refreshAssignmentFilters();
 
     const data = filtered();
 
@@ -355,7 +453,7 @@ async function renderAdminRecords(_program, content) {
           <td><span class="level-pill">${prefix} ${esc(row.ms_level)}</span></td>
           <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
           ${program === 'ROTC'
-            ? `<td>${esc(Number(row.willing_to_take_advance_course) ? 'Advance Course' : row.special_unit ? 'Special Platoon' : row.battalion ? `Battalion ${row.battalion}` : '-')}</td>`
+            ? `<td>${esc(recordAssignment(row, program))}</td>`
             : ''}
           <td><button class="btn small primary" data-detail="${row.student_db_id}" data-level="${row.ms_level}">View Details</button></td>
         </tr>
@@ -372,6 +470,35 @@ async function renderAdminRecords(_program, content) {
   $('#recordSearch').oninput = draw;
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
+  $('#recordBattalion').onchange = () => {
+    if ($('#recordBattalion').value) $('#recordSpecial').value = '';
+    $('#recordCompany').value = '';
+    $('#recordPlatoon').value = '';
+    draw();
+  };
+  $('#recordCompany').onchange = () => {
+    $('#recordPlatoon').value = '';
+    draw();
+  };
+  $('#recordPlatoon').onchange = draw;
+  $('#recordSpecial').onchange = () => {
+    if ($('#recordSpecial').value) {
+      $('#recordBattalion').value = '';
+      $('#recordCompany').value = '';
+      $('#recordPlatoon').value = '';
+    }
+    draw();
+  };
+  $('#clearRecordFilters').onclick = () => {
+    $('#recordSearch').value = '';
+    $('#recordLevel').value = '';
+    $('#recordSY').value = '';
+    $('#recordBattalion').value = '';
+    $('#recordCompany').value = '';
+    $('#recordPlatoon').value = '';
+    $('#recordSpecial').value = '';
+    draw();
+  };
   $('#downloadRecords').onclick = () => {
     const data = filtered();
 
@@ -394,6 +521,31 @@ async function renderAdminRecords(_program, content) {
       return toast('No approved student profiles to download.', true);
     }
 
+    const modal = $('#profileDownloadModal');
+    const input = $('#profileCommandantName');
+    input.value = commandantName;
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  };
+
+  const closeProfileDownload = () => $('#profileDownloadModal').classList.add('hidden');
+  $('#profileDownloadClose').onclick = closeProfileDownload;
+  $('#profileDownloadCancel').onclick = closeProfileDownload;
+  $('#profileDownloadModal').querySelector('.app-dialog-backdrop').onclick = closeProfileDownload;
+
+  $('#profileDownloadForm').onsubmit = (event) => {
+    event.preventDefault();
+    const editedCommandantName = $('#profileCommandantName').value.trim().replace(/\s+/g, ' ');
+
+    if (!editedCommandantName) {
+      toast('Enter the commandant name before downloading.', true);
+      $('#profileCommandantName').focus();
+      return;
+    }
+
     const params = new URLSearchParams();
     if ($('#recordLevel').value) {
       params.set('ms_level', $('#recordLevel').value);
@@ -405,7 +557,14 @@ async function renderAdminRecords(_program, content) {
     if (search) {
       params.set('search', search);
     }
+    if ($('#recordBattalion').value) params.set('battalion', $('#recordBattalion').value);
+    if ($('#recordCompany').value) params.set('company', $('#recordCompany').value);
+    if ($('#recordPlatoon').value) params.set('platoon', $('#recordPlatoon').value);
+    if ($('#recordSpecial').value) params.set('special', $('#recordSpecial').value);
+    params.set('commandant_name', editedCommandantName);
 
+    commandantName = editedCommandantName;
+    closeProfileDownload();
     window.open(`/api/admin/${apiProgram}/records/download/profiles?${params.toString()}`, '_blank');
   };
 
@@ -438,13 +597,20 @@ async function openRotcStudentRecord(id, level) {
     const present = attendance.filter((item) => item.status === 'present').length;
     const late = attendance.filter((item) => item.status === 'late').length;
     const absent = attendance.filter((item) => item.status === 'absent').length;
+    const recordFullName = `${student.first_name} ${student.last_name}${student.suffix ? ` ${student.suffix}` : ''}`;
+    const recordInitials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
     body.innerHTML = `
       <div class="record-modal-head">
-        <div>
-          <span>Student Record - ${prefix} ${esc(level)}</span>
-          <h2>${esc(student.first_name)} ${esc(student.last_name)}${student.suffix ? ` ${esc(student.suffix)}` : ''}</h2>
-          <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+        <div class="record-student-summary">
+          ${student.photo
+            ? `<img class="record-student-photo" src="${esc(student.photo)}" alt="${esc(recordFullName)} 2x2 photo">`
+            : `<div class="record-student-photo fallback" aria-label="No student photo">${esc(recordInitials)}</div>`}
+          <div>
+            <span>Student Record - ${prefix} ${esc(level)}</span>
+            <h2>${esc(recordFullName)}</h2>
+            <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+          </div>
         </div>
         <button class="modal-close" id="recordClose">x</button>
       </div>
