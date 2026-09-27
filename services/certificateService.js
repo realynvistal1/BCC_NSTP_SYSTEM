@@ -412,10 +412,27 @@ function lineField(doc, label, value, x, y, width, options = {}) {
 
   const lineX = x + labelWidth;
   const valueText = safeText(value) || ' ';
+  const valueWidth = Math.max(1, width - labelWidth - 10);
+  const minimumFontSize = 6.5;
+  let fittedFontSize = valueFontSize;
 
   doc.font('Helvetica-Bold')
-    .fontSize(valueFontSize)
-    .text(valueText, lineX + 6, y - 1, { width: width - labelWidth - 10 });
+    .fontSize(fittedFontSize);
+
+  while (fittedFontSize > minimumFontSize && doc.widthOfString(valueText) > valueWidth) {
+    fittedFontSize -= 0.25;
+    doc.fontSize(fittedFontSize);
+  }
+
+  let displayValue = valueText;
+  if (doc.widthOfString(displayValue) > valueWidth) {
+    while (displayValue.length > 1 && doc.widthOfString(`${displayValue}...`) > valueWidth) {
+      displayValue = displayValue.slice(0, -1);
+    }
+    displayValue = `${displayValue.trimEnd()}...`;
+  }
+
+  doc.text(displayValue, lineX + 6, y - 1, { width: valueWidth, lineBreak: false });
 
   doc.moveTo(lineX, y + 15)
     .lineTo(x + width, y + 15)
@@ -430,7 +447,7 @@ function drawCenteredHeader(doc, text, y, size, options = {}) {
     .text(text, 0, y, { align: 'center' });
 }
 
-function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
+function drawRotcRegistrationPage(doc, record, assets, pageIndex, total, commandantName) {
   if (pageIndex > 0) {
     doc.addPage();
   }
@@ -453,13 +470,11 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
   drawCenteredHeader(doc, 'BUENAVISTA COMMUNITY COLLEGE ROTC UNIT', 82, 10.5, { bold: true });
   drawCenteredHeader(doc, '702ND (BHL) COMMUNITY DEFENSE CENTER, 7RCDG, RESCOM, PA', 98, 8.5, { bold: false });
   drawCenteredHeader(doc, 'Cangawa, Buenavista, Bohol', 111, 9.8, { bold: false });
-  doc.font('Helvetica-Bold').fontSize(13.5)
-    .text('ROTC REGISTRATION FORM', leftMargin, 148, { width: photoX - leftMargin - 16, align: 'center' });
-  doc.fontSize(10)
-    .text('(Print all Entries)', leftMargin, 166, { width: photoX - leftMargin - 16, align: 'center' });
+  drawCenteredHeader(doc, 'ROTC REGISTRATION FORM', 128, 13.5, { bold: true });
+  drawCenteredHeader(doc, '(Print all Entries)', 146, 10, { bold: true });
 
-  const logoSize = 72;
-  for (const [filename, logoX] of [['Rescom.png', 40], ['BCCrotcu.png', width - 112]]) {
+  const logoSize = 56;
+  for (const [filename, logoX] of [['Rescom.png', 88], ['BCCrotcu.png', width - 144]]) {
     doc.save();
     doc.circle(logoX + logoSize / 2, 64 + logoSize / 2, logoSize / 2).clip();
     doc.image(path.join(assets, filename), logoX, 64, {
@@ -468,10 +483,7 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
     doc.restore();
   }
 
-  doc.rect(photoX, photoY, photoSize, photoSize)
-    .lineWidth(0.8)
-    .stroke('#111827');
-  putImage(doc, student.photo, photoX + 4, photoY + 4, photoSize - 8, photoSize - 8);
+  putImage(doc, student.photo, photoX, photoY, photoSize, photoSize);
 
   let y = 284;
   lineField(doc, 'Student No.', student.student_id, leftMargin, y, 230, { labelWidth: 70, valueFontSize: 9.8, labelFontSize: 8.8 });
@@ -542,7 +554,7 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total) {
   doc.font('Helvetica')
     .fontSize(9.5)
     .fillColor('#111827')
-    .text('BILVER F. BUTALE', leftMargin, pageHeight - 120);
+    .text(safeText(commandantName || 'BILVER F. BUTALE').toUpperCase(), leftMargin, pageHeight - 120);
   doc.text('CPT          (INF) PA', leftMargin, pageHeight - 106);
   doc.text('Commandant', leftMargin, pageHeight - 92);
 
@@ -562,111 +574,95 @@ function drawCwtsRegistrationPage(doc, record, assets, pageIndex, total) {
   const width = doc.page.width;
   const pageHeight = doc.page.height;
   const left = 38;
-  const photoX = width - 160;
-  const photoY = 98;
-  const photoW = 108;
-  const photoH = 108;
+  const photoX = width - 182;
+  const photoY = 110;
+  const photoSize = 144;
 
   doc.rect(20, 20, width - 40, pageHeight - 40)
     .lineWidth(0.9)
     .stroke('#9ca3af');
 
-  putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 36, 34, 48, 48);
-  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 88, 32, 46, 46);
+  putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 130, 28, 58, 58);
+  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 189, 28, 58, 58);
 
   doc.font('Helvetica-Bold')
     .fillColor('#111827')
-    .fontSize(8.7)
-    .text('BUENAVISTA COMMUNITY COLLEGE', 0, 38, { align: 'center' });
+    .fontSize(12)
+    .text('BUENAVISTA COMMUNITY COLLEGE', 0, 36, { align: 'center' });
   doc.font('Helvetica')
-    .fontSize(7.1)
-    .text('Cangawa, Buenavista, Bohol', 0, 50, { align: 'center' })
-    .text('Telefax: (038) 513-9169   Tel. No. 513-9179', 0, 59, { align: 'center' });
-
-  doc.moveTo(34, 84)
-    .lineTo(width - 34, 84)
-    .lineWidth(0.6)
-    .stroke('#9ca3af');
-
-  doc.font('Helvetica-Bold')
     .fontSize(9.5)
-    .text('NSTP - CWTS Registration Form', 0, 96, { align: 'center' });
+    .text('Cangawa, Buenavista, Bohol', 0, 51, { align: 'center' })
+    .fontSize(8.5)
+    .text('Telefax: (038) 513-9169   Tel. No. 513-9179', 0, 62, { align: 'center' });
+
+  doc.font('Helvetica-Bold')
+    .fontSize(13)
+    .text('NSTP - CWTS Registration Form', 0, 78, { align: 'center' });
   doc.font('Helvetica')
-    .fontSize(7.5)
-    .text('(Please fill all entries)', 0, 108, { align: 'center' });
+    .fontSize(9.5)
+    .text('(Please fill all entries)', 0, 93, { align: 'center' });
 
-  doc.rect(photoX, photoY, photoW, photoH)
-    .lineWidth(0.8)
-    .stroke('#111827');
-  putImage(doc, student.photo, photoX + 3, photoY + 3, photoW - 6, photoH - 6);
+  putImage(doc, student.photo, photoX, photoY, photoSize, photoSize);
 
-  let y = 166;
-  lineField(doc, 'Date:', formatProfileDate(student.created_at), left, y, 138, { labelWidth: 30, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Level:', student.ms_level, left + 148, y, 90, { labelWidth: 32, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Name', student.last_name, left, y + 22, 120, { labelWidth: 26, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, '', student.first_name, left + 128, y + 22, 120, { labelWidth: 0, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, '', student.middle_name, left + 256, y + 22, 120, { labelWidth: 0, valueFontSize: 8.5, labelFontSize: 7.8 });
-  doc.font('Helvetica').fontSize(6.5).fillColor('#475569')
-    .text('(Last Name)', left + 44, y + 38, { width: 60, align: 'center' })
-    .text('(First Name)', left + 170, y + 38, { width: 60, align: 'center' })
-    .text('(Middle Name)', left + 292, y + 38, { width: 72, align: 'center' });
+  // Keep the opening student details level with the photo while preserving a
+  // clear 24-point gutter before the photo's left edge.
+  const detailsRight = photoX - 24;
+  let y = photoY + 22;
+  lineField(doc, 'Date:', formatProfileDate(student.created_at), left, y, 174, { labelWidth: 30, valueFontSize: 10.25, labelFontSize: 9.2 });
+  lineField(doc, 'Level:', student.ms_level, left + 184, y, detailsRight - (left + 184), { labelWidth: 32, valueFontSize: 10.25, labelFontSize: 9.2 });
 
-  y += 48;
-  lineField(doc, 'Course', student.course, left, y, 150, { labelWidth: 32, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Year/Level:', student.year_level, left + 156, y, 120, { labelWidth: 52, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Religion:', student.religion, left + 282, y, 110, { labelWidth: 46, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Brgy.:', student.temporary_barangay, left + 398, y, 94, { labelWidth: 34, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y += 30;
+  lineField(doc, 'Name', student.last_name, left, y, 116, { labelWidth: 26, valueFontSize: 10.25, labelFontSize: 9.2 });
+  lineField(doc, '', student.first_name, left + 124, y, 116, { labelWidth: 0, valueFontSize: 10.25, labelFontSize: 9.2 });
+  lineField(doc, '', student.middle_name, left + 248, y, detailsRight - (left + 248), { labelWidth: 0, valueFontSize: 10.25, labelFontSize: 9.2 });
+  doc.font('Helvetica').fontSize(7.5).fillColor('#475569')
+    .text('(Last Name)', left + 42, y + 17, { width: 60, align: 'center' })
+    .text('(First Name)', left + 166, y + 17, { width: 60, align: 'center' })
+    .text('(Middle Name)', left + 278, y + 17, { width: 72, align: 'center' });
 
-  y += 18;
-  lineField(doc, 'Present Address', joinedAddress([student.temporary_barangay, student.temporary_municipality, student.temporary_province]), left, y, 492, { labelWidth: 74, valueFontSize: 8.5, labelFontSize: 7.8 });
-  y += 18;
-  lineField(doc, 'Contact No.:', student.contact_number, left, y, 172, { labelWidth: 52, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Place of Birth:', student.place_of_birth, left + 178, y, 170, { labelWidth: 64, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Age:', '', left + 354, y, 62, { labelWidth: 24, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Sex:', student.sex, left + 422, y, 70, { labelWidth: 22, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y += 44;
+  lineField(doc, 'Course:', student.course, left, y, 200, { labelWidth: 38, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Year/Level:', student.year_level, left + 208, y, detailsRight - (left + 208), { labelWidth: 54, valueFontSize: 10, labelFontSize: 9 });
 
-  y += 18;
-  lineField(doc, 'Date of Birth:', formatProfileDate(student.birthdate), left, y, 148, { labelWidth: 58, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Height:', student.height, left + 154, y, 84, { labelWidth: 36, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Weight:', student.weight, left + 244, y, 86, { labelWidth: 40, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Complexion:', student.complexion, left + 336, y, 156, { labelWidth: 54, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y += 26;
+  lineField(doc, 'Religion:', student.religion, left, y, 200, { labelWidth: 46, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Brgy.:', student.temporary_barangay, left + 208, y, detailsRight - (left + 208), { labelWidth: 34, valueFontSize: 10, labelFontSize: 9 });
 
-  y += 18;
-  lineField(doc, 'Blood Type:', student.blood_type, left + 294, y, 94, { labelWidth: 52, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y = photoY + photoSize + 24;
+  lineField(doc, 'Present Address:', joinedAddress([student.temporary_barangay, student.temporary_municipality, student.temporary_province]), left, y, 536, { labelWidth: 82, valueFontSize: 10, labelFontSize: 9 });
+  y += 25;
+  lineField(doc, 'Contact No.:', student.contact_number, left, y, 170, { labelWidth: 54, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Place of Birth:', student.place_of_birth, left + 176, y, 200, { labelWidth: 68, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Age:', '', left + 382, y, 70, { labelWidth: 25, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Sex:', student.sex, left + 458, y, 78, { labelWidth: 24, valueFontSize: 10, labelFontSize: 9 });
 
-  y += 22;
-  lineField(doc, 'Father Name:', student.father_name, left, y, 248, { labelWidth: 56, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Occupation:', student.father_occupation, left + 254, y, 238, { labelWidth: 58, valueFontSize: 8.5, labelFontSize: 7.8 });
-  y += 18;
-  lineField(doc, 'Mother Name:', student.mother_name, left, y, 248, { labelWidth: 58, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Occupation:', student.mother_occupation, left + 254, y, 238, { labelWidth: 58, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y += 25;
+  lineField(doc, 'Date of Birth:', formatProfileDate(student.birthdate), left, y, 150, { labelWidth: 60, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Height:', student.height, left + 156, y, 85, { labelWidth: 36, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Weight:', student.weight, left + 247, y, 85, { labelWidth: 40, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Complexion:', student.complexion, left + 338, y, 120, { labelWidth: 56, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Blood Type:', student.blood_type, left + 464, y, 72, { labelWidth: 52, valueFontSize: 10, labelFontSize: 9 });
 
-  y += 22;
-  doc.font('Helvetica').fontSize(7.8).fillColor('#111827').text('Person to Notify in Case of Emergency:', left, y);
-  y += 16;
-  lineField(doc, 'Name:', student.emergency_contact_name, left, y, 190, { labelWidth: 30, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Relationship:', student.emergency_contact_relationship, left + 196, y, 130, { labelWidth: 64, valueFontSize: 8.5, labelFontSize: 7.8 });
-  lineField(doc, 'Contact No.:', student.emergency_contact_contact_number, left + 332, y, 160, { labelWidth: 54, valueFontSize: 8.5, labelFontSize: 7.8 });
-  y += 18;
-  lineField(doc, 'Address:', student.emergency_contact_address, left, y, 492, { labelWidth: 42, valueFontSize: 8.5, labelFontSize: 7.8 });
+  y += 30;
+  lineField(doc, 'Father Name:', student.father_name, left, y, 265, { labelWidth: 62, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Occupation:', student.father_occupation, left + 271, y, 265, { labelWidth: 60, valueFontSize: 10, labelFontSize: 9 });
+  y += 25;
+  lineField(doc, 'Mother Name:', student.mother_name, left, y, 265, { labelWidth: 64, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Occupation:', student.mother_occupation, left + 271, y, 265, { labelWidth: 60, valueFontSize: 10, labelFontSize: 9 });
 
-  const sigY = y + 26;
-  doc.font('Helvetica')
-    .fontSize(7.8)
-    .fillColor('#111827')
-    .text('Noted by:', left + 250, sigY);
-  doc.moveTo(left + 316, sigY + 15)
-    .lineTo(left + 430, sigY + 15)
-    .lineWidth(0.8)
-    .stroke('#111827');
-  doc.font('Helvetica')
-    .fontSize(7)
-    .text('Signature over printed name', left + 296, sigY + 18, { width: 150, align: 'center' });
+  y += 32;
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#111827').text('Person to Notify in Case of Emergency:', left, y);
+  y += 20;
+  lineField(doc, 'Name:', student.emergency_contact_name, left, y, 250, { labelWidth: 34, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Relationship:', student.emergency_contact_relationship, left + 256, y, 130, { labelWidth: 66, valueFontSize: 10, labelFontSize: 9 });
+  lineField(doc, 'Contact No.:', student.emergency_contact_contact_number, left + 392, y, 144, { labelWidth: 56, valueFontSize: 10, labelFontSize: 9 });
+  y += 25;
+  lineField(doc, 'Address:', student.emergency_contact_address, left, y, 536, { labelWidth: 44, valueFontSize: 10, labelFontSize: 9 });
 
   doc.font('Helvetica')
-    .fontSize(7)
+    .fontSize(8)
     .fillColor('#64748b')
-    .text(`Page ${pageIndex + 1} of ${total}`, 0, pageHeight - 28, { align: 'center' });
+    .text(`Page ${pageIndex + 1} of ${total}`, 0, pageHeight - 42, { align: 'center' });
 }
 
 async function registrationFormsPdf(res, { records, program, assets, filters }) {
@@ -690,7 +686,8 @@ async function registrationFormsPdf(res, { records, program, assets, filters }) 
   }
   const filename = `${program}-approved-profile-forms.pdf`.replace(/[^a-zA-Z0-9._-]/g, '-');
   const doc = new PDFDocument({
-    size: program === 'CWTS' ? 'LETTER' : 'LEGAL',
+    // CWTS uses the Letter width with a compact 8-inch page height.
+    size: program === 'CWTS' ? [612, 576] : 'LEGAL',
     layout: 'portrait',
     margin: 24,
   });
@@ -705,7 +702,7 @@ async function registrationFormsPdf(res, { records, program, assets, filters }) 
       return;
     }
 
-    drawRotcRegistrationPage(doc, record, assets, index, records.length);
+    drawRotcRegistrationPage(doc, record, assets, index, records.length, filters.commandantName);
   });
 
   doc.end();
