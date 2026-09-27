@@ -117,15 +117,14 @@ async function main() {
     const req = {
       body: {
         portal: "student",
-        student_id: "123456-7890' OR 1=1 --",
-        email: "student@example.com",
+        email: "student@example.com' OR 1=1 --",
       },
     };
     const res = createResponse();
 
     await controller.requestStudentResetCode(req, res);
 
-    assert.strictEqual(res.statusCode, 400, "invalid student ID injection attempt should be blocked early");
+    assert.strictEqual(res.statusCode, 400, "invalid student email injection attempt should be blocked early");
   }
 
   {
