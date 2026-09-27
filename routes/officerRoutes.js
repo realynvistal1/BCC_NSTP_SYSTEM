@@ -8,6 +8,7 @@ router.get("/dashboard", controller.dashboard);
 router.get("/enrollments", controller.enrollments);
 router.get("/records", controller.records);
 router.get("/records/filter-options", controller.recordFilterOptions);
+router.get("/records/download/profiles", controller.downloadRecordProfiles);
 router.get("/records/:studentId", controller.recordDetail);
 router.get("/roster/:group", controller.roster);
 
