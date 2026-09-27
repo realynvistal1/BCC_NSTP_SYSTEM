@@ -6,7 +6,6 @@ const captchaService = require('../services/captchaService');
 const {
   MAX_LOGIN_IDENTIFIER_LENGTH,
   isReasonableEmail,
-  isValidStudentId,
   isValidResetCode,
 } = require('../services/requestValidationService');
 
@@ -515,7 +514,6 @@ exports.requestStudentResetCode = async (req, res) => {
   try {
     const {
       portal,
-      student_id: studentId,
       email,
       recaptcha_token: recaptchaToken,
     } = req.body;
@@ -530,15 +528,9 @@ exports.requestStudentResetCode = async (req, res) => {
       });
     }
 
-    if (!studentId || !email) {
+    if (!email) {
       return res.status(400).json({
-        message: 'Student ID and registered email are required.',
-      });
-    }
-
-    if (!isValidStudentId(studentId)) {
-      return res.status(400).json({
-        message: 'Student ID must use format 000000-0000.',
+        message: 'Registered email is required.',
       });
     }
 
@@ -548,7 +540,8 @@ exports.requestStudentResetCode = async (req, res) => {
       });
     }
 
-    const requestKey = `student-reset-request:${String(studentId).trim().toLowerCase()}:${String(email).trim().toLowerCase()}`;
+    const normalizedEmail = String(email).trim();
+    const requestKey = `student-reset-request:${normalizedEmail.toLowerCase()}`;
     const requestAttempt = await getSecurityEvent(requestKey);
     if (requestAttempt?.locked_until && new Date(requestAttempt.locked_until) > new Date()) {
       return res.status(429).json({
@@ -566,16 +559,16 @@ exports.requestStudentResetCode = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT id, email
        FROM students
-       WHERE student_id=? AND email=?
+       WHERE email=?
        LIMIT 1`,
-      [String(studentId).trim(), String(email).trim()]
+      [normalizedEmail]
     );
 
     const account = rows[0];
     if (!account) {
       const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
-        message: 'No student account matched the provided Student ID and email.',
+        message: 'No student account matched the provided email.',
         locked_until: failed.locked_until || null,
       });
     }
@@ -614,7 +607,6 @@ exports.resetStudentPassword = async (req, res) => {
   try {
     const {
       portal,
-      student_id: studentId,
       email,
       verification_code: code,
       newPassword,
@@ -632,15 +624,9 @@ exports.resetStudentPassword = async (req, res) => {
       });
     }
 
-    if (!studentId || !email || !code || !newPassword || !confirmPassword) {
+    if (!email || !code || !newPassword || !confirmPassword) {
       return res.status(400).json({
-        message: 'Student ID, email, verification code, and new password are required.',
-      });
-    }
-
-    if (!isValidStudentId(studentId)) {
-      return res.status(400).json({
-        message: 'Student ID must use format 000000-0000.',
+        message: 'Email, verification code, and new password are required.',
       });
     }
 
@@ -661,9 +647,8 @@ exports.resetStudentPassword = async (req, res) => {
       return res.status(400).json({ message: validationMessage });
     }
 
-    const normalizedStudentId = String(studentId).trim();
     const normalizedEmail = String(email).trim();
-    const resetKey = `student-reset-verify:${normalizedStudentId.toLowerCase()}:${normalizedEmail.toLowerCase()}`;
+    const resetKey = `student-reset-verify:${normalizedEmail.toLowerCase()}`;
     const resetAttempt = await getSecurityEvent(resetKey);
     if (resetAttempt?.locked_until && new Date(resetAttempt.locked_until) > new Date()) {
       return res.status(429).json({
@@ -677,16 +662,16 @@ exports.resetStudentPassword = async (req, res) => {
     const [students] = await db.execute(
       `SELECT id,email,password
        FROM students
-       WHERE student_id=? AND email=?
+       WHERE email=?
        LIMIT 1`,
-      [normalizedStudentId, normalizedEmail]
+      [normalizedEmail]
     );
 
     const student = students[0];
     if (!student) {
       const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
-        message: 'No student account matched the provided Student ID and email.',
+        message: 'No student account matched the provided email.',
         locked_until: failed.locked_until || null,
       });
     }
