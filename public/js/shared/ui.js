@@ -341,9 +341,9 @@ function enrollmentAssignment(x, p) {
 
 function enrollmentRow(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
-  const photo = `<span class="student-avatar">${esc(studentInitials(x))}</span>`;
   const level = p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`;
   const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}${x.suffix ? ` ${displayNamePart(x.suffix)}` : ''}`;
+  const photo = `<img class="student-avatar-img" src="/api/admin/${p}/enrollments/${encodeURIComponent(x.record_id)}/photo" alt="${esc(fullName)} 2x2 photo" data-initials="${esc(studentInitials(x))}" loading="lazy">`;
 
   return `
     <tr class="${medical ? 'medical-row' : ''}" data-status="${esc(x.status)}">
@@ -696,6 +696,17 @@ async function renderEnrollmentList(p,c){
       rejected:base.filter(x=>x.status==='rejected').length
     };
     $('#enrollmentRows').innerHTML=f.map(x=>enrollmentRow(x,p)).join('');
+    $$('.student-avatar-img', $('#enrollmentRows')).forEach(image => {
+      const showFallback = () => {
+        if (!image.isConnected) return;
+        const fallback = document.createElement('span');
+        fallback.className = 'student-avatar';
+        fallback.textContent = image.dataset.initials || 'ST';
+        image.replaceWith(fallback);
+      };
+      image.addEventListener('error', showFallback, { once: true });
+      if (image.complete && image.naturalWidth === 0) showFallback();
+    });
     $('#enrollmentEmpty').classList.toggle('hidden',f.length!==0);
     $('.enrollment-data-table').classList.toggle('hidden',f.length===0);
     $('#filterResultText').textContent=`Showing ${f.length} of ${rows.length} enrollment${rows.length===1?'':'s'}`;
