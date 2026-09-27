@@ -123,6 +123,7 @@ function validateExcelFile(file, { label = 'Excel file', maxBytes = 8 * 1024 * 1
 }
 
 module.exports = {
+  parseDataUrl,
   validateImageUpload,
   validateDocumentUpload,
   validateExcelFile,
