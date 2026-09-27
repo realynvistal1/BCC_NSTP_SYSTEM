@@ -11,6 +11,8 @@ module.exports = {
   dashboard: withProgram(shared.dashboard),
   schedules: withProgram(shared.schedules),
   enrollments: withProgram(shared.enrollments),
+  enrollmentPhoto: withProgram(shared.enrollmentPhoto),
+  studentPhoto: withProgram(shared.studentPhoto),
   enrollmentDetail: withProgram(shared.enrollmentDetail),
   editEnrollmentStudent: withProgram(shared.editEnrollmentStudent),
   deleteEnrollmentStudent: withProgram(shared.deleteEnrollmentStudent),
