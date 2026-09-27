@@ -428,11 +428,12 @@ async function renderAdminGrades(_program, content) {
 
   function openModal(student) {
     const modal = $('#gradeModal');
+    const initials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
     $('#gradeModalBody').innerHTML = `
       <div class="app-dialog-head">
         <div class="grade-student-head">
-          <div class="grade-avatar">${esc((student.first_name || '?')[0])}${esc((student.last_name || '?')[0])}</div>
+          <img class="grade-avatar grade-avatar-img" src="/api/admin/rotc/students/${encodeURIComponent(student.student_id)}/photo" alt="${esc(`${student.first_name} ${student.last_name}`)} 2x2 photo" data-initials="${esc(initials)}">
           <div>
             <small>${esc(student.student_no)}</small>
             <h3>${esc(student.last_name)}, ${esc(student.first_name)}</h3>
@@ -451,6 +452,17 @@ async function renderAdminGrades(_program, content) {
         <button class="btn primary" id="saveGrades">Save Grades</button>
       </div>
     `;
+
+    const avatar = $('.grade-avatar-img', modal);
+    const showAvatarFallback = () => {
+      if (!avatar.isConnected) return;
+      const fallback = document.createElement('div');
+      fallback.className = 'grade-avatar';
+      fallback.textContent = avatar.dataset.initials || 'ST';
+      avatar.replaceWith(fallback);
+    };
+    avatar.addEventListener('error', showAvatarFallback, { once: true });
+    if (avatar.complete && avatar.naturalWidth === 0) showAvatarFallback();
 
     modal.classList.remove('hidden');
 
