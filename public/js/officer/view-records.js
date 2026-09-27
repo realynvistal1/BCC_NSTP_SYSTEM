@@ -1,6 +1,6 @@
 function officerRecordAssignment(row, program) {
   if (program === 'CWTS') {
-    return row.company || '-';
+    return row.company ? `Company ${row.company}` : '-';
   }
 
   if (Number(row.willing_to_take_advance_course)) {
@@ -42,14 +42,118 @@ function officerInfoItem(label, value) {
   `;
 }
 
+function officerXmlSafe(value = '') {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function officerCourseCode(course) {
+  const value = String(course || '').trim();
+  const upper = value.toUpperCase();
+  const known = {
+    'BS INFORMATION TECHNOLOGY': 'BSIT',
+    'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY': 'BSIT',
+    BEED: 'BEED',
+    'BEED - BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    'BACHELOR OF ELEMENTARY EDUCATION': 'BEED',
+    BSHM: 'BSHM',
+    'BS HOSPITALITY MANAGEMENT': 'BSHM',
+    'BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT': 'BSHM',
+    BSED: 'BSED',
+    'BSED - MAJOR IN ENGLISH': 'BSED',
+    'BSED - MAJOR IN MATHEMATICS': 'BSED',
+    'BACHELOR OF SECONDARY EDUCATION': 'BSED',
+    'BS TOURISM MANAGEMENT': 'BSTM',
+    'BACHELOR OF SCIENCE IN TOURISM MANAGEMENT': 'BSTM',
+    'BS CRIMINOLOGY': 'BSCRIM',
+    'BACHELOR OF SCIENCE IN CRIMINOLOGY': 'BSCRIM',
+  };
+
+  if (known[upper]) return known[upper];
+  const letters = upper.match(/\b[A-Z]/g);
+  return letters && letters.length >= 2 ? letters.join('') : value;
+}
+
+function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
+  const prefix = program === 'CWTS' ? 'CWTS' : 'MS';
+  const headers = [
+    '#', 'SURNAME', 'FIRST NAME', 'MIDDLE NAME', 'SUFFIX', 'COURSE', 'COMPANY',
+    'PLATOON', 'ID NUMBER', 'BIRTHDATE', 'SEX', 'ADDRESS', `${prefix} LEVEL`,
+    'MIDTERM', 'FINAL', 'AVERAGE',
+  ];
+  const makeCell = (value, options = {}) => {
+    const { style = 'Cell', mergeAcross = 0 } = options;
+    const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
+    return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="String">${officerXmlSafe(value)}</Data></Cell>`;
+  };
+  const widths = [34, 92, 92, 92, 54, 86, 86, 64, 92, 78, 58, 150, 74, 62, 62, 66];
+  const columns = widths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
+  const styles = `
+    <Styles>
+      <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1F2937"/></Style>
+      <Style ss:ID="Cell"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/></Borders></Style>
+      <Style ss:ID="CenterCell"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/></Borders></Style>
+      <Style ss:ID="MetaLabel"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#111827"/></Style>
+      <Style ss:ID="SchoolTitle"><Alignment ss:Horizontal="Center"/><Font ss:FontName="Calibri" ss:Size="18" ss:Bold="1" ss:Color="#111827"/></Style>
+      <Style ss:ID="SchoolSubtitle"><Alignment ss:Horizontal="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Color="#374151"/></Style>
+      <Style ss:ID="TableHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0F766E"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0F766E"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0F766E"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0F766E"/></Borders><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F9D7A" ss:Pattern="Solid"/></Style>
+    </Styles>`;
+  const levels = level ? [String(level)] : ['1', '2'];
+  const worksheets = levels.map((currentLevel) => {
+    const levelRows = rows.filter((row) => String(row.ms_level) === currentLevel).map((row, index) => [
+      index + 1,
+      row.last_name,
+      row.first_name,
+      row.middle_name || '',
+      row.suffix || 'N/A',
+      officerCourseCode(row.course),
+      program === 'ROTC'
+        ? (Number(row.willing_to_take_advance_course) ? 'Advance Course' : row.special_unit || row.rotc_company || '-')
+        : row.company || '-',
+      program === 'ROTC' ? (row.rotc_platoon || '-') : '-',
+      row.student_id,
+      row.birthdate || '-',
+      row.sex || '-',
+      [row.permanent_barangay, row.permanent_municipality, row.permanent_province].filter(Boolean).join(', ') || '-',
+      `${prefix} ${row.ms_level}`,
+      row.midterm ?? '-',
+      row.final_term ?? '-',
+      row.grade ?? '-',
+    ]);
+    const headerRows = [
+      `<Row ss:Height="20">${makeCell('Region: VII', { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`School Year: SY ${schoolYear || 'All'}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      `<Row ss:Height="18">${makeCell(`NSTP Component: ${program}`, { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`${prefix} Level: ${prefix} ${currentLevel}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      '<Row ss:Height="10"></Row>',
+      `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
+    ].join('');
+    const bodyRows = levelRows.map((dataRow) => `<Row ss:Height="21">${dataRow.map((value, index) => makeCell(value, { style: index === 0 ? 'CenterCell' : 'Cell' })).join('')}</Row>`).join('');
+    return `<Worksheet ss:Name="NSTP ${currentLevel}"><Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${levelRows.length + 4}" x:FullColumns="1" x:FullRows="1">${columns}${headerRows}${bodyRows}</Table></Worksheet>`;
+  }).join('');
+  const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}${worksheets}</Workbook>`;
+  const blob = new Blob(['\ufeff', xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = `${program}${level ? `_${prefix}${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Records.xls`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 5000);
+}
+
 async function renderOfficerRecords(content) {
   const rows = await API.get('/api/officer/records');
   const scheduleOptions = await API.get('/api/officer/records/filter-options');
 
   content.innerHTML = `
-    <section class="records-tools">
+    <section class="records-tools officer-record-tools">
       <select id="recordProgram">
-        <option value="">All Programs</option>
         <option value="ROTC">ROTC</option>
         <option value="CWTS">CWTS</option>
       </select>
@@ -65,6 +169,8 @@ async function renderOfficerRecords(content) {
       <select id="recordSY">
         <option value="">All School Years</option>
       </select>
+      <button class="btn success" id="downloadRecords" type="button">${icon('records')} Download Excel</button>
+      <button class="btn primary" id="downloadProfiles" type="button">${icon('users')} Download Profile Forms PDF</button>
       <select id="recordBattalion">
         <option value="">All Battalions</option>
       </select>
@@ -94,7 +200,32 @@ async function renderOfficerRecords(content) {
         <div id="recordModalBody"></div>
       </div>
     </div>
+    <div class="app-dialog hidden" id="profileDownloadModal">
+      <div class="app-dialog-backdrop"></div>
+      <div class="app-dialog-card small-modal">
+        <div class="app-dialog-head">
+          <div>
+            <span class="modal-eyebrow">ROTC Profile Forms</span>
+            <h3>Commandant Name</h3>
+            <p>Edit the commandant name before downloading the ROTC profile forms.</p>
+          </div>
+          <button type="button" class="modal-close" id="profileDownloadClose" aria-label="Close">x</button>
+        </div>
+        <form id="profileDownloadForm" class="modal-form-body">
+          <label class="field">
+            Commandant Name
+            <input id="profileCommandantName" name="commandant_name" maxlength="100" required autocomplete="off">
+          </label>
+          <div class="app-dialog-actions">
+            <button type="button" class="btn" id="profileDownloadCancel">Cancel</button>
+            <button type="submit" class="btn primary">Download PDF</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
+
+  let commandantName = 'BILVER F. BUTALE';
 
   function currentProgram() {
     return $('#recordProgram').value;
@@ -248,8 +379,13 @@ async function renderOfficerRecords(content) {
     const battalions = isRotc ? optionValues(rotcBase, (row) => row.battalion) : [];
     setSelectOptions('#recordBattalion', 'All Battalions', battalions, filters.battalion, (value) => `Battalion ${value}`);
 
+    const battalionCompanies = {
+      1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
+      2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
+    };
     const companyValues = program === 'ROTC'
-      ? optionValues(rotcBase, (row) => row.rotc_company)
+      ? (battalionCompanies[filters.battalion]
+        || optionValues(rotcBase, (row) => row.rotc_company))
       : program === 'CWTS'
         ? optionValues(cwtsBase, (row) => row.company)
         : optionValues([
@@ -261,7 +397,11 @@ async function renderOfficerRecords(content) {
       : filters.company;
     setSelectOptions('#recordCompany', 'All Companies', companyValues, companyValue);
 
-    const platoons = isRotc ? optionValues(rotcBase, (row) => row.rotc_platoon) : [];
+    const platoonBase = rotcBase.filter((row) => (
+      (!filters.battalion || String(row.battalion || '') === filters.battalion)
+      && (!filters.company || String(row.rotc_company || '') === filters.company)
+    ));
+    const platoons = isRotc ? optionValues(platoonBase, (row) => row.rotc_platoon) : [];
     setSelectOptions('#recordPlatoon', 'All Platoons', platoons, filters.platoon, (value) => `Platoon ${value}`);
 
     const specialValues = isRotc ? optionValues([
@@ -270,10 +410,12 @@ async function renderOfficerRecords(content) {
     ], (row) => row.value) : [];
     setSelectOptions('#recordSpecial', 'All Special Assignments', specialValues, filters.special, (value) => value === 'advance' ? 'Advance Course' : value);
 
-    $('#recordBattalion').disabled = !isRotc || !battalions.length;
-    $('#recordCompany').disabled = !(isRotc || isCwts) || !companyValues.length;
-    $('#recordPlatoon').disabled = !isRotc || !platoons.length;
-    $('#recordSpecial').disabled = !isRotc || !specialValues.length;
+    const hasBattalion = Boolean(filters.battalion);
+    const hasSpecialAssignment = Boolean(filters.special);
+    $('#recordBattalion').disabled = !isRotc || hasSpecialAssignment || !battalions.length;
+    $('#recordCompany').disabled = hasSpecialAssignment || !(isRotc || isCwts) || !companyValues.length;
+    $('#recordPlatoon').disabled = !isRotc || hasSpecialAssignment || !platoons.length;
+    $('#recordSpecial').disabled = !isRotc || hasBattalion || !specialValues.length;
   }
 
   function normalizedBattalionFilter() {
@@ -296,18 +438,23 @@ async function renderOfficerRecords(content) {
     return $('#recordSpecial').value;
   }
 
-  function draw() {
-    refreshFilterOptions();
-    const program = currentProgram() || 'ROTC';
-    const pfx = prefix(program);
+  function visibleRecords() {
     const selectedProgram = currentProgram();
-    const data = rows.filter((row) => matchesRecord(row, {
+    return rows.filter((row) => matchesRecord(row, {
       program: selectedProgram,
       battalion: normalizedBattalionFilter(),
       company: normalizedCompanyFilter(),
       platoon: normalizedPlatoonFilter(),
       special: normalizedSpecialFilter(),
     }));
+  }
+
+  function draw() {
+    refreshFilterOptions();
+    const program = currentProgram() || 'ROTC';
+    const pfx = prefix(program);
+    const selectedProgram = currentProgram();
+    const data = visibleRecords();
 
     $('#recordHead').innerHTML = `
       <tr>
@@ -317,7 +464,7 @@ async function renderOfficerRecords(content) {
         <th>Course</th>
         <th>${pfx} Level</th>
         <th>SY</th>
-        ${program === 'ROTC' || !selectedProgram ? '<th>Assignment</th>' : ''}
+        <th>Assignment</th>
         <th>Action</th>
       </tr>
     `;
@@ -331,13 +478,11 @@ async function renderOfficerRecords(content) {
           <td>${esc(row.course)}</td>
           <td><span class="level-pill">${row.program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(row.ms_level)}</span></td>
           <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
-          ${program === 'ROTC' || !selectedProgram
-            ? `<td>${esc(officerRecordAssignment(row, row.program))}</td>`
-            : ''}
+          <td>${esc(officerRecordAssignment(row, row.program))}</td>
           <td><button class="btn small primary" data-detail="${row.student_db_id}" data-level="${row.ms_level}" data-program="${row.program}">View Details</button></td>
         </tr>
       `).join('')
-      : `<tr><td colspan="${program === 'ROTC' || !selectedProgram ? 8 : 7}"><div class="empty">No students found.</div></td></tr>`;
+      : '<tr><td colspan="8"><div class="empty">No students found.</div></td></tr>';
 
     $('#recordFooter').textContent = `Showing ${data.length} of ${rows.filter((row) => !selectedProgram || row.program === selectedProgram).length} record(s)`;
 
@@ -374,13 +519,20 @@ async function renderOfficerRecords(content) {
       const present = attendance.filter((item) => item.status === 'present').length;
       const late = attendance.filter((item) => item.status === 'late').length;
       const absent = attendance.filter((item) => item.status === 'absent').length;
+      const recordFullName = `${student.first_name} ${student.last_name}${student.suffix ? ` ${student.suffix}` : ''}`;
+      const recordInitials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
       body.innerHTML = `
         <div class="record-modal-head">
-          <div>
-            <span>Student Record - ${pfx} ${esc(level)}</span>
-            <h2>${esc(student.first_name)} ${esc(student.last_name)}${student.suffix ? ` ${esc(student.suffix)}` : ''}</h2>
-            <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+          <div class="record-student-summary">
+            ${student.photo
+              ? `<img class="record-student-photo" src="${esc(student.photo)}" alt="${esc(recordFullName)} 2x2 photo">`
+              : `<div class="record-student-photo fallback" aria-label="No student photo">${esc(recordInitials)}</div>`}
+            <div>
+              <span>Student Record - ${pfx} ${esc(level)}</span>
+              <h2>${esc(recordFullName)}</h2>
+              <p>${cycle.school_year ? `SY ${esc(cycle.school_year)} - ` : ''}${esc(student.student_id)}</p>
+            </div>
           </div>
           <button class="modal-close" id="recordClose">x</button>
         </div>
@@ -467,12 +619,96 @@ async function renderOfficerRecords(content) {
   $('#recordSearch').oninput = draw;
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
-  $('#recordBattalion').onchange = draw;
+  $('#recordBattalion').onchange = () => {
+    if ($('#recordBattalion').value) {
+      $('#recordSpecial').value = '';
+    }
+    $('#recordCompany').value = '';
+    $('#recordPlatoon').value = '';
+    draw();
+  };
   $('#recordCompany').onchange = draw;
   $('#recordPlatoon').onchange = draw;
-  $('#recordSpecial').onchange = draw;
+  $('#recordSpecial').onchange = () => {
+    if ($('#recordSpecial').value) {
+      $('#recordBattalion').value = '';
+      $('#recordCompany').value = '';
+      $('#recordPlatoon').value = '';
+    }
+    draw();
+  };
+  $('#downloadRecords').onclick = () => {
+    const data = visibleRecords();
+    const program = currentProgram();
+
+    if (!data.length) {
+      return toast('No records to download.', true);
+    }
+
+    downloadOfficerRecordsExcel(
+      data,
+      program,
+      $('#recordLevel').value,
+      $('#recordSY').value
+    );
+  };
+
+  function profileDownloadParams(program, editedCommandantName = '') {
+    const params = new URLSearchParams({ program });
+    if ($('#recordLevel').value) params.set('ms_level', $('#recordLevel').value);
+    if ($('#recordSY').value) params.set('school_year', $('#recordSY').value);
+    const search = $('#recordSearch').value.trim();
+    if (search) params.set('search', search);
+    if (editedCommandantName) params.set('commandant_name', editedCommandantName);
+    return params;
+  }
+
+  $('#downloadProfiles').onclick = () => {
+    const data = visibleRecords();
+    const program = currentProgram();
+
+    if (!data.length) {
+      return toast('No approved student profiles to download.', true);
+    }
+
+    if (program === 'CWTS') {
+      const params = profileDownloadParams(program);
+      window.open(`/api/officer/records/download/profiles?${params.toString()}`, '_blank');
+      return;
+    }
+
+    const modal = $('#profileDownloadModal');
+    const input = $('#profileCommandantName');
+    input.value = commandantName;
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  };
+
+  const closeProfileDownload = () => $('#profileDownloadModal').classList.add('hidden');
+  $('#profileDownloadClose').onclick = closeProfileDownload;
+  $('#profileDownloadCancel').onclick = closeProfileDownload;
+  $('#profileDownloadModal').querySelector('.app-dialog-backdrop').onclick = closeProfileDownload;
+  $('#profileDownloadForm').onsubmit = (event) => {
+    event.preventDefault();
+    const editedCommandantName = $('#profileCommandantName').value.trim().replace(/\s+/g, ' ');
+
+    if (!editedCommandantName) {
+      toast('Enter the commandant name before downloading.', true);
+      $('#profileCommandantName').focus();
+      return;
+    }
+
+    commandantName = editedCommandantName;
+    closeProfileDownload();
+    const params = profileDownloadParams('ROTC', editedCommandantName);
+    window.open(`/api/officer/records/download/profiles?${params.toString()}`, '_blank');
+  };
+
   $('#clearRecordFilters').onclick = () => {
-    $('#recordProgram').value = '';
+    $('#recordProgram').value = 'ROTC';
     $('#recordSearch').value = '';
     $('#recordLevel').value = '';
     $('#recordSY').value = '';
