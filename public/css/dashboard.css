@@ -1006,7 +1006,10 @@ body[data-portal-theme="officer"] .progress-meta span {
   font-weight: 800
 }
 .student-avatar-img {
+  display: block;
   object-fit: cover;
+  object-position: center top;
+  background: #dbeafe;
   border: 2px solid #e2e8f0
 }
 .student-cell>div {
