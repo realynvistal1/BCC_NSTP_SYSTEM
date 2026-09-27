@@ -649,6 +649,27 @@
 .forgot-form .field-icon {
   font-size: 13px
 }
+.forgot-modal.student-reset-mode .forgot-modal-card {
+  width: min(420px, 100%);
+  border-radius: 20px;
+  padding: 21px 22px
+}
+.forgot-modal.student-reset-mode .forgot-header {
+  margin-bottom: 13px
+}
+.forgot-modal.student-reset-mode .forgot-header h3 {
+  font-size: 20px
+}
+.forgot-modal.student-reset-mode .forgot-header p {
+  line-height: 1.45
+}
+.student-forgot-form {
+  gap: 11px
+}
+.student-forgot-form .input-shell input,
+.student-forgot-form .auth-submit {
+  height: 42px
+}
 @media(max-width: 640px) {
   .forgot-modal-card {
     padding: 22px 18px
