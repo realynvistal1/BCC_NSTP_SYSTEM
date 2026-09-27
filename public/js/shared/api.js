@@ -71,8 +71,22 @@ const Captcha = {
     return this.configPromise;
   },
 
+  async waitUntilReady(timeoutMs = 10000) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      if (typeof window.grecaptcha?.ready === 'function'
+        && typeof window.grecaptcha?.execute === 'function') {
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+
+    throw new Error('Unable to load security check.');
+  },
+
   async load(siteKey) {
-    if (window.grecaptcha?.execute) {
+    if (typeof window.grecaptcha?.execute === 'function') {
       return;
     }
 
@@ -80,19 +94,17 @@ const Captcha = {
       this.scriptPromise = (async () => {
         const existing = document.querySelector('script[data-recaptcha="true"]');
         if (existing) {
-          await new Promise((resolve, reject) => {
-            existing.addEventListener('load', resolve, { once: true });
-            existing.addEventListener('error', () => reject(new Error('Unable to load security check.')), { once: true });
-          });
+          await this.waitUntilReady();
           return;
         }
 
         let lastError = null;
 
         for (const scriptUrl of this.scriptUrls(siteKey)) {
+          let script = null;
           try {
             await new Promise((resolve, reject) => {
-              const script = document.createElement('script');
+              script = document.createElement('script');
               script.src = scriptUrl;
               script.async = true;
               script.defer = true;
@@ -105,10 +117,10 @@ const Captcha = {
               document.head.appendChild(script);
             });
 
-            if (window.grecaptcha?.execute) {
-              return;
-            }
+            await this.waitUntilReady();
+            return;
           } catch (error) {
+            script?.remove();
             lastError = error;
           }
         }
