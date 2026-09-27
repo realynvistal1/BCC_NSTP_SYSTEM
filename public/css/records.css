@@ -45,6 +45,12 @@
   width: 15px;
   height: 15px
 }
+.records-tools.officer-record-tools {
+  grid-template-columns: minmax(170px, 1fr) minmax(260px, 1.8fr) repeat(2, minmax(150px, 1fr))
+}
+.records-tools.rotc-record-tools {
+  grid-template-columns: minmax(260px, 1.8fr) repeat(3, minmax(150px, 1fr))
+}
 .record-list-panel {
   padding: 0;
   overflow: hidden
@@ -59,8 +65,34 @@
   border-bottom: 1px solid #e9eef4;
   background: linear-gradient(135deg, #eff6ff, #f5f3ff);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between
+}
+.record-student-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0
+}
+.record-student-photo {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .14)
+}
+.record-student-photo.fallback {
+  display: grid;
+  place-items: center;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 15px;
+  font-weight: 850
 }
 .record-modal-head span {
   display: block;
