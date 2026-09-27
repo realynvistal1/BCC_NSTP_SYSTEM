@@ -127,6 +127,12 @@
   color: #2563eb;
   font-weight: 900
 }
+.grade-avatar-img {
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  background: #eff6ff
+}
 .grade-modal-content {
   padding: 16px;
   display: grid;
