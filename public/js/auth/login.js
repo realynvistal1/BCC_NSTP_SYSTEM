@@ -9,7 +9,7 @@ async function initLogin() {
 
     if (button) {
       button.disabled = true;
-      button.textContent = 'Signing in...';
+      button.textContent = 'Logging in...';
     }
 
     try {
