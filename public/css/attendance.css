@@ -226,8 +226,30 @@
   gap: 15px
 }
 .attendance-validation {
+  flex: 1;
   font-size: 12px;
   color: #64748b
+}
+.attendance-validation.blocked {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #f2b46d;
+  border-radius: 12px;
+  color: #8a3f0a;
+  background: #fff7ed;
+}
+.attendance-validation.blocked strong {
+  color: #9a3412;
+  font-size: 13px;
+}
+.attendance-validation.blocked span {
+  line-height: 1.45;
+}
+.attendance-validation.blocked b {
+  color: #c2410c;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .attendance-side-panel {
   display: grid;
@@ -1012,6 +1034,53 @@
   border-radius: 20px;
   box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
   border: 1px solid #e5e7eb;
+}
+.attendance-success-card {
+  width: min(440px, 94vw);
+  padding: 30px;
+  overflow: visible;
+  text-align: center;
+  border-color: #bbf7d0;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
+}
+.attendance-success-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #22c55e, #059669);
+  box-shadow: 0 14px 30px rgba(5, 150, 105, .28);
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1;
+}
+.attendance-success-copy > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.attendance-success-copy h2 {
+  margin: 0;
+  color: #16253d;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.attendance-success-copy p {
+  margin: 10px auto 24px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.attendance-success-card .btn {
+  min-width: 140px;
+  min-height: 44px;
 }
 .record-modal-head {
   display: flex;
