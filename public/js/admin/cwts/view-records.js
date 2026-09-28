@@ -224,6 +224,7 @@ async function renderAdminRecords(_program, content) {
   const program = 'CWTS';
   const apiProgram = 'cwts';
   const prefix = 'CWTS';
+  const companyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
   const rows = await API.get(`/api/admin/${apiProgram}/records`);
   const schedules = await API.get(`/api/admin/${apiProgram}/enrollment-schedule`);
 
@@ -254,6 +255,10 @@ async function renderAdminRecords(_program, content) {
       <select id="recordSY">
         <option value="">All SY</option>
         ${schoolYearsForLevel().map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
+      </select>
+      <select id="recordCompany">
+        <option value="">All Companies</option>
+        ${companyOptions.map((company) => `<option value="${company}">${company} Company</option>`).join('')}
       </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
       <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
@@ -290,10 +295,12 @@ async function renderAdminRecords(_program, content) {
     const query = $('#recordSearch').value.trim().toLowerCase();
     const level = $('#recordLevel').value;
     const schoolYear = $('#recordSY').value;
+    const company = $('#recordCompany').value;
 
     return rows.filter((row) => (
       (!level || String(row.ms_level) === level)
       && (!schoolYear || row.school_year === schoolYear)
+      && (!company || String(row.company || '') === company)
       && (
         !query
         || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
@@ -461,6 +468,7 @@ async function renderAdminRecords(_program, content) {
   $('#recordSearch').oninput = draw;
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
+  $('#recordCompany').onchange = draw;
   $('#downloadRecords').onclick = () => {
     const data = filtered();
 
@@ -489,6 +497,9 @@ async function renderAdminRecords(_program, content) {
     }
     if ($('#recordSY').value) {
       params.set('school_year', $('#recordSY').value);
+    }
+    if ($('#recordCompany').value) {
+      params.set('company', $('#recordCompany').value);
     }
     const search = $('#recordSearch').value.trim();
     if (search) {
