@@ -457,40 +457,40 @@ async function renderAdminSerial(content, program) {
           <div class="search-box">
             <input id="serialSearch" placeholder="Search Student ID, name, or course" value="${esc(state.q)}">
           </div>
-          <select id="serialElig">
-            <option>All</option>
-            <option>Eligible</option>
-            <option>Not Eligible</option>
-            <option>Assigned</option>
-          </select>
-          <select id="serialLevel">
-            <option value="">All Levels</option>
-            <option value="1">${program === 'cwts' ? 'CWTS' : 'MS'} 1</option>
-            <option value="2">${program === 'cwts' ? 'CWTS' : 'MS'} 2</option>
-          </select>
-          <select id="serialSY">
-            <option value="">All School Years</option>
-            ${scheduleYearsForLevel(state.level).map((year) => `<option>${esc(year)}</option>`).join('')}
-          </select>
+          <label class="serial-filter"><select id="serialElig">
+              <option>All</option>
+              <option>Eligible</option>
+              <option>Not Eligible</option>
+              <option>Assigned</option>
+            </select></label>
+          <label class="serial-filter"><select id="serialLevel">
+              <option value="">All Levels</option>
+              <option value="1">${program === 'cwts' ? 'CWTS' : 'MS'} 1</option>
+              <option value="2">${program === 'cwts' ? 'CWTS' : 'MS'} 2</option>
+            </select></label>
+          <label class="serial-filter"><select id="serialSY">
+              <option value="">All School Years</option>
+              ${scheduleYearsForLevel(state.level).map((year) => `<option>${esc(year)}</option>`).join('')}
+            </select></label>
           ${program === 'rotc'
-            ? `<select id="serialBattalion">
-                <option value="">All Battalions</option>
-                ${options.battalions.map((value) => `<option value="${esc(value)}">${value === ROTC_SPECIAL_BATTALION ? 'Special Platoon' : value === ROTC_ADVANCE_BATTALION ? 'Advance Course' : `Battalion ${esc(value)}`}</option>`).join('')}
-              </select>
-              <select id="serialCompany">
-                <option value="">${state.battalion === ROTC_SPECIAL_BATTALION ? 'All Special Units' : state.battalion === ROTC_ADVANCE_BATTALION ? 'All Groups' : 'All Companies'}</option>
-                ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">${state.battalion === ROTC_SPECIAL_BATTALION ? esc(value) : state.battalion === ROTC_ADVANCE_BATTALION ? esc(value) : `Company ${esc(value)}`}</option>`).join('')}
-              </select>
+            ? `<label class="serial-filter"><select id="serialBattalion">
+                  <option value="">All Battalions</option>
+                  ${options.battalions.map((value) => `<option value="${esc(value)}">${value === ROTC_SPECIAL_BATTALION ? 'Special Platoon' : value === ROTC_ADVANCE_BATTALION ? 'Advance Course' : `Battalion ${esc(value)}`}</option>`).join('')}
+                </select></label>
+              <label class="serial-filter"><select id="serialCompany">
+                  <option value="">${state.battalion === ROTC_SPECIAL_BATTALION ? 'All Special Units' : state.battalion === ROTC_ADVANCE_BATTALION ? 'All Groups' : 'All Companies'}</option>
+                  ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">${state.battalion === ROTC_SPECIAL_BATTALION ? esc(value) : state.battalion === ROTC_ADVANCE_BATTALION ? esc(value) : `Company ${esc(value)}`}</option>`).join('')}
+                </select></label>
               ${state.battalion === ROTC_SPECIAL_BATTALION || state.battalion === ROTC_ADVANCE_BATTALION
                 ? ''
-                : `<select id="serialPlatoon">
-                    <option value="">All Platoons</option>
-                    ${options.rotcPlatoons.map((value) => `<option value="${esc(value)}">Platoon ${esc(value)}</option>`).join('')}
-                  </select>`}`
-            : `<select id="serialCwtsCompany">
-                <option value="">All Companies</option>
-                ${options.cwtsCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
-              </select>`}
+                : `<label class="serial-filter"><select id="serialPlatoon">
+                      <option value="">All Platoons</option>
+                      ${options.rotcPlatoons.map((value) => `<option value="${esc(value)}">Platoon ${esc(value)}</option>`).join('')}
+                    </select></label>`}`
+            : `<label class="serial-filter"><select id="serialCwtsCompany">
+                  <option value="">All Companies</option>
+                  ${options.cwtsCompanies.map((value) => `<option value="${esc(value)}">Company ${esc(value)}</option>`).join('')}
+                </select></label>`}
         </div>
         ${table(
           ['Student', 'Course / Year', 'Assignment', 'MS 1 Grade', 'MS 2 Grade', 'Eligibility', 'Serial Number', 'Date Assigned'],
