@@ -353,7 +353,7 @@ async function approvedRecordRows(programCode, filters = {}) {
 
   return rows.filter((row) => (
     (programCode !== 'ROTC' || !battalion || String(row.battalion || '') === battalion)
-    && (programCode !== 'ROTC' || !company || String(row.rotc_company || '') === company)
+    && (!company || String(programCode === 'ROTC' ? row.rotc_company : row.company || '') === company)
     && (programCode !== 'ROTC' || !platoon || String(row.rotc_platoon || '') === platoon)
     && (programCode !== 'ROTC' || !special
       || (special === 'advance'
