@@ -1,6 +1,7 @@
 let officerSessions = [];
 const officerRecordStore = new Map();
 let officerAttendanceRows = [];
+const CWTS_COMPANY_OPTIONS = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
 function attendanceDisplayName(value) {
   return String(value || '').trim().replace(/(^|[\s'\-])\p{L}/gu, letter => letter.toLocaleUpperCase());
 }
@@ -132,7 +133,7 @@ function officerStudentFilterValue(student, group, program) {
 
 function companyOptionsForGroup(group, students, program = 'ROTC') {
   if (program === 'CWTS') {
-    return [...new Set(students.map(officerStudentCompany).filter((value) => value !== 'all'))].sort();
+    return [...CWTS_COMPANY_OPTIONS];
   }
   if (group === 'battalion-1') {
     return ['Alpha', 'Bravo', 'Charlie', 'Delta'];
@@ -172,6 +173,17 @@ function officerPlatoonOptions(group, company) {
     ...battalions.flatMap((battalion) => [1, 2, 3, 4].map((platoon) => `B${battalion}-P${platoon}`)),
     ...(group === 'all' && company === 'all' ? ['Advance M', 'Advance F'] : []),
   ];
+}
+
+function officerUsesSexFilter(group, company) {
+  return group === 'advance-course' || String(company || '').startsWith('Advance Course -');
+}
+
+function officerPlatoonOptionText(value, usesSexFilter) {
+  if (!usesSexFilter) return value;
+  if (value === 'Advance M') return 'Male';
+  if (value === 'Advance F') return 'Female';
+  return value;
 }
 
 function sessionCountLabel(count) {
@@ -310,9 +322,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
   function companyOptions(group = state.group) {
     const rows = groupRows(group);
     if (program === 'CWTS') {
-      return [...new Set(
-        rows.map((student) => officerStudentCompany(student)).filter((value) => value && value !== 'all')
-      )].sort((a, b) => a.localeCompare(b));
+      return [...CWTS_COMPANY_OPTIONS];
     }
     return companyOptionsForGroup(group, rows);
   }
@@ -355,10 +365,12 @@ function renderOfficerAttendanceTable(container, sessions, program) {
     const companyField = $('#officerInlineCompanyField');
     const platoonField = $('#officerInlinePlatoonField');
     const companyLabel = $('#officerInlineCompanyLabel');
+    const platoonLabel = $('#officerInlinePlatoonLabel');
     const companies = companyOptions(state.group);
     const platoons = platoonOptions(state.group, state.company);
     const usesUnits = state.group === 'special-platoon';
     const usesGender = state.group === 'advance-course';
+    const usesSexFilter = officerUsesSexFilter(state.group, state.company);
 
     if (companySelect) {
       const allLabel = usesUnits ? 'All Units' : usesGender ? 'All Genders' : 'All Companies';
@@ -377,10 +389,14 @@ function renderOfficerAttendanceTable(container, sessions, program) {
     }
 
     if (platoonSelect) {
-      platoonSelect.innerHTML = '<option value="all">All Platoons</option>'
-        + platoons.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+      platoonSelect.innerHTML = `<option value="all">${usesSexFilter ? 'All Sex' : 'All Platoons'}</option>`
+        + platoons.map((value) => `<option value="${esc(value)}">${esc(officerPlatoonOptionText(value, usesSexFilter))}</option>`).join('');
       platoonSelect.value = state.platoon;
       platoonSelect.disabled = platoons.length === 0;
+    }
+
+    if (platoonLabel) {
+      platoonLabel.textContent = usesSexFilter ? 'Sex' : 'Platoon';
     }
 
     if (platoonField) {
@@ -446,7 +462,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
             ? `<label class="attendance-record-filter" id="officerInlineCompanyField"><span id="officerInlineCompanyLabel">Company</span><select id="officerInlineCompany"><option value="all">All</option></select></label>`
             : ''}
           ${showPlatoonFilter
-            ? `<label class="attendance-record-filter" id="officerInlinePlatoonField"><span>Platoon</span><select id="officerInlinePlatoon"><option value="all">All</option></select></label>`
+            ? `<label class="attendance-record-filter" id="officerInlinePlatoonField"><span id="officerInlinePlatoonLabel">Platoon</span><select id="officerInlinePlatoon"><option value="all">All</option></select></label>`
             : ''}
           <div class="attendance-record-search">
             <input id="officerInlineSearch" type="search" placeholder="Search name or student ID...">
@@ -710,7 +726,7 @@ async function openOfficerRecords(id) {
             ? `<label class="attendance-record-filter attendance-roster-filter"><span>Battalion</span><select id="officerRecordGroup"><option value="all">All Battalion</option><option value="battalion-1">Battalion 1</option><option value="battalion-2">Battalion 2</option><option value="special-platoon">Special Platoon</option><option value="advance-course">Advance Course</option></select></label>`
             : ''}
           ${showCompanyFilter ? '<label class="attendance-record-filter" id="officerRecordCompanyField"><span id="officerRecordCompanyLabel">Company</span><select id="officerRecordCompany"><option value="all">All</option></select></label>' : ''}
-          ${showPlatoonFilter ? '<label class="attendance-record-filter" id="officerRecordPlatoonField"><span>Platoon</span><select id="officerRecordPlatoon"><option value="all">All</option></select></label>' : ''}
+          ${showPlatoonFilter ? '<label class="attendance-record-filter" id="officerRecordPlatoonField"><span id="officerRecordPlatoonLabel">Platoon</span><select id="officerRecordPlatoon"><option value="all">All</option></select></label>' : ''}
           <div class="attendance-record-search">
             <input id="officerRecordSearch" type="search" placeholder="Search name or student ID...">
           </div>
@@ -756,12 +772,17 @@ async function openOfficerRecords(id) {
 
       const company = companySelect?.value || 'all';
       const platoonOptions = officerPlatoonOptions(group, company);
+      const currentUsesSexFilter = officerUsesSexFilter(group, company);
 
       if (platoonSelect) {
-        platoonSelect.innerHTML = '<option value="all">All Platoons</option>'
-          + platoonOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+        platoonSelect.innerHTML = `<option value="all">${currentUsesSexFilter ? 'All Sex' : 'All Platoons'}</option>`
+          + platoonOptions.map((value) => `<option value="${esc(value)}">${esc(officerPlatoonOptionText(value, currentUsesSexFilter))}</option>`).join('');
 
         platoonSelect.value = platoonOptions.includes(previousPlatoon) ? previousPlatoon : 'all';
+      }
+
+      if ($('#officerRecordPlatoonLabel')) {
+        $('#officerRecordPlatoonLabel').textContent = currentUsesSexFilter ? 'Sex' : 'Platoon';
       }
     };
 
