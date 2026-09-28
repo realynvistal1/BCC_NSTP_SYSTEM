@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/assets/css/forms.css">
   <link rel="stylesheet" href="/assets/css/tables.css">
   <link rel="stylesheet" href="/assets/css/attendance.css">
+  <link rel="stylesheet" href="/assets/css/rotc-attendance-filters.css">
 </head>
 <body data-role="cwts" data-page="attendance-summary" data-title="Attendance Summary" data-subtitle="Review CWTS attendance by company and student status.">
   <div class="top-mobile"><button class="btn" id="mobileMenuButton" type="button">☰</button><strong>BCC NSTP</strong></div>
@@ -22,12 +23,12 @@
       <section class="intro"><div class="intro-brand-row"><img id="portalEmblem" src="/assets/images/cwts-logo.png" alt="Portal emblem"><div class="intro-copy"><div class="intro-kicker">BCC NSTP Management System</div><h1 id="pageTitle">Attendance Summary</h1><p id="pageSubtitle">Review CWTS attendance by company and student status.</p></div></div></section>
 
       <div id="content">
-        <section class="attendance-toolbar-card">
+        <section class="attendance-toolbar-card rotc-summary-filters" aria-label="Attendance filters">
           <div class="attendance-toolbar-grid attendance-summary-toolbar">
-            <label><span>School Year / Level</span><select id="summaryCycle"><option value="">Select cycle</option></select></label>
+            <label><span>School year &amp; level</span><select id="summaryCycle"><option value="">Select cycle</option></select></label>
             <label><span>CS Number</span><select id="summaryMI"><option value="">All CS</option></select></label>
-            <label><span>IN / OUT</span><select id="summaryType"><option value="">All Sessions</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
-            <label><span>View</span><select id="summaryGroup"><option value="overall">Overall Summary</option></select></label>
+            <label><span>Session type</span><select id="summaryType"><option value="">All Sessions</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
+            <label><span>Attendance group</span><select id="summaryGroup"><option value="overall">Overall Summary</option><option value="company-alpha">Alpha Company</option><option value="company-bravo">Bravo Company</option><option value="company-charlie">Charlie Company</option><option value="company-delta">Delta Company</option><option value="company-echo">Echo Company</option><option value="company-foxtrot">Foxtrot Company</option></select></label>
           </div>
         </section>
 
@@ -35,25 +36,22 @@
 
         <section class="attendance-summary-card">
           <div class="attendance-summary-head">
-            <div><h2 id="attendanceSummaryTitle">Attendance Summary</h2><p id="attendanceSummaryMeta">Choose a session to view attendance.</p></div>
-            <div class="attendance-summary-top-action">
-              <button class="btn attendance-export-btn" id="downloadAttendancePdf" type="button">Download Word</button>
-            </div>
+            <div hidden><h2 id="attendanceSummaryTitle">Attendance Summary</h2><p id="attendanceSummaryMeta">Choose a session to view attendance.</p></div>
             <div class="summary-actions">
               <input id="summarySearch" type="search" placeholder="Search name or student ID">
-              <select id="summaryCompany">
-                <option value="">All Company</option>
-              </select>
               <select id="summaryPlatoon">
                 <option value="">All Platoon</option>
               </select>
-              <select id="summaryStatus">
+              <div class="summary-status-export">
+              <select id="summaryStatus" aria-label="Attendance status">
                 <option value="">All Status</option>
                 <option value="present">Present</option>
                 <option value="late">Late</option>
                 <option value="absent">Absent</option>
                 <option value="unmarked">Not Yet Marked</option>
               </select>
+              <button class="btn attendance-export-btn" id="downloadAttendancePdf" type="button">Download Word</button>
+              </div>
             </div>
           </div>
           <div id="attendanceSummaryContent"></div>
@@ -67,7 +65,7 @@
   <script src="/assets/js/shared/api.js"></script>
   <script src="/assets/js/shared/layout.js"></script>
   <script src="/assets/js/shared/ui.js"></script>
-  <script src="/assets/js/admin/rotc/attendance-summary.js?v=20260831-attendance-cycle-filter"></script>
+  <script src="/assets/js/admin/rotc/attendance-summary.js?v=20260928-time-window-columns-v14"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       makeAttendanceSummary('CWTS').init().catch((error) => {
