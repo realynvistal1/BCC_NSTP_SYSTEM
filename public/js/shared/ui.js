@@ -399,6 +399,10 @@ function enrollmentAssignment(x, p) {
     return x.company ? `${x.company} Company` : 'Not assigned';
   }
 
+  if (String(x.platoon || '').trim().toLowerCase() === 'advance course') {
+    return 'Advance Course';
+  }
+
   return (
     x.special_unit ||
     (
