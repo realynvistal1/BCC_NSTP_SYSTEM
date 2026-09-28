@@ -376,18 +376,20 @@ async function renderOfficerRecords(content) {
       special: '',
     }));
 
-    const battalions = isRotc ? optionValues(rotcBase, (row) => row.battalion) : [];
+    const battalions = isRotc ? ['1', '2'] : [];
     setSelectOptions('#recordBattalion', 'All Battalions', battalions, filters.battalion, (value) => `Battalion ${value}`);
 
     const battalionCompanies = {
       1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
       2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
     };
+    const allRotcCompanies = Object.values(battalionCompanies).flat();
+    const allCwtsCompanies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
     const companyValues = program === 'ROTC'
       ? (battalionCompanies[filters.battalion]
-        || optionValues(rotcBase, (row) => row.rotc_company))
+        || allRotcCompanies)
       : program === 'CWTS'
-        ? optionValues(cwtsBase, (row) => row.company)
+        ? allCwtsCompanies
         : optionValues([
           ...rotcBase.map((row) => ({ label: row.rotc_company ? `ROTC: ${row.rotc_company}` : '' })),
           ...cwtsBase.map((row) => ({ label: row.company ? `CWTS: ${row.company}` : '' })),
@@ -397,17 +399,10 @@ async function renderOfficerRecords(content) {
       : filters.company;
     setSelectOptions('#recordCompany', 'All Companies', companyValues, companyValue);
 
-    const platoonBase = rotcBase.filter((row) => (
-      (!filters.battalion || String(row.battalion || '') === filters.battalion)
-      && (!filters.company || String(row.rotc_company || '') === filters.company)
-    ));
-    const platoons = isRotc ? optionValues(platoonBase, (row) => row.rotc_platoon) : [];
+    const platoons = isRotc ? ['1', '2', '3', '4'] : [];
     setSelectOptions('#recordPlatoon', 'All Platoons', platoons, filters.platoon, (value) => `Platoon ${value}`);
 
-    const specialValues = isRotc ? optionValues([
-      ...rotcBase.map((row) => ({ value: row.special_unit || '' })),
-      ...rotcBase.filter((row) => Number(row.willing_to_take_advance_course || 0) === 1).map(() => ({ value: 'advance' })),
-    ], (row) => row.value) : [];
+    const specialValues = isRotc ? ['advance', 'Medics', 'HQ', 'MP'] : [];
     setSelectOptions('#recordSpecial', 'All Special Assignments', specialValues, filters.special, (value) => value === 'advance' ? 'Advance Course' : value);
 
     const hasBattalion = Boolean(filters.battalion);
@@ -657,6 +652,7 @@ async function renderOfficerRecords(content) {
     const params = new URLSearchParams({ program });
     if ($('#recordLevel').value) params.set('ms_level', $('#recordLevel').value);
     if ($('#recordSY').value) params.set('school_year', $('#recordSY').value);
+    if ($('#recordCompany').value) params.set('company', normalizedCompanyFilter());
     const search = $('#recordSearch').value.trim();
     if (search) params.set('search', search);
     if (editedCommandantName) params.set('commandant_name', editedCommandantName);
