@@ -9,6 +9,7 @@ function makeAttendanceSummary(_programKey) {
   let currentSessions = [];
   let allStudents = [];
   let currentSummary = null;
+  const cwtsCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
   const rotcCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
 
   const cycleKeyFor = (session) => `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}`;
@@ -152,6 +153,7 @@ function makeAttendanceSummary(_programKey) {
           ...student,
           attendance_status: attendanceStatus,
           session_id: summary.session.id,
+          session_is_advance_course: Number(summary.session.is_advance_course || 0),
           mi_number: summary.session.mi_number,
           mi_type: summary.session.mi_type,
           session_school_year: summary.session.school_year,
@@ -262,6 +264,13 @@ function makeAttendanceSummary(_programKey) {
     return String(student.rotc_platoon || '').trim();
   }
 
+  function cwtsCompanyForGroup(group) {
+    if (program !== 'CWTS' || !String(group || '').startsWith('company-')) return '';
+
+    const requested = String(group).slice('company-'.length).toLowerCase();
+    return cwtsCompanyOptions.find((company) => company.toLowerCase() === requested) || '';
+  }
+
   function overallSummaryPlatoonLabel(student) {
     if (student.special_unit) {
       return '';
@@ -279,9 +288,8 @@ function makeAttendanceSummary(_programKey) {
 
   function summaryCompanyOptions(group, students) {
     if (program === 'CWTS') {
-      return [...new Set(
-        students.map((student) => summaryStudentCompany(student)).filter(Boolean)
-      )].sort((a, b) => a.localeCompare(b));
+      const groupedCompany = cwtsCompanyForGroup(group);
+      return groupedCompany ? [] : [...cwtsCompanyOptions];
     }
 
     if (group === 'overall') {
@@ -358,6 +366,16 @@ function makeAttendanceSummary(_programKey) {
     const battalionSelect = ensureSummaryBattalionSelect();
     const companySelect = $('#summaryCompany');
     const platoonSelect = $('#summaryPlatoon');
+
+    if (program === 'CWTS') {
+      if (platoonSelect) {
+        platoonSelect.value = '';
+        platoonSelect.disabled = true;
+        platoonSelect.style.display = 'none';
+      }
+      return;
+    }
+
     if (!companySelect || !platoonSelect) return;
 
     const viewGroup = $('#summaryGroup').value || 'overall';
@@ -386,7 +404,11 @@ function makeAttendanceSummary(_programKey) {
       }
     }
 
+    const groupedCwtsCompany = cwtsCompanyForGroup(group);
     const groupStudents = allStudents.filter((student) => {
+      if (program === 'CWTS') {
+        return !groupedCwtsCompany || summaryStudentCompany(student) === groupedCwtsCompany;
+      }
       if (group === 'overall') return true;
       if (group === 'battalion-1') return Number(student.battalion || 0) === 1 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1;
       if (group === 'battalion-2') return Number(student.battalion || 0) === 2 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1;
@@ -396,11 +418,13 @@ function makeAttendanceSummary(_programKey) {
     });
 
     const companyOptions = summaryCompanyOptions(group, groupStudents);
-    const companyLabel = group === 'advance-course'
-      ? 'All Gender'
-      : group === 'special-platoon'
-        ? 'Unit'
-        : 'All Company';
+    const companyLabel = groupedCwtsCompany
+      ? `${groupedCwtsCompany} Company`
+      : group === 'advance-course'
+        ? 'All Gender'
+        : group === 'special-platoon'
+          ? 'Unit'
+          : 'All Company';
     companySelect.innerHTML = `<option value="">${companyLabel}</option>`
       + companyOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
     companySelect.value = companyOptions.includes(previousCompany) ? previousCompany : '';
@@ -568,10 +592,12 @@ function makeAttendanceSummary(_programKey) {
     const status = $('#summaryStatus').value;
     const company = $('#summaryCompany')?.value || '';
     const platoon = $('#summaryPlatoon')?.value || '';
+    const groupedCwtsCompany = cwtsCompanyForGroup(group);
 
     const filtered = allStudents.filter((student) => (
       (
-        group === 'overall'
+        (program === 'CWTS' && (!groupedCwtsCompany || summaryStudentCompany(student) === groupedCwtsCompany))
+        || (program !== 'CWTS' && group === 'overall')
         || (group === 'battalion-1' && Number(student.battalion || 0) === 1 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1)
         || (group === 'battalion-2' && Number(student.battalion || 0) === 2 && !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1)
         || (group === 'advance-course' && Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit)
@@ -1262,7 +1288,20 @@ function makeAttendanceSummary(_programKey) {
 
     const { session, students } = meta;
     const selectedGroup = effectiveSummaryGroup();
-    const selectedCompany = $('#summaryCompany')?.value || '';
+    const selectedMIValue = $('#summaryMI')?.value || '';
+    const selectedTypeValue = $('#summaryType')?.value || '';
+    const reportSessions = (meta.sessions?.length ? meta.sessions : [session])
+      .slice()
+      .sort((a, b) => (
+        Number(a.mi_number || 0) - Number(b.mi_number || 0)
+        || ({ in: 1, out: 2 }[String(a.mi_type || '').toLowerCase()] || 3)
+          - ({ in: 1, out: 2 }[String(b.mi_type || '').toLowerCase()] || 3)
+      ));
+    const reportMIText = selectedMIValue ? `${unit} ${selectedMIValue}` : `ALL ${unit}`;
+    const reportTypeText = selectedTypeValue ? selectedTypeValue.toUpperCase() : 'ALL TYPES';
+    const selectedCompany = program === 'CWTS'
+      ? cwtsCompanyForGroup(selectedGroup)
+      : ($('#summaryCompany')?.value || '');
     const selectedPlatoon = $('#summaryPlatoon')?.value || '';
 
     function summarize(sectionStudents) {
@@ -1298,12 +1337,28 @@ function makeAttendanceSummary(_programKey) {
 
     function makeSection(heading, subheading, tableTitle, sectionStudents) {
       const stats = summarize(sectionStudents);
-      return `
+      const assignmentLine = [subheading, tableTitle].filter(Boolean).join(' • ');
+      const rows = sectionStudents.length
+        ? sectionStudents.map((student, index) => rowHtml(student, index)).join('')
+        : '<tr><td colspan="5" class="word-empty">No attendance records for this group.</td></tr>';
+      return {
+        students: sectionStudents,
+        html: `
         <div class="word-section">
-          <div class="word-heading">${esc(heading)}</div>
-          ${subheading ? `<div class="word-subheading">${esc(subheading)}</div>` : ''}
-          ${tableTitle ? `<div class="word-table-title">${esc(tableTitle)}</div>` : ''}
+          <table class="word-group-banner">
+            <tr class="word-heading-row">
+              <td>${esc(heading)}</td>
+            </tr>
+            ${assignmentLine ? `<tr class="word-assignment-row"><td>${esc(assignmentLine)}</td></tr>` : ''}
+          </table>
           <table class="word-table">
+            <colgroup>
+              <col style="width:8%">
+              <col style="width:42%">
+              <col style="width:25%">
+              <col style="width:15%">
+              <col style="width:10%">
+            </colgroup>
             <thead>
               <tr>
                 <th>No.</th>
@@ -1314,7 +1369,7 @@ function makeAttendanceSummary(_programKey) {
               </tr>
             </thead>
             <tbody>
-              ${sectionStudents.map((student, index) => rowHtml(student, index)).join('')}
+              ${rows}
             </tbody>
           </table>
           <div class="word-section-summary">
@@ -1324,27 +1379,64 @@ function makeAttendanceSummary(_programKey) {
             <span>Absent: ${stats.absent || 0}</span>
           </div>
         </div>
-      `;
+      `,
+      };
+    }
+
+    function buildAdvanceSections(sourceStudents) {
+      const selectedSex = String(selectedCompany || '').toUpperCase();
+      const sexGroups = selectedSex === 'MALE'
+        ? ['MALE']
+        : selectedSex === 'FEMALE'
+          ? ['FEMALE']
+          : ['MALE', 'FEMALE'];
+
+      return sexGroups.map((expectedSex) => {
+        const sectionStudents = sourceStudents
+          .filter((student) => (
+            !student.special_unit
+            && Number(student.willing_to_take_advance_course || 0) === 1
+            && String(student.sex || '').toUpperCase() === expectedSex
+          ))
+          .sort(compareStudents);
+        if (!sectionStudents.length) return null;
+        return makeSection(
+          'ADVANCE COURSE',
+          `${expectedSex} STUDENTS`,
+          '',
+          sectionStudents
+        );
+      }).filter(Boolean);
+    }
+
+    function buildSpecialSections(sourceStudents) {
+      const selectedUnit = selectedGroup === 'special-platoon'
+        ? (selectedCompany || selectedPlatoon)
+        : '';
+      const actualUnits = [...new Set(
+        sourceStudents.map((student) => String(student.special_unit || '').trim()).filter(Boolean)
+      )];
+      const units = selectedUnit
+        ? [selectedUnit]
+        : ['Medics', 'HQ', 'MP'].filter((unitName) => actualUnits.includes(unitName));
+
+      return units.map((unitName) => {
+        const sectionStudents = sourceStudents
+          .filter((student) => String(student.special_unit || '') === unitName)
+          .sort(compareStudents);
+        return sectionStudents.length
+          ? makeSection('SPECIAL PLATOON', unitName.toUpperCase(), '', sectionStudents)
+          : null;
+      }).filter(Boolean);
     }
 
     function buildRotcSections() {
       if (selectedGroup === 'advance-course') {
-        const sectionStudents = students.slice().sort(compareStudents);
-        return sectionStudents.length
-          ? [makeSection('ADVANCE COURSE', selectedCompany || '', selectedPlatoon || '', sectionStudents)]
-          : [];
+        return buildAdvanceSections(students);
       }
 
       if (selectedGroup === 'special-platoon') {
-        const units = selectedPlatoon ? [selectedPlatoon] : ['Medics', 'HQ', 'MP'];
-        return units.map((unitName) => {
-          const sectionStudents = students
-            .filter((student) => String(student.special_unit || '') === unitName)
-            .sort(compareStudents);
-          return sectionStudents.length
-            ? makeSection('SPECIAL PLATOON', unitName.toUpperCase(), '', sectionStudents)
-            : '';
-        }).filter(Boolean);
+        return buildSpecialSections(students);
       }
 
       const battalions = selectedGroup === 'battalion-1'
@@ -1354,16 +1446,23 @@ function makeAttendanceSummary(_programKey) {
           : [1, 2];
 
       const sections = [];
+      const normalStudents = students.filter((student) => (
+        !student.special_unit && Number(student.willing_to_take_advance_course || 0) !== 1
+      ));
+
       battalions.forEach((battalion) => {
-        const battalionStudents = students.filter((student) => Number(student.battalion || 0) === battalion);
+        const overallPlatoonMatch = String(selectedPlatoon || '').match(/^B([12])-P([1-4])$/);
+        if (overallPlatoonMatch && Number(overallPlatoonMatch[1]) !== battalion) return;
+        const battalionStudents = normalStudents.filter((student) => Number(student.battalion || 0) === battalion);
         const companies = selectedCompany
           ? [selectedCompany]
           : [...new Set(battalionStudents.map((student) => student.rotc_company).filter(Boolean))].sort();
 
         companies.forEach((company) => {
           const companyStudents = battalionStudents.filter((student) => student.rotc_company === company);
-          const platoons = selectedPlatoon
-            ? [selectedPlatoon]
+          const selectedRosterPlatoon = overallPlatoonMatch ? overallPlatoonMatch[2] : selectedPlatoon;
+          const platoons = selectedRosterPlatoon
+            ? [selectedRosterPlatoon]
             : [...new Set(companyStudents.map((student) => String(student.rotc_platoon || '')).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
 
           platoons.forEach((platoon) => {
@@ -1377,39 +1476,40 @@ function makeAttendanceSummary(_programKey) {
         });
       });
 
+      if (selectedGroup === 'overall') {
+        sections.push(...buildAdvanceSections(students));
+        sections.push(...buildSpecialSections(students));
+
+        const unassignedStudents = normalStudents.filter((student) => (
+          ![1, 2].includes(Number(student.battalion || 0))
+          || !student.rotc_company
+          || !student.rotc_platoon
+        )).sort(compareStudents);
+        if (unassignedStudents.length) {
+          sections.push(makeSection('ROTC', 'UNASSIGNED STUDENTS', 'ATTENDANCE RECORDS', unassignedStudents));
+        }
+      }
+
       return sections;
     }
 
     function buildCwtsSections() {
-      if (selectedCompany) {
-        const sectionStudents = students
-          .filter((student) => student.company === selectedCompany)
-          .sort(compareStudents);
-        return sectionStudents.length
-          ? [makeSection('CWTS', `${String(selectedCompany).toUpperCase()} COMPANY`, `${String(selectedCompany).toUpperCase()} COMPANY`, sectionStudents)]
-          : [];
-      }
-
-      const companies = [...new Set(students.map((student) => student.company).filter(Boolean))].sort();
-      const sections = companies.map((company) => {
+      const companies = selectedCompany ? [selectedCompany] : [...cwtsCompanyOptions];
+      return companies.map((company) => {
         const sectionStudents = students
           .filter((student) => student.company === company)
           .sort(compareStudents);
-        return sectionStudents.length
-          ? makeSection('CWTS', `${String(company).toUpperCase()} COMPANY`, `${String(company).toUpperCase()} COMPANY`, sectionStudents)
-          : '';
-      }).filter(Boolean);
-
-      if (sections.length) return sections;
-
-      return students.length
-        ? [makeSection('CWTS', 'ATTENDANCE SUMMARY', 'STUDENT LIST', students.slice().sort(compareStudents))]
-        : [];
+        return makeSection(
+          `${String(company).toUpperCase()} COMPANY`,
+          '',
+          '',
+          sectionStudents
+        );
+      });
     }
 
-    const totals = summarize(students);
     let sections = program === 'CWTS' ? buildCwtsSections() : buildRotcSections();
-    if (!sections.length && students.length) {
+    if (!sections.length) {
       sections = [makeSection(
         program,
         program === 'CWTS' ? 'ATTENDANCE SUMMARY' : meta.groupText.toUpperCase(),
@@ -1422,6 +1522,85 @@ function makeAttendanceSummary(_programKey) {
       : (selectedGroup === 'overall'
         ? 'ROTC OVERALL ATTENDANCE SUMMARY'
         : `ROTC ${meta.groupText.toUpperCase()} ATTENDANCE SUMMARY`);
+    function reportHeaderFor(sectionStudents) {
+      const sectionSessionIds = new Set(
+        sectionStudents.map((student) => Number(student.session_id || 0)).filter(Boolean)
+      );
+      const sectionSessions = meta.aggregateMode && sectionSessionIds.size
+        ? reportSessions.filter((item) => sectionSessionIds.has(Number(item.id)))
+        : reportSessions;
+      const headerSessions = sectionSessions.length ? sectionSessions : reportSessions;
+      const sessionNumbers = [...new Set(headerSessions.map((item) => Number(item.mi_number)).filter(Boolean))];
+      const sessionTypes = [...new Set(headerSessions.map((item) => String(item.mi_type || '').toUpperCase()).filter(Boolean))];
+      const headerMIText = sessionNumbers.length === 1 ? `${unit} ${sessionNumbers[0]}` : `ALL ${unit}`;
+      const headerTypeText = sessionTypes.length === 1 ? sessionTypes[0] : 'ALL TYPES';
+      const headerDates = [...new Set(headerSessions.map((item) => fmtDate(item.open_date)).filter(Boolean))];
+      const headerDateText = headerDates.length <= 1
+        ? (headerDates[0] || '')
+        : `${headerDates[0]} - ${headerDates[headerDates.length - 1]}`;
+      const timeWindowTexts = headerSessions.map((item) => {
+        const typeText = String(item.mi_type || '').toUpperCase();
+        const windowPrefix = sessionNumbers.length === 1
+          ? typeText
+          : `${unit} ${item.mi_number} ${typeText}`;
+        return esc(`${windowPrefix}: ${fmtTime(item.open_date)} - ${fmtTime(item.close_date)}`);
+      });
+      const timeWindowRows = [];
+      for (let index = 0; index < timeWindowTexts.length; index += 2) {
+        const firstWindow = timeWindowTexts[index];
+        const secondWindow = timeWindowTexts[index + 1];
+        timeWindowRows.push(secondWindow
+          ? `<tr><td>${firstWindow}</td><td>${secondWindow}</td></tr>`
+          : `<tr><td colspan="2">${firstWindow}</td></tr>`);
+      }
+      const timeWindowHtml = `<table class="word-time-grid">${timeWindowRows.join('')}</table>`;
+      const headerSession = headerSessions[0] || session;
+      const sectionTotals = summarize(sectionStudents);
+
+      return `
+        <div class="word-title">${esc(title)}</div>
+        <table class="word-meta">
+          <tr>
+            <td class="label">${esc(unit)} / Type</td>
+            <td>${esc(`${headerMIText} - ${headerTypeText}`)}</td>
+            <td class="label">Session Date</td>
+            <td>${esc(headerDateText)}</td>
+          </tr>
+          <tr>
+            <td class="label">Time Window</td>
+            <td colspan="3" class="word-time-windows">${timeWindowHtml}</td>
+          </tr>
+          <tr>
+            <td class="label">School Year</td>
+            <td>${esc(headerSession.school_year || '')}</td>
+            <td class="label">${esc(program === 'CWTS' ? 'CWTS Level' : 'MS Level')}</td>
+            <td>${esc(headerSession.ms_level || '')}</td>
+          </tr>
+          <tr>
+            <td class="label">NSTP Component</td>
+            <td>${esc(program)}</td>
+            <td class="label">Sessions Included</td>
+            <td>${headerSessions.length}</td>
+          </tr>
+        </table>
+        <table class="word-totals">
+          <tr>
+            <td>TOTAL: ${sectionStudents.length}</td>
+            <td class="tone-present">PRESENT: ${sectionTotals.present || 0}</td>
+            <td class="tone-late">LATE: ${sectionTotals.late || 0}</td>
+            <td class="tone-absent">ABSENT: ${sectionTotals.absent || 0}</td>
+          </tr>
+        </table>
+      `;
+    }
+    const wordPageBreak = '<br clear="all" class="word-page-break" style="mso-special-character:line-break;page-break-before:always">';
+    const reportPages = sections.map((section, index) => `
+      ${index > 0 ? wordPageBreak : ''}
+      <div class="word-page">
+        ${reportHeaderFor(section.students)}
+        ${section.html}
+      </div>
+    `).join('');
 
     const documentHtml = `
       <!DOCTYPE html>
@@ -1434,65 +1613,46 @@ function makeAttendanceSummary(_programKey) {
         <style>
           body { font-family: Arial, sans-serif; color:#17345f; margin:32px; }
           .word-doc { max-width: 980px; margin: 0 auto; }
-          .word-title { text-align:center; font-size: 20px; font-weight:700; color:#183f93; margin-bottom:24px; }
-          .word-meta { width:100%; border-collapse:collapse; margin-bottom:18px; }
-          .word-meta td { border:1px solid #9aa9bf; padding:6px 8px; font-size:14px; }
-          .word-meta .label { background:#dbe8f7; font-weight:700; width:20%; }
+          .word-page { width:100%; }
+          .word-page-break { mso-special-character:line-break; page-break-before:always; }
+          .word-title { text-align:center; font-size:18px; font-weight:700; color:#183f93; margin-bottom:16px; }
+          .word-meta { width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:12px; }
+          .word-meta td { border:1px solid #9aa9bf; padding:4px 7px; font-size:12px; line-height:1.2; vertical-align:middle; }
+          .word-meta .label { background:#dbe8f7; font-weight:700; width:18%; }
+          .word-meta .word-time-windows { font-size:11px; line-height:1.25; padding-top:5px; padding-bottom:5px; }
+          .word-meta .word-time-grid { width:100%; border-collapse:collapse; table-layout:fixed; }
+          .word-meta .word-time-grid td { width:50%; border:0; padding:0 8px 0 0; font-size:11px; line-height:1.25; text-align:left; }
           .word-totals { width:100%; border-collapse:collapse; margin-bottom:24px; }
           .word-totals td { border:1px solid #9aa9bf; padding:7px 10px; font-weight:700; text-align:center; font-size:14px; }
           .tone-present { background:#e4f7e8; color:#167a2d; }
           .tone-late { background:#fff4d6; color:#b86d00; }
           .tone-absent { background:#ffe1de; color:#c1281f; }
-          .word-section { margin: 18px 0 26px; }
-          .word-heading { background:#1f4297; color:#fff; text-align:center; font-weight:700; padding:6px 10px; font-size:16px; margin-bottom:10px; }
-          .word-subheading { background:#dbe8f7; color:#1f4297; text-align:center; font-weight:700; padding:6px 10px; font-size:15px; margin-bottom:10px; }
-          .word-table-title { display:inline-block; min-width:110px; border:1px solid #9aa9bf; padding:4px 10px; font-weight:700; font-size:14px; margin-bottom:0; }
-          .word-table { width:100%; border-collapse:collapse; margin-top:0; }
+          .word-section { margin: 16px 0 0; }
+          .word-group-banner { width:100%; border-collapse:collapse; margin:0 0 8px; page-break-after:avoid; }
+          .word-group-banner td { border:1px solid #9aa9bf; font-weight:700; text-align:center; }
+          .word-group-banner .word-heading-row td { background:#1f4297; color:#fff; font-size:17px; padding:8px 12px; }
+          .word-group-banner .word-assignment-row td { background:#dbe8f7; color:#173f86; font-size:15px; padding:8px 12px; }
+          .word-table { width:100%; border-collapse:collapse; margin-top:8px; }
+          .word-table thead { display:table-header-group; }
+          .word-table tr { page-break-inside:avoid; }
           .word-table th { background:#1f2937; color:#fff; font-size:12px; padding:5px 6px; text-align:left; border:1px solid #9aa9bf; }
           .word-table td { font-size:12px; padding:5px 6px; border:1px solid #9aa9bf; color:#111827; }
+          .word-empty { padding:18px 8px !important; text-align:center; color:#64748b !important; font-style:italic; }
           .word-section-summary { margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; font-size:12px; font-weight:700; color:#334155; }
         </style>
       </head>
       <body>
         <div class="word-doc">
-          <div class="word-title">${esc(title)}</div>
-          <table class="word-meta">
-            <tr>
-              <td class="label">${esc(unit)} / Type</td>
-              <td>${esc(`${unit} ${session.mi_number} - ${String(session.mi_type || '').toUpperCase()}`)}</td>
-              <td class="label">Session Date</td>
-              <td>${esc(fmtDate(session.open_date))}</td>
-            </tr>
-            <tr>
-              <td class="label">Time Window</td>
-              <td>${esc(`${fmtTime(session.open_date)} - ${fmtTime(session.close_date)}`)}</td>
-              <td class="label">NSTP Component</td>
-              <td>${esc(program)}</td>
-            </tr>
-            <tr>
-              <td class="label">School Year</td>
-              <td>${esc(session.school_year || '')}</td>
-              <td class="label">${esc(program === 'CWTS' ? 'CWTS Level' : 'MS Level')}</td>
-              <td>${esc(session.ms_level || '')}</td>
-            </tr>
-          </table>
-          <table class="word-totals">
-            <tr>
-              <td>TOTAL: ${students.length}</td>
-              <td class="tone-present">PRESENT: ${totals.present || 0}</td>
-              <td class="tone-late">LATE: ${totals.late || 0}</td>
-              <td class="tone-absent">ABSENT: ${totals.absent || 0}</td>
-            </tr>
-          </table>
-          ${sections.join('')}
+          ${reportPages}
         </div>
       </body>
       </html>
     `;
 
-    const filename = `${safeFilename(program)}-${safeFilename(unit + '-' + session.mi_number)}-${safeFilename(session.mi_type)}-attendance-summary.doc`;
+    const reportGroup = program === 'CWTS' ? (selectedCompany || 'overall') : meta.groupText;
+    const filename = `${safeFilename(program)}-${safeFilename(reportGroup)}-${safeFilename(reportMIText)}-${safeFilename(reportTypeText)}-attendance-summary.doc`;
     downloadBlob(new Blob(['\ufeff', documentHtml], { type: 'application/msword;charset=utf-8' }), filename);
-    toast('Word attendance report downloaded.');
+    toast(`Word attendance report downloaded with ${sections.length} separated group page${sections.length === 1 ? '' : 's'}.`);
   }
 
   async function init() {
@@ -1529,10 +1689,13 @@ function makeAttendanceSummary(_programKey) {
       renderRows();
     };
     $('#summarySearch').oninput = renderRows;
-    $('#summaryCompany').onchange = () => {
-      syncSummaryRosterFilters();
-      renderRows();
-    };
+    const companySelect = $('#summaryCompany');
+    if (companySelect) {
+      companySelect.onchange = () => {
+        syncSummaryRosterFilters();
+        renderRows();
+      };
+    }
     const battalionSelect = $('#summaryBattalion');
     if (battalionSelect) {
       battalionSelect.onchange = () => {
