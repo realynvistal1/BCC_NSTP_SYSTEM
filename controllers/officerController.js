@@ -16,9 +16,10 @@ async function officerApprovedRecordRows(programCode, filters = {}) {
   const msLevel = readLevel(filters.msLevel, { allowBlank: true });
   const schoolYear = readSchoolYear(filters.schoolYear, { allowBlank: true });
   const search = readSearchTerm(filters.search, { allowBlank: true });
+  const company = readLimitedText(filters.company, 30);
   const photoColumn = filters.includePhoto ? ',s.photo' : '';
 
-  if (msLevel === null || schoolYear === null || search === null) {
+  if (msLevel === null || schoolYear === null || search === null || company === null) {
     return [];
   }
 
@@ -57,7 +58,9 @@ async function officerApprovedRecordRows(programCode, filters = {}) {
     [programCode, msLevel, msLevel, schoolYear, schoolYear, search, query, query, query, query, query]
   );
 
-  return rows;
+  return rows.filter((row) => (
+    !company || String(programCode === 'CWTS' ? row.company : row.rotc_company || '') === company
+  ));
 }
 
 function readAttendanceProgram(value) {
@@ -352,6 +355,15 @@ exports.attendanceProgress = async (req, res) => {
     const filtered = sessions.filter((session) => (
       sameAttendanceTrack(session, program, isAdvance, cycle)
     ));
+    const nonClosedSessions = filtered
+      .map((session) => ({
+        ...session,
+        effective_status: attendance.getEffectiveStatus(session),
+      }))
+      .filter((session) => session.effective_status !== 'closed');
+    const blockingSession = nonClosedSessions.find((session) => (
+      ['open', 'late'].includes(session.effective_status)
+    )) || nonClosedSessions[0] || null;
 
     const progress = Array.from({ length: attendance.SESSION_COUNT }, (_, index) => {
       const mi = index + 1;
@@ -379,6 +391,19 @@ exports.attendanceProgress = async (req, res) => {
       cycle,
       radius_meters: attendance.ATTENDANCE_RADIUS_METERS,
       late_minutes: attendance.LATE_THRESHOLD_MINUTES,
+      blocking_session: blockingSession
+        ? {
+          id: blockingSession.id,
+          program: blockingSession.program,
+          is_advance_course: Number(blockingSession.is_advance_course || 0),
+          mi_number: blockingSession.mi_number,
+          mi_type: blockingSession.mi_type,
+          effective_status: blockingSession.effective_status,
+          open_date: blockingSession.open_date,
+          close_date: blockingSession.close_date,
+          late_deadline: attendance.lateDeadline(blockingSession.close_date),
+        }
+        : null,
       progress,
     });
   } catch (error) {
@@ -445,6 +470,32 @@ exports.createAttendance = async (req, res) => {
     if (msLevel === null) {
       return res.status(400).json({
         message: 'Select a valid MS/CWTS level.',
+      });
+    }
+
+    const [nonClosedSessions] = await db.execute(
+      `SELECT * FROM attendance_sessions
+       WHERE status<>'closed' AND program=? AND COALESCE(is_advance_course,0)=?
+       ORDER BY open_date ASC,id ASC`,
+      [program, isAdvance ? 1 : 0]
+    );
+    const blockingSession = nonClosedSessions
+      .map((session) => ({
+        ...session,
+        effective_status: attendance.getEffectiveStatus(session),
+      }))
+      .find((session) => session.effective_status !== 'closed');
+
+    if (blockingSession) {
+      const blockingProgram = Number(blockingSession.is_advance_course || 0) === 1
+        ? 'Advance Course'
+        : blockingSession.program;
+      const blockingState = blockingSession.effective_status === 'scheduled'
+        ? 'scheduled'
+        : 'still active';
+      return res.status(409).json({
+        message: `${blockingProgram} ${sessionLabel(blockingSession)} attendance is ${blockingState}. It must close, including the 15-minute late period, before another ${blockingProgram} attendance can be created.`,
+        blocking_session_id: blockingSession.id,
       });
     }
 
@@ -866,6 +917,7 @@ exports.downloadRecordProfiles = async (req, res) => {
     const msLevel = readLevel(req.query.ms_level, { allowBlank: true });
     const schoolYear = readSchoolYear(req.query.school_year, { allowBlank: true });
     const search = readSearchTerm(req.query.search, { allowBlank: true });
+    const company = readLimitedText(req.query.company, 30);
     const commandantNameInput = readLimitedText(req.query.commandant_name, 100);
     const commandantName = commandantNameInput === null
       ? null
@@ -880,14 +932,14 @@ exports.downloadRecordProfiles = async (req, res) => {
     if (schoolYear === null) {
       return res.status(400).json({ message: 'Select a valid school year.' });
     }
-    if (search === null) {
+    if (search === null || company === null) {
       return res.status(400).json({ message: 'Search text is too long.' });
     }
     if (programCode === 'ROTC' && !commandantName) {
       return res.status(400).json({ message: 'Enter a valid commandant name before downloading.' });
     }
 
-    const filters = { msLevel, schoolYear, search, commandantName, includePhoto: true };
+    const filters = { msLevel, schoolYear, search, company, commandantName, includePhoto: true };
     const rows = await officerApprovedRecordRows(programCode, filters);
 
     if (!rows.length) {
