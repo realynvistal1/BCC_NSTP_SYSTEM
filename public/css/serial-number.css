@@ -233,7 +233,7 @@ body[data-role="cwts"][data-page="serial-number"] .serial-toolbar {
   padding: 11px 14px;
   border-radius: 14px;
   background: #fbfdff;
-  font-size: 14px;
+  font-size: 12px;
   box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
 }
 .settings-modal input[type="file"] {
@@ -279,11 +279,11 @@ body[data-role="cwts"][data-page="serial-number"] .serial-toolbar {
 }
 .serial-student-cell strong {
   display: inline-block;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.1;
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
   color: #102645;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 .serial-student-cell {
   min-width: 92px;
@@ -368,6 +368,129 @@ body[data-role="cwts"][data-page="serial-number"] .serial-toolbar {
 .panel .data-table th:last-child,
 .panel .data-table td:last-child {
   white-space: nowrap;
+}
+
+/* Serial-number admin visual refresh. */
+body[data-role="rotc"][data-page="serial-number"] {
+  --serial-accent: #2563eb;
+  --serial-accent-dark: #1e40af;
+  --serial-soft: #eff6ff;
+  --serial-border: #bfdbfe;
+}
+body[data-role="cwts"][data-page="serial-number"] {
+  --serial-accent: #059669;
+  --serial-accent-dark: #047857;
+  --serial-soft: #ecfdf5;
+  --serial-border: #a7f3d0;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .page-intro-banner {
+  border: 1px solid var(--serial-border);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--serial-accent) 14%, transparent);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .page-intro-banner h2 {
+  color: #102a4c;
+  letter-spacing: -.025em;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .page-intro-kicker {
+  color: var(--serial-accent-dark);
+  font-weight: 900;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .notice.warning {
+  border: 1px solid #facc15;
+  border-left: 5px solid #f59e0b;
+  background: linear-gradient(90deg, #fffbeb 0%, #fff 100%);
+  color: #92400e;
+  box-shadow: 0 8px 20px rgba(245, 158, 11, .12);
+  font-weight: 700;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 98px;
+  border: 1px solid #dce7f3;
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .09);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .13);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: currentColor;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card:nth-child(1) { color: #2563eb; background: linear-gradient(145deg, #eff6ff, #fff); }
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card:nth-child(2) { color: #059669; background: linear-gradient(145deg, #ecfdf5, #fff); }
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card:nth-child(3) { color: #ea580c; background: linear-gradient(145deg, #fff7ed, #fff); }
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .stat-card:nth-child(4) { color: #7c3aed; background: linear-gradient(145deg, #f5f3ff, #fff); }
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .dash-label {
+  color: currentColor;
+  font-weight: 900;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .stats-grid .value {
+  color: #0f213b;
+  font-size: 30px;
+  font-weight: 900;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel {
+  border: 1px solid #dbe7f3;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, .09);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar {
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--serial-border);
+  background: linear-gradient(135deg, var(--serial-soft), #fff);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--serial-accent) 11%, transparent);
+}
+.serial-filter,
+.serial-toolbar .search-box {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select) {
+  border: 1px solid color-mix(in srgb, var(--serial-accent) 28%, #d4dfeb);
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, .07);
+  color: #183252;
+  font-weight: 700;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select):hover {
+  border-color: var(--serial-accent);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--serial-accent) 14%, transparent);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-toolbar :is(input, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--serial-accent) 20%, transparent);
+  outline-offset: 1px;
+  border-color: var(--serial-accent);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel > .table-wrap {
+  overflow: hidden;
+  border: 1px solid #d9e5f1;
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel .data-table thead th {
+  background: linear-gradient(135deg, var(--serial-accent-dark), var(--serial-accent));
+  color: #fff;
+  border-color: rgba(255, 255, 255, .14);
+  letter-spacing: .045em;
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel .data-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--serial-soft) 58%, #fff);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel .data-table tbody tr:hover {
+  background: var(--serial-soft);
+}
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-student-cell strong,
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .serial-course-code {
+  color: var(--serial-accent-dark);
 }
 @media(max-width: 1000px) {
   .serial-toolbar {
