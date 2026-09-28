@@ -2,6 +2,9 @@ let attendanceMap = null;
 let attendanceMarker = null;
 let attendanceCircle = null;
 let attendanceProgress = null;
+let blockingAttendanceSession = null;
+let attendanceBlockRefreshTimer = null;
+let attendanceCountdownTimer = null;
 let selectedNumber = 0;
 let selectedType = "in";
 const DEFAULT_ATTENDANCE_RADIUS = 100;
@@ -65,6 +68,65 @@ function getNextAllowed(progress) {
   return null;
 }
 
+function blockingAttendanceLabel(session) {
+  if (!session) return "Active attendance";
+  const program = Number(session.is_advance_course || 0) === 1
+    ? "Advance Course"
+    : session.program;
+  const unit = session.program === "CWTS" ? "CS" : "MI";
+  return `${program} ${unit} ${session.mi_number || "-"} ${String(session.mi_type || "").toUpperCase()}`.trim();
+}
+
+function blockingAttendanceTime(session) {
+  const deadline = new Date(session?.late_deadline || session?.close_date || "");
+  if (Number.isNaN(deadline.getTime())) {
+    return { closesAt: "the scheduled closing time", remaining: "calculating..." };
+  }
+
+  const remainingMs = Math.max(0, deadline.getTime() - Date.now());
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (days || hours) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`, `${seconds}s`);
+
+  return {
+    closesAt: deadline.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    remaining: totalSeconds > 0 ? parts.join(" ") : "closing now",
+  };
+}
+
+function scheduleAttendanceBlockRefresh() {
+  if (attendanceBlockRefreshTimer) {
+    clearTimeout(attendanceBlockRefreshTimer);
+    attendanceBlockRefreshTimer = null;
+  }
+  if (attendanceCountdownTimer) {
+    clearInterval(attendanceCountdownTimer);
+    attendanceCountdownTimer = null;
+  }
+  if (!blockingAttendanceSession) return;
+
+  attendanceCountdownTimer = setInterval(validateAttendanceForm, 1000);
+  const deadline = new Date(blockingAttendanceSession.late_deadline || blockingAttendanceSession.close_date || "");
+  const untilDeadline = Number.isNaN(deadline.getTime())
+    ? 15000
+    : Math.max(500, deadline.getTime() - Date.now() + 250);
+  attendanceBlockRefreshTimer = setTimeout(() => {
+    loadAttendanceProgress().catch((error) => toast(error.message, true));
+  }, Math.min(15000, untilDeadline));
+}
+
 function renderMIProgress() {
   const container = document.getElementById("miProgress");
   if (!attendanceProgress) {
@@ -100,7 +162,13 @@ function renderMIProgress() {
   });
 
   const completeCount = attendanceProgress.progress.reduce((sum, item) => sum + (item.in ? 1 : 0) + (item.out ? 1 : 0), 0);
-  const nextText = next ? `${unit} ${next.number} ${next.type.toUpperCase()}` : completeCount === 30 ? "All 15 IN & OUT sessions completed" : "Waiting for the current IN session to close";
+  const nextText = blockingAttendanceSession
+    ? `Waiting for ${blockingAttendanceLabel(blockingAttendanceSession)} to close`
+    : next
+      ? `${unit} ${next.number} ${next.type.toUpperCase()}`
+      : completeCount === 30
+        ? "All 15 IN & OUT sessions completed"
+        : "Waiting for the current IN session to close";
   document.getElementById("progressSummary").innerHTML = `<h3>Current Progress</h3><div class="progress-number">${completeCount}<span>/30</span></div><div class="attendance-progress-bar"><i style="width:${Math.round((completeCount / 30) * 100)}%"></i></div><p><strong>Next:</strong> ${esc(nextText)}</p>`;
 }
 
@@ -108,8 +176,8 @@ function renderTypeButtons() {
   const inButton = document.getElementById("timeInBtn");
   const outButton = document.getElementById("timeOutBtn");
   const item = attendanceProgress?.progress.find((entry) => entry.number === selectedNumber);
-  const inDisabled = !selectedNumber || Boolean(item?.in);
-  const outDisabled = !selectedNumber || !item?.in || item.in.effective_status !== "closed" || Boolean(item?.out);
+  const inDisabled = Boolean(blockingAttendanceSession) || !selectedNumber || Boolean(item?.in);
+  const outDisabled = Boolean(blockingAttendanceSession) || !selectedNumber || !item?.in || item.in.effective_status !== "closed" || Boolean(item?.out);
 
   inButton.disabled = inDisabled;
   outButton.disabled = outDisabled;
@@ -123,15 +191,21 @@ async function loadAttendanceProgress() {
   selectedType = "in";
   if (!program) {
     attendanceProgress = null;
+    blockingAttendanceSession = null;
+    scheduleAttendanceBlockRefresh();
     unlockAttendanceStep("miStep", false);
     unlockAttendanceStep("typeStep", false);
     unlockAttendanceStep("scheduleStep", false);
     unlockAttendanceStep("locationStep", false);
+    document.getElementById("attendanceOpenDate").disabled = true;
+    document.getElementById("attendanceCloseDate").disabled = true;
+    document.getElementById("captureDirectorLocation").disabled = true;
     renderMIProgress();
     return;
   }
 
   attendanceProgress = await API.get(`/api/officer/attendance/progress?program=${encodeURIComponent(program)}`);
+  blockingAttendanceSession = attendanceProgress.blocking_session || null;
   const cycle = attendanceProgress.cycle || {};
   const levelLabel = attendanceProgress.actual_program === "CWTS" ? "CWTS" : "MS";
   document.getElementById("cycleInfo").classList.remove("hidden");
@@ -140,16 +214,21 @@ async function loadAttendanceProgress() {
   renderMIProgress();
 
   const next = getNextAllowed(attendanceProgress.progress);
-  if (next) {
+  const canPrepareAttendance = Boolean(next && !blockingAttendanceSession);
+  if (canPrepareAttendance) {
     selectedNumber = next.number;
     selectedType = next.type;
-    unlockAttendanceStep("typeStep", true);
-    unlockAttendanceStep("scheduleStep", true);
-    unlockAttendanceStep("locationStep", true);
   }
+  unlockAttendanceStep("typeStep", canPrepareAttendance);
+  unlockAttendanceStep("scheduleStep", canPrepareAttendance);
+  unlockAttendanceStep("locationStep", canPrepareAttendance);
+  document.getElementById("attendanceOpenDate").disabled = !canPrepareAttendance;
+  document.getElementById("attendanceCloseDate").disabled = !canPrepareAttendance;
+  document.getElementById("captureDirectorLocation").disabled = !canPrepareAttendance;
   renderMIProgress();
   renderTypeButtons();
   validateAttendanceForm();
+  scheduleAttendanceBlockRefresh();
 }
 
 function validateAttendanceForm() {
@@ -159,11 +238,47 @@ function validateAttendanceForm() {
   const lat = Number(document.getElementById("attendanceLatitude").value);
   const lng = Number(document.getElementById("attendanceLongitude").value);
   const validDates = openDate && closeDate && new Date(closeDate) > new Date(openDate);
-  const ready = Boolean(program && selectedNumber && selectedType && validDates && Number.isFinite(lat) && Number.isFinite(lng));
+  const ready = Boolean(program && selectedNumber && selectedType && validDates && Number.isFinite(lat) && Number.isFinite(lng) && !blockingAttendanceSession);
   document.getElementById("createAttendanceButton").disabled = !ready;
-  document.getElementById("attendanceValidation").textContent = ready
-    ? `${attendanceProgress?.actual_program === 'CWTS' ? 'CS' : 'MI'} ${selectedNumber} ${selectedType.toUpperCase()} is ready to save.`
-    : "Complete the program, session, schedule, and location to activate attendance.";
+  const validation = document.getElementById("attendanceValidation");
+  validation.classList.toggle("blocked", Boolean(blockingAttendanceSession));
+
+  if (blockingAttendanceSession) {
+    const timing = blockingAttendanceTime(blockingAttendanceSession);
+    validation.innerHTML = `
+      <strong>Wait for ${esc(blockingAttendanceLabel(blockingAttendanceSession))} attendance to close.</strong>
+      <span>You cannot create another attendance for this program yet. Fully closes at ${esc(timing.closesAt)} after the 15-minute late period.</span>
+      <b>Remaining time: ${esc(timing.remaining)}</b>
+    `;
+  } else {
+    validation.textContent = ready
+      ? `${attendanceProgress?.actual_program === 'CWTS' ? 'CS' : 'MI'} ${selectedNumber} ${selectedType.toUpperCase()} is ready to save.`
+      : "Complete the program, session, schedule, and location to activate attendance.";
+  }
+}
+
+function showAttendanceSuccess(message) {
+  const modal = document.getElementById("attendanceSuccessModal");
+  const messageNode = document.getElementById("attendanceSuccessMessage");
+  const closeButton = document.getElementById("closeAttendanceSuccess");
+  const backdrop = document.getElementById("attendanceSuccessBackdrop");
+  if (!modal || !messageNode || !closeButton || !backdrop) return;
+
+  messageNode.textContent = message || "The attendance session has been created successfully.";
+  modal.classList.remove("hidden");
+
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    document.removeEventListener("keydown", handleEscape);
+  };
+  const handleEscape = (event) => {
+    if (event.key === "Escape") closeModal();
+  };
+
+  closeButton.onclick = closeModal;
+  backdrop.onclick = closeModal;
+  document.addEventListener("keydown", handleEscape);
+  closeButton.focus();
 }
 
 async function createAttendanceSession() {
@@ -183,12 +298,13 @@ async function createAttendanceSession() {
       school_year: attendanceProgress?.cycle?.school_year || null,
     };
     const result = await API.post("/api/officer/attendance/sessions", payload);
-    toast(result.message);
     document.getElementById("attendanceOpenDate").value = "";
     document.getElementById("attendanceCloseDate").value = "";
+    showAttendanceSuccess(result.message);
     await loadAttendanceProgress();
   } catch (error) {
     toast(error.message, true);
+    await loadAttendanceProgress().catch(() => {});
   } finally {
     button.textContent = "Save / Activate Attendance";
     validateAttendanceForm();
