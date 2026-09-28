@@ -382,27 +382,20 @@ async function renderAdminRecords(_program, content) {
     const battalion = $('#recordBattalion').value;
     const company = $('#recordCompany').value;
     const special = $('#recordSpecial').value;
-    const battalions = optionValues(base, (row) => row.battalion);
+    const battalions = ['1', '2'];
     setFilterOptions('#recordBattalion', 'All Battalions', battalions, battalion, (value) => `Battalion ${value}`);
 
     const battalionCompanies = {
       1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
       2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
     };
-    const companies = battalionCompanies[battalion] || optionValues(base, (row) => row.rotc_company);
+    const companies = battalionCompanies[battalion] || Object.values(battalionCompanies).flat();
     setFilterOptions('#recordCompany', 'All Companies', companies, company);
 
-    const platoonBase = base.filter((row) => (
-      (!battalion || String(row.battalion || '') === battalion)
-      && (!company || String(row.rotc_company || '') === company)
-    ));
-    const platoons = optionValues(platoonBase, (row) => row.rotc_platoon);
+    const platoons = ['1', '2', '3', '4'];
     setFilterOptions('#recordPlatoon', 'All Platoons', platoons, $('#recordPlatoon').value, (value) => `Platoon ${value}`);
 
-    const specialValues = optionValues([
-      ...base.map((row) => ({ value: row.special_unit || '' })),
-      ...base.filter((row) => Number(row.willing_to_take_advance_course || 0) === 1).map(() => ({ value: 'advance' })),
-    ], (row) => row.value);
+    const specialValues = ['advance', 'Medics', 'HQ', 'MP'];
     setFilterOptions('#recordSpecial', 'All Special Assignments', specialValues, special, (value) => value === 'advance' ? 'Advance Course' : value);
 
     const hasBattalion = Boolean($('#recordBattalion').value);
