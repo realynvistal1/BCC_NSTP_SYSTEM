@@ -41,9 +41,80 @@
   background: #fff
 }
 
+#reEnrollForm.re-enrollment-organized {
+  display: block
+}
+
+.re-enroll-section {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #dbe7f5;
+  border-radius: 18px;
+  background: #fbfdff;
+  box-shadow: 0 8px 24px rgba(15, 60, 110, .05)
+}
+
+.re-enroll-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #e5edf7
+}
+
+.re-enroll-section-head h3 {
+  margin: 0 0 4px;
+  color: #12233f;
+  font-size: 18px
+}
+
+.re-enroll-section-head p {
+  margin: 0;
+  color: #70839e;
+  font-size: 12px
+}
+
+.re-enroll-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px
+}
+
+.re-enroll-section-grid .field.full {
+  grid-column: 1/-1
+}
+
+.re-enroll-submit-area {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #dbe7f5
+}
+
+.re-enroll-submit-area .field {
+  grid-column: 1/-1
+}
+
+.re-enroll-submit-area .btn.primary {
+  width: 100%;
+  min-height: 46px
+}
+
 @media(max-width: 800px) {
   .form-grid {
     grid-template-columns: 1fr
+  }
+  .re-enroll-section {
+    padding: 18px
+  }
+  .re-enroll-section-grid {
+    grid-template-columns: 1fr
+  }
+  .re-enroll-section-grid .field.full {
+    grid-column: auto
   }
   .field.full {
     grid-column: auto

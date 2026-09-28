@@ -21,6 +21,10 @@ function levelLabelFor(program, level) {
   return program === 'ROTC' ? `MS ${level}` : `CWTS ${level}`;
 }
 
+function isCriminologyCourse(course) {
+  return /criminology/i.test(String(course || ''));
+}
+
 async function findBestSchedule(program, level) {
   const [rows] = await db.execute(
     'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC',
@@ -40,6 +44,32 @@ async function findBestSchedule(program, level) {
   if (upcoming) return upcoming;
 
   return rows[0];
+}
+
+async function studentAssignmentView(student, record) {
+  let assignmentAssigned = false;
+
+  if (student?.nstp_component && record?.schedule_id && record.status === 'approved') {
+    const [scheduleRows] = await db.execute(
+      `SELECT platoons_assigned_at
+       FROM enrollment_schedules
+       WHERE id=? AND program=?
+       LIMIT 1`,
+      [record.schedule_id, student.nstp_component]
+    );
+    assignmentAssigned = Boolean(scheduleRows[0]?.platoons_assigned_at);
+  }
+
+  const safeStudent = studentPublic(student);
+  if (safeStudent && !assignmentAssigned) {
+    safeStudent.company = null;
+    safeStudent.battalion = null;
+    safeStudent.rotc_company = null;
+    safeStudent.rotc_platoon = null;
+    safeStudent.special_unit = null;
+  }
+
+  return { safeStudent, assignmentAssigned };
 }
 
 async function resolveReEnrollContext(studentId) {
@@ -64,13 +94,28 @@ async function resolveReEnrollContext(studentId) {
       };
     }
 
-    const retrySchedule = await findBestSchedule(student.nstp_component, retryLevel);
-    if (!retrySchedule || !enrollmentService.nowWithin(retrySchedule)) {
+    const allowedPrograms = retryLevel === '1' && !isCriminologyCourse(student.course)
+      ? ['ROTC', 'CWTS']
+      : [student.nstp_component];
+    const availableSchedules = [];
+
+    for (const programCode of allowedPrograms) {
+      const candidate = await findBestSchedule(programCode, retryLevel);
+      if (candidate && enrollmentService.nowWithin(candidate)) {
+        availableSchedules.push(candidate);
+      }
+    }
+
+    if (!availableSchedules.length) {
       return {
         status: 400,
         message: `${levelLabelFor(student.nstp_component, retryLevel)} enrollment is not open at this time.`,
       };
     }
+
+    const retrySchedule = availableSchedules.find(
+      (candidate) => candidate.program === student.nstp_component
+    ) || availableSchedules[0];
 
     return {
       status: 200,
@@ -79,7 +124,8 @@ async function resolveReEnrollContext(studentId) {
       latest,
       targetLevel: retryLevel,
       schedule: retrySchedule,
-      message: `Review your saved information and submit your ${levelLabelFor(student.nstp_component, retryLevel)} enrollment again.`,
+      availableSchedules,
+      message: `Review your saved information, choose an available NSTP component, and submit your ${levelLabelFor(retrySchedule.program, retryLevel)} enrollment again.`,
     };
   }
 
@@ -246,7 +292,6 @@ exports.register = async (req, res) => {
       'complexion',
       'medical_certificate',
       'email',
-      'username',
       'password',
       'photo',
       'cor_file',
@@ -295,13 +340,13 @@ exports.register = async (req, res) => {
     }
 
     const [duplicates] = await connection.execute(
-      'SELECT id FROM students WHERE email=? OR username=? OR student_id=?',
-      [body.email, body.username, body.student_id]
+      'SELECT id FROM students WHERE email=? OR student_id=?',
+      [body.email, body.student_id]
     );
 
     if (duplicates.length) {
       return res.status(409).json({
-        message: 'Student ID, email, or username is already registered.',
+        message: 'Student ID or email is already registered.',
       });
     }
 
@@ -316,6 +361,13 @@ exports.register = async (req, res) => {
 
     if (body.nstp_component === 'ROTC' && !body.xray_file) {
       return res.status(400).json({ message: 'X-ray is required for ROTC enrollment.' });
+    }
+
+    const hasMedicalCondition = enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
+    if (hasMedicalCondition === 1 && !String(body.medical_condition || '').trim()) {
+      return res.status(400).json({
+        message: 'Enter your medical condition after selecting Yes.',
+      });
     }
 
     const hashedPassword = await bcrypt.hash(body.password, 10);
@@ -346,9 +398,9 @@ exports.register = async (req, res) => {
         emergency_contact_name,emergency_contact_address,emergency_contact_relationship,
         emergency_contact_contact_number,willing_to_take_advance_course,willing_to_be_medics,
         willing_to_be_military_police,course,year_level,nstp_component,height,weight,blood_type,complexion,
-        has_medical_condition,medical_condition,medical_certificate,xray_file,email,username,password,photo,
+        has_medical_condition,medical_condition,medical_certificate,xray_file,email,password,photo,
         cor_file,role
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'student')
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'student')
     `;
 
     const insertStudentValues = [
@@ -386,12 +438,11 @@ exports.register = async (req, res) => {
       body.weight,
       body.blood_type,
       body.complexion,
-      enrollmentService.normalizeMedicalCondition(body.has_medical_condition),
-      body.medical_condition || '',
+      hasMedicalCondition,
+      hasMedicalCondition ? String(body.medical_condition || '').trim() : '',
       medicalCertificate,
       xrayFile,
       body.email,
-      body.username,
       hashedPassword,
       photo,
       corFile,
@@ -427,6 +478,7 @@ exports.dashboard = async (req, res) => {
   try {
     const student = await studentById(req.user.id);
     const record = await latestRecord(req.user.id);
+    const { safeStudent, assignmentAssigned } = await studentAssignmentView(student, record);
     const [gradeRows] = await db.execute(
       'SELECT * FROM student_grades WHERE student_id=? ORDER BY id DESC LIMIT 1',
       [req.user.id]
@@ -441,7 +493,8 @@ exports.dashboard = async (req, res) => {
     );
 
     return res.json({
-      student: studentPublic(student),
+      student: safeStudent,
+      assignment_assigned: assignmentAssigned,
       record,
       grade: gradeRows[0] || null,
       serial: serialRows[0] || null,
@@ -456,11 +509,19 @@ exports.profile = async (req, res) => {
   try {
     const student = await studentById(req.user.id);
     const [records] = await db.execute(
-      'SELECT * FROM student_ms_records WHERE student_id=? ORDER BY created_at DESC',
+      'SELECT * FROM student_ms_records WHERE student_id=? ORDER BY created_at DESC,id DESC',
       [req.user.id]
     );
+    const { safeStudent, assignmentAssigned } = await studentAssignmentView(
+      student,
+      records[0] || null
+    );
 
-    return res.json({ student: studentPublic(student), records });
+    return res.json({
+      student: safeStudent,
+      assignment_assigned: assignmentAssigned,
+      records,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -473,7 +534,15 @@ exports.reEnrollForm = async (req, res) => {
       return res.status(context.status).json({ message: context.message });
     }
 
-    const { student, latest, targetLevel, schedule, mode, message } = context;
+    const {
+      student,
+      latest,
+      targetLevel,
+      schedule,
+      availableSchedules = schedule ? [schedule] : [],
+      mode,
+      message,
+    } = context;
     const safeStudent = studentPublic(student);
 
     delete safeStudent.password;
@@ -486,7 +555,16 @@ exports.reEnrollForm = async (req, res) => {
       mode,
       message,
       target_level: targetLevel,
-      level_label: levelLabelFor(student.nstp_component, targetLevel),
+      level_label: levelLabelFor(schedule?.program || student.nstp_component, targetLevel),
+      available_components: availableSchedules.map((candidate) => candidate.program),
+      available_schedules: availableSchedules.map((candidate) => ({
+        id: candidate.id,
+        program: candidate.program,
+        ms_level: String(candidate.ms_level),
+        year: candidate.year,
+        open_date: candidate.open_date,
+        deadline: candidate.deadline,
+      })),
       student: safeStudent,
       latest_record: latest,
       schedule: schedule
@@ -717,8 +795,34 @@ exports.reEnroll = async (req, res) => {
       return res.status(context.status).json({ message: context.message });
     }
 
-    const { student, schedule, targetLevel, mode } = context;
+    const { student, targetLevel, mode } = context;
     const body = req.body || {};
+    const requestedProgram = String(body.nstp_component || student.nstp_component).toUpperCase();
+    let selectedProgram = student.nstp_component;
+    let schedule = context.schedule;
+
+    if (mode === 'retry' && String(targetLevel) === '1') {
+      if (!['ROTC', 'CWTS'].includes(requestedProgram)) {
+        return res.status(400).json({ message: 'Select ROTC or CWTS.' });
+      }
+      if (isCriminologyCourse(student.course) && requestedProgram !== 'ROTC') {
+        return res.status(400).json({ message: 'BS Criminology students are required to enroll in ROTC.' });
+      }
+
+      schedule = (context.availableSchedules || []).find(
+        (candidate) => candidate.program === requestedProgram
+      );
+      if (!schedule || !enrollmentService.nowWithin(schedule)) {
+        return res.status(400).json({
+          message: `${levelLabelFor(requestedProgram, targetLevel)} enrollment is not open at this time.`,
+        });
+      }
+      selectedProgram = requestedProgram;
+    } else if (requestedProgram !== student.nstp_component) {
+      return res.status(400).json({
+        message: 'NSTP component can only be changed when correcting a rejected MS 1 enrollment.',
+      });
+    }
     const required = [
       'contact_number',
       'religion',
@@ -762,7 +866,7 @@ exports.reEnroll = async (req, res) => {
       return res.status(400).json({ message: 'Select a valid year level.' });
     }
 
-    if (student.nstp_component === 'ROTC' && !String(body.xray_file || student.xray_file || '').trim()) {
+    if (selectedProgram === 'ROTC' && !String(body.xray_file || student.xray_file || '').trim()) {
       return res.status(400).json({ message: 'X-ray is required for ROTC re-enrollment.' });
     }
 
@@ -773,12 +877,14 @@ exports.reEnroll = async (req, res) => {
         label: 'Medical certificate',
         required: true,
       });
-    const xrayFile = body.xray_file == null || String(body.xray_file).trim() === ''
-      ? (student.xray_file || null)
-      : uploadValidation.validateDocumentUpload(body.xray_file, {
-        label: 'X-ray',
-        required: student.nstp_component === 'ROTC',
-      });
+    const xrayFile = selectedProgram === 'ROTC'
+      ? (body.xray_file == null || String(body.xray_file).trim() === ''
+        ? (student.xray_file || null)
+        : uploadValidation.validateDocumentUpload(body.xray_file, {
+          label: 'X-ray',
+          required: true,
+        }))
+      : null;
     const corFile = body.cor_file == null || String(body.cor_file).trim() === ''
       ? (student.cor_file || null)
       : uploadValidation.validateDocumentUpload(body.cor_file, {
@@ -793,9 +899,10 @@ exports.reEnroll = async (req, res) => {
         religion=?,contact_number=?,temporary_barangay=?,temporary_municipality=?,temporary_province=?,
         permanent_barangay=?,permanent_municipality=?,permanent_province=?,emergency_contact_name=?,
         emergency_contact_address=?,emergency_contact_relationship=?,emergency_contact_contact_number=?,
-        course=?,year_level=?,height=?,weight=?,blood_type=?,complexion=?,has_medical_condition=?,
+        course=?,year_level=?,nstp_component=?,height=?,weight=?,blood_type=?,complexion=?,has_medical_condition=?,
         medical_condition=?,medical_certificate=?,xray_file=?,cor_file=?,
-        willing_to_take_advance_course=?,willing_to_be_medics=?,willing_to_be_military_police=?
+        willing_to_take_advance_course=?,willing_to_be_medics=?,willing_to_be_military_police=?,
+        company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL
        WHERE id=?`,
       [
         body.religion,
@@ -812,6 +919,7 @@ exports.reEnroll = async (req, res) => {
         body.emergency_contact_contact_number,
         body.course,
         body.year_level,
+        selectedProgram,
         body.height,
         body.weight,
         body.blood_type,
@@ -821,24 +929,30 @@ exports.reEnroll = async (req, res) => {
         medicalCertificate,
         xrayFile,
         corFile,
-        normalizeBooleanFlag(body.willing_to_take_advance_course ?? student.willing_to_take_advance_course),
-        normalizeBooleanFlag(body.willing_to_be_medics ?? student.willing_to_be_medics),
-        normalizeBooleanFlag(body.willing_to_be_military_police ?? student.willing_to_be_military_police),
+        selectedProgram === 'ROTC'
+          ? normalizeBooleanFlag(body.willing_to_take_advance_course ?? student.willing_to_take_advance_course)
+          : 0,
+        selectedProgram === 'ROTC'
+          ? normalizeBooleanFlag(body.willing_to_be_medics ?? student.willing_to_be_medics)
+          : 0,
+        selectedProgram === 'ROTC'
+          ? normalizeBooleanFlag(body.willing_to_be_military_police ?? student.willing_to_be_military_police)
+          : 0,
         req.user.id,
       ]
     );
 
     await connection.execute(
       "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",
-      [req.user.id, String(schedule.id), targetLevel, student.nstp_component]
+      [req.user.id, String(schedule.id), targetLevel, selectedProgram]
     );
 
     await connection.commit();
 
     return res.json({
       message: mode === 'retry'
-        ? `Your ${levelLabelFor(student.nstp_component, targetLevel)} enrollment has been submitted again for administrator review.`
-        : `${levelLabelFor(student.nstp_component, targetLevel)} enrollment submitted successfully and is now pending administrator review.`,
+        ? `Your ${levelLabelFor(selectedProgram, targetLevel)} enrollment has been submitted again for administrator review.`
+        : `${levelLabelFor(selectedProgram, targetLevel)} enrollment submitted successfully and is now pending administrator review.`,
     });
   } catch (error) {
     try {

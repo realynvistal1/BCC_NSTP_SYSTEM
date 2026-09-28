@@ -76,13 +76,14 @@ function row(label, value) {
   `;
 }
 
-function assignment(student) {
+function assignment(student, assignmentAssigned) {
   if (student.nstp_component === 'CWTS') {
     return student.company ? `Company ${student.company}` : 'Not assigned yet';
   }
 
-  if (Number(student.willing_to_take_advance_course)) return 'Advance Course';
+  if (!assignmentAssigned) return 'Not assigned yet';
   if (student.special_unit) return student.special_unit;
+  if (Number(student.willing_to_take_advance_course)) return 'Advance Course';
 
   return [
     student.battalion ? `Battalion ${student.battalion}` : '',
@@ -91,7 +92,7 @@ function assignment(student) {
   ].filter(Boolean).join(' - ') || 'Not assigned yet';
 }
 
-function studentProfile(student) {
+function studentProfile(student, assignmentAssigned) {
   const name = [
     displayNamePart(student.first_name),
     displayNamePart(student.middle_name),
@@ -136,7 +137,6 @@ function studentProfile(student) {
       ${row('Place of Birth', student.place_of_birth)}
       ${row('Contact Number', student.contact_number)}
       ${row('Email', student.email)}
-      ${row('Username', student.username)}
     </section>
 
     <section class="settings-card">
@@ -161,8 +161,17 @@ function studentProfile(student) {
       ${row('Course', student.course)}
       ${row('Year Level', student.year_level)}
       ${row('NSTP Component', student.nstp_component)}
-      ${row('Assignment', assignment(student))}
-      ${row('Advance Course', Number(student.willing_to_take_advance_course) ? 'Enrolled' : 'Not enrolled')}
+      ${row('Assignment', assignment(student, assignmentAssigned))}
+      ${student.nstp_component === 'ROTC' && Number(student.willing_to_take_advance_course)
+        ? row(
+          'Advance Course Status',
+          !assignmentAssigned
+            ? 'Not assigned yet'
+            : !student.special_unit
+              ? 'Enrolled'
+              : 'Not enrolled'
+        )
+        : ''}
     </section>
   `;
 }
@@ -428,7 +437,7 @@ async function renderSettingsPage(content, role) {
     const profile = await API.get('/api/student/profile');
     content.innerHTML = `
       <div class="settings-stack">
-        ${studentProfile(profile.student || {})}
+        ${studentProfile(profile.student || {}, profile.assignment_assigned === true)}
         ${passwordCard()}
       </div>
     `;

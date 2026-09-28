@@ -161,7 +161,7 @@ const generalApiRateLimit = createRateLimit({
 const authRateLimit = createRateLimit({
   keyPrefix: 'auth',
   windowMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, ONE_MINUTE_MS),
-  maxRequests: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 20),
+  maxRequests: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 50),
   message: 'Too many authentication requests. Please wait a moment and try again.',
   blockMessage: 'This IP has been temporarily blocked for abusive authentication traffic.',
   baseBlockMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_BLOCK_MS, 10 * ONE_MINUTE_MS),

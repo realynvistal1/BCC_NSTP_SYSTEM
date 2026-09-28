@@ -2,7 +2,7 @@ const NAV = {
   student: [
     ['Dashboard', '/student/dashboard', 'dashboard'],
     ['Enrollment Status', '/student/enrollment-status', 'enrollment'],
-    ['Apply Enrollment', '/student/re-enrollment', 'refresh'],
+    ['Enroll', '/student/re-enrollment', 'refresh'],
     ['My Platoon', '/student/assigned-platoon', 'platoon'],
     ['Attendance', '/student/attendance', 'attendance'],
     ['Grades', '/student/grades', 'grades'],

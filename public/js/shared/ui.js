@@ -132,6 +132,11 @@ async function renderEnrollmentSchedule(p,c){
   const sorted = [...rows].sort(
     (a, b) => String(b.year).localeCompare(String(a.year)) || String(b.ms_level).localeCompare(String(a.ms_level))
   );
+  const closedLevelOneYears = new Set(
+    rows
+      .filter(x => String(x.ms_level) === '1' && scheduleStatus(x.open_date, x.deadline).key === 'closed')
+      .map(x => String(x.year).trim())
+  );
 
   let nextLevel = '1';
   let nextYear = `${currentYear}-${currentYear + 1}`;
@@ -208,7 +213,7 @@ async function renderEnrollmentSchedule(p,c){
               <option value="1" ${String(nextLevel) === '1' ? 'selected' : ''}>${prefix} 1</option>
               <option value="2" ${String(nextLevel) === '2' ? 'selected' : ''}>${prefix} 2</option>
             </select>
-            <small class="field-help">Choose which enrollment level this schedule should open.</small>
+            <small class="field-help" id="scheduleLevelHelp">Create and close ${prefix} 1 before creating ${prefix} 2 for the same school year.</small>
           </div>
           <div class="field">
             <label>School Year</label>
@@ -228,6 +233,7 @@ async function renderEnrollmentSchedule(p,c){
             <div class="time-parts">
               <input name="deadline_time" type="time" value="17:00" step="60" required>
             </div>
+            <small class="field-help" id="scheduleDateHelp">The deadline must be later than the opening date and time.</small>
           </div>
           <div class="app-dialog-actions">
             <button type="button" class="btn" id="cancelSchedule">Cancel</button>
@@ -283,7 +289,73 @@ async function renderEnrollmentSchedule(p,c){
   $('#closeScheduleModal').onclick = () => toggle(false);
   $('#cancelSchedule').onclick = () => toggle(false);
   modal.querySelector('.app-dialog-backdrop').onclick = () => toggle(false);
-  $('#scheduleForm').onsubmit = async e => {
+  const scheduleForm = $('#scheduleForm');
+  const levelSelect = scheduleForm.elements.ms_level;
+  const yearInput = scheduleForm.elements.year;
+  const levelTwoOption = levelSelect.querySelector('option[value="2"]');
+  const levelHelp = $('#scheduleLevelHelp');
+  const openDayInput = scheduleForm.elements.open_day;
+  const openTimeInput = scheduleForm.elements.open_time;
+  const deadlineDayInput = scheduleForm.elements.deadline_day;
+  const deadlineTimeInput = scheduleForm.elements.deadline_time;
+  const dateHelp = $('#scheduleDateHelp');
+
+  function refreshLevelAvailability() {
+    const schoolYear = yearInput.value.trim();
+    const levelTwoAvailable = closedLevelOneYears.has(schoolYear);
+    levelTwoOption.disabled = !levelTwoAvailable;
+    if (!levelTwoAvailable && levelSelect.value === '2') levelSelect.value = '1';
+    levelHelp.textContent = levelTwoAvailable
+      ? `${prefix} 1 for SY ${schoolYear} is closed. ${prefix} 2 can now be scheduled.`
+      : `Create and close ${prefix} 1 for SY ${schoolYear || 'the selected school year'} before creating ${prefix} 2.`;
+  }
+
+  yearInput.addEventListener('input', refreshLevelAvailability);
+  refreshLevelAvailability();
+
+  function scheduleDateValue(dayInput, timeInput) {
+    if (!dayInput.value || !timeInput.value) return null;
+    const value = new Date(`${dayInput.value}T${timeInput.value}:00`);
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  function nextMinute(time) {
+    const [hour, minute] = time.split(':').map(Number);
+    const minutes = hour * 60 + minute + 1;
+    if (!Number.isFinite(minutes) || minutes >= 24 * 60) return '';
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  }
+
+  function refreshDateAvailability() {
+    deadlineDayInput.min = openDayInput.value || '';
+    deadlineTimeInput.min = openDayInput.value
+      && deadlineDayInput.value === openDayInput.value
+      && openTimeInput.value
+      ? nextMinute(openTimeInput.value)
+      : '';
+
+    const opening = scheduleDateValue(openDayInput, openTimeInput);
+    const closing = scheduleDateValue(deadlineDayInput, deadlineTimeInput);
+    const invalidOrder = opening && closing && closing.getTime() <= opening.getTime();
+    const validationMessage = invalidOrder
+      ? 'The deadline must be later than the opening date and time.'
+      : '';
+
+    deadlineDayInput.setCustomValidity(validationMessage);
+    deadlineTimeInput.setCustomValidity(validationMessage);
+    dateHelp.textContent = invalidOrder
+      ? 'Choose a deadline after the opening date and time. Equal or earlier values are not allowed.'
+      : 'The deadline must be later than the opening date and time.';
+    dateHelp.classList.toggle('error-text', Boolean(invalidOrder));
+  }
+
+  [openDayInput, openTimeInput, deadlineDayInput, deadlineTimeInput].forEach((input) => {
+    input.addEventListener('input', refreshDateAvailability);
+    input.addEventListener('change', refreshDateAvailability);
+  });
+  refreshDateAvailability();
+
+  scheduleForm.onsubmit = async e => {
     e.preventDefault();
     const f = e.target;
     function dt(day, time) {
@@ -296,7 +368,9 @@ async function renderEnrollmentSchedule(p,c){
       deadline: dt(f.deadline_day.value, f.deadline_time.value)
     };
     if (new Date(obj.deadline) <= new Date(obj.open_date)) {
-      return toast('The deadline must be later than the opening date.', true);
+      refreshDateAvailability();
+      f.deadline_day.reportValidity();
+      return toast('The deadline must be later than the opening date and time.', true);
     }
     const btn = f.querySelector('button[type="submit"],button.btn.primary');
     btn.disabled = true;
@@ -392,6 +466,38 @@ function isPreviewableImage(url = '') {
   return /^data:image\//i.test(url) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url);
 }
 
+function openFileInNewTab(url) {
+  if (!url) return;
+  let targetUrl = url;
+  let objectUrl = '';
+
+  try {
+    if (/^data:/i.test(url)) {
+      const separator = url.indexOf(',');
+      if (separator < 0) throw new Error('The uploaded file data is invalid.');
+      const metadata = url.slice(0, separator);
+      const encoded = url.slice(separator + 1);
+      const mimeType = metadata.match(/^data:([^;,]+)/i)?.[1] || 'application/octet-stream';
+      const binary = /;base64/i.test(metadata) ? atob(encoded) : decodeURIComponent(encoded);
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+      targetUrl = objectUrl;
+    }
+
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if (objectUrl) window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  } catch (error) {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    toast(error.message || 'Unable to open the uploaded file.', true);
+  }
+}
+
 function documentPreviewCard(label, url) {
   if (!url) {
     return `<div class="document-preview-card missing">
@@ -403,13 +509,13 @@ function documentPreviewCard(label, url) {
   return `<div class="document-preview-card">
     ${image
       ? `<button type="button" class="document-thumb image preview-file-btn" data-url="${esc(url)}" data-label="${esc(label)}"><img src="${url}" alt="${esc(label)}"></button>`
-      : `<a class="document-thumb file" href="${url}" target="_blank" rel="noopener">${icon('records')}</a>`}
+      : `<button type="button" class="document-thumb file open-file-new-tab" data-url="${esc(url)}" aria-label="Open ${esc(label)} in a new tab">${icon('records')}</button>`}
     <div class="document-copy">
       <strong>${esc(label)}</strong>
       <span>${image ? 'Image submitted' : 'File submitted'}</span>
       <div class="document-actions">
         ${image ? `<button type="button" class="document-link preview-file-btn" data-url="${esc(url)}" data-label="${esc(label)}">View inside app</button>` : ''}
-        <a class="document-link" href="${url}" target="_blank" rel="noopener">Open outside</a>
+        <button type="button" class="document-link open-file-new-tab" data-url="${esc(url)}">Open in New Tab</button>
       </div>
     </div>
   </div>`;
@@ -534,7 +640,7 @@ function enrollmentDetailModal(x, p) {
       <div class="file-preview-dialog">
  <div class="file-preview-head"><strong id="filePreviewTitle">Preview</strong><button type="button" id="closeFilePreview">x</button></div>
         <div class="file-preview-body"><img id="filePreviewImage" alt="File preview"></div>
-        <div class="file-preview-actions"><a id="openFileOutside" class="btn primary" target="_blank" rel="noopener">Open outside</a></div>
+        <div class="file-preview-actions"><button id="openFileOutside" class="btn primary" type="button">Open in New Tab</button></div>
       </div>
     </div>
   </div>`;
@@ -835,6 +941,7 @@ async function renderEnrollmentList(p,c){
     const previewImage=$('#filePreviewImage');
     const previewTitle=$('#filePreviewTitle');
     const openOutside=$('#openFileOutside');
+    let previewUrl='';
     function closePreview(){
       previewOverlay?.classList.add('hidden');
       previewOverlay?.setAttribute('aria-hidden','true');
@@ -846,9 +953,13 @@ async function renderEnrollmentList(p,c){
       previewImage.src=url;
       previewImage.alt=button.dataset.label||'File preview';
       previewTitle.textContent=button.dataset.label||'File preview';
-      openOutside.href=url;
+      previewUrl=url;
       previewOverlay.classList.remove('hidden');
       previewOverlay.setAttribute('aria-hidden','false');
+    }));
+    openOutside?.addEventListener('click',()=>openFileInNewTab(previewUrl));
+    $$('.open-file-new-tab',modal).forEach(button=>button.addEventListener('click',()=>{
+      openFileInNewTab(button.dataset.url);
     }));
     $('#closeFilePreview')?.addEventListener('click',closePreview);
     previewOverlay?.querySelector('.file-preview-backdrop')?.addEventListener('click',closePreview);
@@ -1327,6 +1438,9 @@ async function renderROTCRoster(c, specialOnly = false) {
     ].join(" - ");
     const alreadyAssigned = Boolean(schedule?.platoons_assigned_at);
     const canAssign = Boolean(selectedLevel && selectedYear && schedule && closed && !alreadyAssigned);
+    const scheduleValue = alreadyAssigned ? "Assigned" : closed ? "Closed" : schedule ? "Open / Upcoming" : "No Schedule";
+    const scheduleSubtext = alreadyAssigned ? "Roster is available" : canAssign ? "Ready to assign" : schedule ? "Waiting to close" : "Pick one cycle";
+    const scheduleTone = alreadyAssigned || canAssign ? "green" : "amber";
 
     const special = {
       Medics: current.filter((student) => student.special_unit === "Medics"),
@@ -1377,7 +1491,7 @@ async function renderROTCRoster(c, specialOnly = false) {
     const total = battalionOne.length + battalionTwo.length + specialTotal + advanceTotal;
     const battalionCap = maleCompanies.length * platoons * platoonCap;
 
-    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", canAssign ? "Closed" : schedule ? "Open / Upcoming" : "No Schedule", canAssign ? "Ready to assign" : schedule ? "Waiting to close" : "Pick one cycle", canAssign ? "green" : "amber")}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
 
     $("#rosterMs").onchange = (event) => {
       selectedLevel = event.target.value;
@@ -1418,54 +1532,77 @@ async function renderROTCRoster(c, specialOnly = false) {
 }
 
 async function renderCWTSCompanyRoster(c) {
-  const defaultRows = await API.get("/api/admin/cwts/roster");
-  const allCycleRows = await API.get("/api/admin/cwts/roster?all_cycles=1");
+  const [allCycleRows, schedules, enrollments] = await Promise.all([
+    API.get("/api/admin/cwts/roster?all_cycles=1"),
+    API.get("/api/admin/cwts/enrollment-schedule"),
+    API.get("/api/admin/cwts/enrollments"),
+  ]);
   const companies = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
   const limit = 60;
-  let alphabetical = false;
-  let selectedLevel = "";
-  let selectedYear = "";
+  const latest = [...schedules].sort((a, b) => Number(b.id) - Number(a.id))[0];
+  let selectedLevel = String(latest?.ms_level || "1");
+  let selectedYear = String(latest?.year || "");
 
-  const levels = [...new Set(allCycleRows.map((row) => String(row.ms_level || "").trim()).filter(Boolean))].sort();
-  const years = [...new Set(allCycleRows.map((row) => String(row.school_year || "").trim()).filter(Boolean))].sort().reverse();
-
-  const filteredRows = () => {
-    const source = selectedLevel || selectedYear ? allCycleRows : defaultRows;
-    return source.filter((row) => {
-      if (selectedLevel && String(row.ms_level || "") !== selectedLevel) return false;
-      if (selectedYear && String(row.school_year || "") !== selectedYear) return false;
-      return true;
-    });
-  };
+  const levels = [...new Set([
+    ...allCycleRows.map((row) => String(row.ms_level || "").trim()),
+    ...schedules.map((row) => String(row.ms_level || "").trim()),
+  ].filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+  const years = [...new Set([
+    ...allCycleRows.map((row) => String(row.school_year || "").trim()),
+    ...schedules.map((row) => String(row.year || "").trim()),
+  ].filter(Boolean))].sort().reverse();
 
   const draw = () => {
-    const rows = filteredRows();
+    const schedule = schedules.find((item) => (
+      String(item.ms_level || "") === selectedLevel
+      && String(item.year || "") === selectedYear
+    )) || null;
+    const rows = allCycleRows.filter((row) => (
+      String(row.ms_level || "") === selectedLevel
+      && String(row.school_year || "") === selectedYear
+    ));
     const grouped = Object.fromEntries(
       companies.map((company) => [company, rows.filter((row) => row.company === company)])
     );
     const shown = Object.fromEntries(
       companies.map((company) => [
         company,
-        [...grouped[company]].sort((a, b) =>
-          alphabetical
-            ? `${a.last_name || ""}`.localeCompare(`${b.last_name || ""}`, undefined, { sensitivity: "base" })
-            : 0
-        ),
+        [...grouped[company]].sort((a, b) => {
+          const last = String(a.last_name || "").localeCompare(String(b.last_name || ""), undefined, { sensitivity: "base" });
+          if (last) return last;
+          const first = String(a.first_name || "").localeCompare(String(b.first_name || ""), undefined, { sensitivity: "base" });
+          return first || Number(a.id) - Number(b.id);
+        }),
       ])
     );
 
     const total = companies.reduce((sum, company) => sum + shown[company].length, 0);
     const capacity = companies.length * limit;
+    const closed = Boolean(schedule) && Date.now() > new Date(schedule.deadline).getTime();
+    const alreadyAssigned = Boolean(schedule?.platoons_assigned_at);
+    const pendingReview = schedule
+      ? enrollments.filter((row) => (
+        String(row.schedule_id || "") === String(schedule.id)
+        && row.status === "pending"
+      )).length
+      : 0;
+    const canAssign = Boolean(schedule) && closed && !alreadyAssigned && pendingReview === 0;
+    const scheduleValue = alreadyAssigned ? "Assigned" : closed ? "Closed" : "Open / Upcoming";
+    const scheduleSubtext = alreadyAssigned
+      ? "Company roster available"
+      : pendingReview > 0
+        ? `${pendingReview} pending review`
+        : closed
+        ? "Ready to assign"
+        : "Waiting to close";
+    const scheduleTone = alreadyAssigned ? "green" : closed && pendingReview === 0 ? "green" : "amber";
 
-    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Approved CWTS enrollments are automatically assigned to their respective companies.</p></div><button class="page-intro-action emerald" id="sortCompanies">${alphabetical ? "Applied Alphabetical Sort" : "Sort Alphabetical"}</button></div><section class="section-card"><div class="section-heading"><h2>Filter Enrolled Students</h2><p>Filter this company roster by CWTS level and school year.</p></div><div class="filter-row"><select id="cwtsRosterLevel"><option value="">All CWTS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select><button class="clear-filter-btn" id="clearCwtsRosterFilters">Clear Filters</button></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Companies", companies.length, `${limit} slots each`, "slate")}</div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
-
-    $("#sortCompanies").onclick = () => {
-      alphabetical = true;
-      draw();
-    };
+    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
 
     $("#cwtsRosterLevel").onchange = (event) => {
       selectedLevel = event.target.value;
+      const matching = schedules.find((item) => String(item.ms_level || "") === selectedLevel);
+      if (matching) selectedYear = String(matching.year || selectedYear);
       draw();
     };
 
@@ -1474,11 +1611,26 @@ async function renderCWTSCompanyRoster(c) {
       draw();
     };
 
-    $("#clearCwtsRosterFilters").onclick = () => {
-      selectedLevel = "";
-      selectedYear = "";
-      draw();
-    };
+    const assign = $("#assignCompanies");
+    if (assign && canAssign) {
+      assign.onclick = async () => {
+        if (!confirm(`Assign approved CWTS ${selectedLevel} students for SY ${selectedYear} alphabetically from Alpha through Foxtrot?`)) return;
+        assign.disabled = true;
+        assign.textContent = "Assigning Companies...";
+        try {
+          const result = await API.post("/api/admin/cwts/auto-assign", {
+            ms_level: selectedLevel,
+            school_year: selectedYear,
+          });
+          toast(result.message);
+          await renderCWTSCompanyRoster(c);
+        } catch (error) {
+          $("#assignCompanyResult").innerHTML = `<div class="assignment-result error">${esc(error.message)}</div>`;
+          assign.disabled = false;
+          assign.textContent = "Assign Companies";
+        }
+      };
+    }
 
     bindRosterExpanders();
   };

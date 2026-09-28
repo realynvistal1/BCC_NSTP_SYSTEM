@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
   render: async (content) => {
     const dashboard = await API.get('/api/student/dashboard');
     const student = dashboard.student || {};
+    const assignmentAssigned = dashboard.assignment_assigned === true;
     const isAdvance = student.nstp_component === 'ROTC'
+      && assignmentAssigned
       && Number(student.willing_to_take_advance_course) === 1;
 
     const assignment = isAdvance
@@ -21,9 +23,9 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
           ].filter(Boolean).join(' - ') || 'Not assigned';
 
     let withdrawal = null;
-    const hasAssignment = Boolean(isAdvance || student.special_unit || (
+    const hasAssignment = Boolean(assignmentAssigned && (isAdvance || student.special_unit || (
       student.nstp_component === 'CWTS' ? student.company : student.rotc_platoon
-    ));
+    )));
     const assignmentDetails = isAdvance
       ? [['Program', 'ROTC'], ['Course', 'Advance Course']]
       : student.special_unit

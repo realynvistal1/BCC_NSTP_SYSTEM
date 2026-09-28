@@ -89,7 +89,7 @@ async function run() {
         const battalion = regular ? (sex === 'Male' ? 1 : 2) : null;
         const rotcCompany = regular ? companies[(battalion - 1) * 4 + position % 4] : null;
         const platoon = regular ? Math.floor(position / 4) % 4 + 1 : null;
-        const username = `demo_${program.toLowerCase()}_${number}`;
+        const email = `demo_${program.toLowerCase()}_${number}@example.test`;
         const serial = `DEMO-${program}-${year}-${number}`;
         const firstName = (sex === 'Male' ? maleNames : femaleNames)[Math.floor(index / 2) % 10];
         const lastName = surnames[Math.floor(index / 10)];
@@ -110,7 +110,7 @@ async function run() {
           course: courses[index % courses.length], year_level: '2nd Year', nstp_component: program,
           height: `${155 + index % 25} cm`, weight: `${50 + index % 25} kg`, blood_type: 'O+', complexion: 'Fair',
           has_medical_condition: Number(specialUnit === 'HQ'), medical_condition: specialUnit === 'HQ' ? 'Sample medical assignment' : '',
-          email: `${username}@example.test`, username, password: passwordHash, photo,
+          email, password: passwordHash, photo,
           company: isRotc ? null : companies[index % 6], battalion, rotc_company: rotcCompany,
           rotc_platoon: platoon, special_unit: specialUnit, role: 'student', serial_number: serial,
         };
@@ -132,7 +132,7 @@ async function run() {
           );
         }
         await connection.execute('INSERT INTO serial_numbers(student_id,serial_number,program) VALUES(?,?,?)', [inserted.insertId, serial, program]);
-        credentials.push({ student_id: student.student_id, username, program, password });
+        credentials.push({ student_id: student.student_id, email, program, password });
       }
       console.log(`Prepared 250 ${program} students with both levels completed.`);
     }

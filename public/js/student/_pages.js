@@ -8,7 +8,9 @@
   if(page==='dashboard'){
     const rawStatus=r.status||'Pending';
     const status=badge(rawStatus);
-    const assignment=s.special_unit||s.platoon||(s.nstp_component==='CWTS'?s.company:s.rotc_company)||'Not assigned';
+    const assignment=d.assignment_assigned===false
+      ?'Not assigned'
+      :s.special_unit||s.platoon||(s.nstp_component==='CWTS'?s.company:s.rotc_company)||'Not assigned';
     const att=d.attendance||{
     }
     ;
@@ -23,7 +25,7 @@
     c.innerHTML=`<div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
       att.present||0
     }
-    Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${eligibleReEnroll?dashCard('Apply Enrollment','MS 2 Enrollment','Tap to enroll for MS 2 when enrollment is open.','/student/re-enrollment','refresh','indigo'):''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
+    Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${eligibleReEnroll?dashCard('Enroll','MS 2 Enrollment','Tap to enroll for MS 2 when enrollment is open.','/student/re-enrollment','refresh','indigo'):''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
     return
   }
   if(page==='enrollment-status'){
@@ -165,16 +167,130 @@ async function markAttendance(id){
   if(!navigator.geolocation)return toast('Geolocation is not supported by this browser.',true);
   navigator.geolocation.getCurrentPosition(async p=>{try{const d=await API.post('/api/student/attendance/mark',{sessionId:id,latitude:p.coords.latitude,longitude:p.coords.longitude});toast(`${d.message} Distance: ${d.distance}m`);setTimeout(()=>location.reload(),700)}catch(e){toast(e.message,true)}},()=>toast('Location permission is required to mark attendance.',true),{enableHighAccuracy:true,timeout:15000,maximumAge:0})
 }
+function organizeReEnrollmentForm(form,isRotc){
+  if(!form)return;
+  const originalFields=Array.from(form.children);
+  const field=(selector)=>form.querySelector(selector)?.closest('.field')||null;
+  const unique=(items)=>items.filter((item,index)=>item&&items.indexOf(item)===index);
+  const section=(title,description,items)=>{
+    const fields=unique(items);
+    if(!fields.length)return;
+    const card=document.createElement('section');
+    card.className='re-enroll-section';
+    card.innerHTML=`<div class="re-enroll-section-head"><div><h3>${esc(title)}</h3><p>${esc(description)}</p></div></div><div class="re-enroll-section-grid"></div>`;
+    const grid=card.querySelector('.re-enroll-section-grid');
+    fields.forEach((item)=>grid.appendChild(item));
+    form.appendChild(card);
+  };
+
+  form.classList.add('re-enrollment-organized');
+  section('Academic Information','Review the enrollment details that identify your NSTP program and level.',[
+    originalFields[0],originalFields[1],field('[name="course"]'),field('[name="year_level"]'),
+  ]);
+  section('Personal Information','Confirm your current contact and personal information.',[
+    field('[name="religion"]'),field('[name="contact_number"]'),
+  ]);
+  section('Address & Emergency Contact','Update your present and permanent address and your emergency contact.',[
+    field('[name="temporary_barangay"]'),field('[name="temporary_municipality"]'),field('[name="temporary_province"]'),
+    field('[name="permanent_barangay"]'),field('[name="permanent_municipality"]'),field('[name="permanent_province"]'),
+    field('[name="emergency_contact_name"]'),field('[name="emergency_contact_relationship"]'),
+    field('[name="emergency_contact_address"]'),field('[name="emergency_contact_contact_number"]'),
+  ]);
+  section('Physical & Health Information','Review your physical profile and disclose any medical condition.',[
+    field('[name="height"]'),field('[name="weight"]'),field('[name="blood_type"]'),field('[name="complexion"]'),
+    field('[name="has_medical_condition"]'),field('[name="medical_condition"]'),
+  ]);
+  if(isRotc){
+    section('ROTC Preferences','Select the ROTC assignments you are willing to join.',[
+      field('[name="willing_to_take_advance_course"]'),
+    ]);
+  }
+  section('Enrollment Requirements','Upload replacements only when a document needs to be updated.',[
+    field('#reMedicalCertificate'),field('#reCorFile'),field('#reXrayFile'),
+  ]);
+
+  const remaining=Array.from(form.children).filter((item)=>item.classList?.contains('field'));
+  if(remaining.length){
+    const footer=document.createElement('div');
+    footer.className='re-enroll-submit-area';
+    remaining.forEach((item)=>footer.appendChild(item));
+    form.appendChild(footer);
+  }
+}
 async function renderReEnrollment(c){
   try{
     const data=await API.get('/api/student/re-enroll');
     const s=data.student||{};
     const latest=data.latest_record||{};
     const isRotc=String(s.nstp_component||'').toUpperCase()==='ROTC';
+    const availableComponents=Array.from(new Set(
+      (data.available_components||[s.nstp_component]).map((value)=>String(value||'').toUpperCase()).filter(Boolean)
+    ));
+    const supportsRotc=availableComponents.includes('ROTC');
+    const selectedProgram=String(data.schedule?.program||s.nstp_component||'').toUpperCase();
     const hasMedical=Number(s.has_medical_condition||0)===1;
     const checked=(value)=>Number(value)?'checked':'';
     c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Re-enrollment Form</h2><p class="panel-subtitle">${esc(data.message||'Review your saved information and submit your next enrollment request.')}</p></div>${badge(latest.status||'approved')}</div><div class="notice"><strong>Target Level:</strong> ${esc(data.level_label||`MS ${data.target_level||'2'}`)}${data.schedule?.year?` • <strong>School Year:</strong> ${esc(data.schedule.year)}`:''}</div><div class="summary-grid" style="margin-top:16px"><div class="summary-tile blue"><div class="summary-accent"></div><div class="dash-label">Student ID</div><div class="summary-number" style="font-size:22px">${esc(s.student_id||'-')}</div><div class="summary-helper">Existing student record will be reused.</div></div><div class="summary-tile green"><div class="summary-accent"></div><div class="dash-label">Program</div><div class="summary-number" style="font-size:22px">${esc(s.nstp_component||'-')}</div><div class="summary-helper">Your NSTP component stays the same.</div></div><div class="summary-tile orange"><div class="summary-accent"></div><div class="dash-label">Current Level</div><div class="summary-number" style="font-size:22px">MS ${esc(latest.ms_level||'1')}</div><div class="summary-helper">Latest approved or rejected enrollment record.</div></div><div class="summary-tile red"><div class="summary-accent"></div><div class="dash-label">Target</div><div class="summary-number" style="font-size:22px">${esc(data.level_label||`MS ${data.target_level||'2'}`)}</div><div class="summary-helper">This new request will go back to admin review.</div></div></div><form id="reEnrollForm" class="form-grid" style="margin-top:18px"><div class="field"><label>Student ID</label><input value="${esc(s.student_id||'')}" disabled></div><div class="field"><label>NSTP Component</label><input value="${esc(s.nstp_component||'')}" disabled></div><div class="field"><label>Course</label><input name="course" value="${esc(s.course||'')}" readonly></div><div class="field"><label>Year Level</label><select name="year_level" required>${['1st Year','2nd Year','3rd Year','4th Year'].map((value)=>`<option value="${value}" ${s.year_level===value?'selected':''}>${value}</option>`).join('')}</select></div><div class="field"><label>Religion</label><input name="religion" value="${esc(s.religion||'')}" required></div><div class="field"><label>Contact Number</label><input name="contact_number" value="${esc(s.contact_number||'')}" maxlength="11" placeholder="09XXXXXXXXX" required></div><div class="field"><label>Temporary Barangay</label><input name="temporary_barangay" value="${esc(s.temporary_barangay||'')}" required></div><div class="field"><label>Temporary Municipality</label><input name="temporary_municipality" value="${esc(s.temporary_municipality||'')}" required></div><div class="field"><label>Temporary Province</label><input name="temporary_province" value="${esc(s.temporary_province||'')}" required></div><div class="field"><label>Permanent Barangay</label><input name="permanent_barangay" value="${esc(s.permanent_barangay||'')}" required></div><div class="field"><label>Permanent Municipality</label><input name="permanent_municipality" value="${esc(s.permanent_municipality||'')}" required></div><div class="field"><label>Permanent Province</label><input name="permanent_province" value="${esc(s.permanent_province||'')}" required></div><div class="field"><label>Emergency Contact Name</label><input name="emergency_contact_name" value="${esc(s.emergency_contact_name||'')}" required></div><div class="field"><label>Emergency Relationship</label><input name="emergency_contact_relationship" value="${esc(s.emergency_contact_relationship||'')}" required></div><div class="field full"><label>Emergency Address</label><input name="emergency_contact_address" value="${esc(s.emergency_contact_address||'')}" required></div><div class="field"><label>Emergency Contact Number</label><input name="emergency_contact_contact_number" value="${esc(s.emergency_contact_contact_number||'')}" maxlength="11" placeholder="09XXXXXXXXX" required></div><div class="field"><label>Height</label><input name="height" value="${esc(s.height||'')}" placeholder="e.g. 5'7&quot;" required></div><div class="field"><label>Weight (kg)</label><input name="weight" value="${esc(s.weight||'')}" type="number" min="1" required></div><div class="field"><label>Blood Type</label><select name="blood_type" required>${['A+','A-','B+','B-','AB+','AB-','O+','O-','N/A'].map((value)=>`<option value="${value}" ${s.blood_type===value?'selected':''}>${value}</option>`).join('')}</select></div><div class="field"><label>Complexion</label><input name="complexion" value="${esc(s.complexion||'')}" required></div><div class="field full"><label>Medical Condition</label><select name="has_medical_condition" id="reMedicalSelect"><option value="0" ${!hasMedical?'selected':''}>No medical condition</option><option value="1" ${hasMedical?'selected':''}>Has medical condition</option></select></div><div class="field full ${hasMedical?'':'hidden'}" id="reMedicalNameField"><label>Medical Condition Details</label><input name="medical_condition" value="${esc(s.medical_condition||'')}" placeholder="e.g. Asthma, Hypertension"></div>${isRotc?`<div class="field full"><label>ROTC Preferences</label><div class="notice" style="display:grid;gap:10px"><label><input type="checkbox" name="willing_to_take_advance_course" value="1" ${checked(s.willing_to_take_advance_course)}> Willing to take Advance Course</label><label><input type="checkbox" name="willing_to_be_medics" value="1" ${checked(s.willing_to_be_medics)}> Willing to be assigned to Medics</label><label><input type="checkbox" name="willing_to_be_military_police" value="1" ${checked(s.willing_to_be_military_police)}> Willing to be assigned to Military Police</label></div></div>`:''}<div class="field"><label>Update Medical Certificate</label><input type="file" id="reMedicalCertificate" accept=".pdf,image/*"></div><div class="field"><label>Update COR</label><input type="file" id="reCorFile" accept=".pdf,image/*"></div>${isRotc?`<div class="field full"><label>Update X-ray</label><input type="file" id="reXrayFile" accept=".pdf,image/*"></div>`:''}<div class="field full"><div class="notice">Your saved profile will be updated with the information above. When you submit, a new pending enrollment record will appear again on the admin side for review.</div></div><div class="field full"><button class="btn primary" id="submitReEnroll" type="submit">Submit Re-enrollment</button></div></form></div>`;
     const form=$('#reEnrollForm');
+    const componentField=Array.from(form.children)[1];
+    if(data.mode==='retry'&&availableComponents.length&&componentField){
+      const oldControl=componentField.querySelector('input,select');
+      const select=document.createElement('select');
+      select.name='nstp_component';
+      select.id='reNstpComponent';
+      select.required=true;
+      select.innerHTML=availableComponents.map((value)=>`<option value="${esc(value)}" ${value===selectedProgram?'selected':''}>${esc(value)}</option>`).join('');
+      oldControl?.replaceWith(select);
+    }
+    if(supportsRotc&&!form.querySelector('[name="willing_to_take_advance_course"]')){
+      const preferenceField=document.createElement('div');
+      preferenceField.className='field full';
+      preferenceField.innerHTML=`<label>ROTC Preferences</label><div class="notice" style="display:grid;gap:10px"><label><input type="checkbox" name="willing_to_take_advance_course" value="1" ${checked(s.willing_to_take_advance_course)}> Willing to take Advance Course</label><label><input type="checkbox" name="willing_to_be_medics" value="1" ${checked(s.willing_to_be_medics)}> Willing to be assigned to Medics</label><label><input type="checkbox" name="willing_to_be_military_police" value="1" ${checked(s.willing_to_be_military_police)}> Willing to be assigned to Military Police</label></div>`;
+      form.appendChild(preferenceField);
+    }
+    if(supportsRotc&&!form.querySelector('#reXrayFile')){
+      const xrayField=document.createElement('div');
+      xrayField.className='field full';
+      xrayField.innerHTML='<label>Update X-ray</label><input type="file" id="reXrayFile" accept=".pdf,image/*">';
+      form.appendChild(xrayField);
+    }
+    organizeReEnrollmentForm(form,supportsRotc);
+    const componentSelect=$('#reNstpComponent');
+    const targetNotice=c.querySelector('.panel > .notice');
+    const summaryTiles=c.querySelectorAll('.summary-grid .summary-tile');
+    const summaryValues=c.querySelectorAll('.summary-grid .summary-number');
+    if(data.mode==='retry'&&summaryTiles.length>=4){
+      const previousProgram=String(latest.program||s.nstp_component||'').toUpperCase();
+      const previousLevel=previousProgram==='ROTC'?`MS ${latest.ms_level||'1'}`:`CWTS ${latest.ms_level||'1'}`;
+      const previousDisplay=previousProgram==='ROTC'?`ROTC - ${previousLevel}`:previousLevel;
+      const previousLabel=summaryTiles[2].querySelector('.dash-label');
+      const previousHelper=summaryTiles[2].querySelector('.summary-helper');
+      const applicationLabel=summaryTiles[3].querySelector('.dash-label');
+      const applicationHelper=summaryTiles[3].querySelector('.summary-helper');
+      if(previousLabel)previousLabel.textContent='Previous Enrollment';
+      if(summaryValues[2])summaryValues[2].textContent=previousDisplay;
+      if(previousHelper)previousHelper.textContent='Rejected enrollment being corrected.';
+      if(applicationLabel)applicationLabel.textContent='New Application';
+      if(applicationHelper)applicationHelper.textContent='This corrected request will return to admin review.';
+    }
+    const scheduleByProgram=new Map((data.available_schedules||[]).map((item)=>[String(item.program).toUpperCase(),item]));
+    const updateProgramChoice=()=>{
+      const selected=String(componentSelect?.value||selectedProgram).toUpperCase();
+      const rotc=selected==='ROTC';
+      const preferenceSection=form.querySelector('[name="willing_to_take_advance_course"]')?.closest('.re-enroll-section');
+      const xrayField=form.querySelector('#reXrayFile')?.closest('.field');
+      preferenceSection?.classList.toggle('hidden',!rotc);
+      xrayField?.classList.toggle('hidden',!rotc);
+      const selectedSchedule=scheduleByProgram.get(selected)||data.schedule;
+      if(targetNotice){
+        targetNotice.innerHTML=`<strong>Target Level:</strong> ${esc(selected==='ROTC'?`MS ${data.target_level||'1'}`:`CWTS ${data.target_level||'1'}`)}${selectedSchedule?.year?` • <strong>School Year:</strong> ${esc(selectedSchedule.year)}`:''}`;
+      }
+      if(summaryValues[1])summaryValues[1].textContent=selected;
+      if(summaryValues[2]&&data.mode!=='retry')summaryValues[2].textContent=selected==='ROTC'?`MS ${data.target_level||'1'}`:`CWTS ${data.target_level||'1'}`;
+      if(summaryValues[3])summaryValues[3].textContent=selected==='ROTC'?`MS ${data.target_level||'1'}`:`CWTS ${data.target_level||'1'}`;
+    };
+    componentSelect?.addEventListener('change',updateProgramChoice);
+    updateProgramChoice();
     const medSelect=$('#reMedicalSelect');
     const medField=$('#reMedicalNameField');
     medSelect?.addEventListener('change',()=>{
@@ -198,6 +314,7 @@ async function renderReEnrollment(c){
       const submitBtn=$('#submitReEnroll');
       try{
         const payload=formToObject(form);
+        payload.nstp_component=componentSelect?.value||s.nstp_component;
         payload.has_medical_condition=medSelect.value;
         if(payload.has_medical_condition!=='1')payload.medical_condition='';
         payload.willing_to_take_advance_course=form.querySelector('input[name="willing_to_take_advance_course"]')?.checked?1:0;
@@ -208,7 +325,7 @@ async function renderReEnrollment(c){
         const xrayFile=$('#reXrayFile')?.files?.[0];
         if(medicalFile)payload.medical_certificate=await fileAsDataUrl(medicalFile);
         if(corFile)payload.cor_file=await fileAsDataUrl(corFile);
-        if(xrayFile)payload.xray_file=await fileAsDataUrl(xrayFile);
+        if((componentSelect?.value||s.nstp_component)==='ROTC'&&xrayFile)payload.xray_file=await fileAsDataUrl(xrayFile);
         submitBtn.disabled=true;
         submitBtn.textContent='Submitting...';
         const out=await API.post('/api/student/re-enroll',payload);

@@ -70,15 +70,26 @@ async function verifyToken(token, action, context = {}) {
     response: normalizedToken,
   });
 
-  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-  });
-
-  const payload = await response.json();
+  let response;
+  let payload;
+  try {
+    response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      signal: AbortSignal.timeout(10000),
+    });
+    payload = await response.json();
+  } catch (error) {
+    console.error('reCAPTCHA verification service unavailable:', error.message);
+    return {
+      ok: false,
+      reason: 'provider-unavailable',
+      message: 'The security service is temporarily unavailable. Please try again in a moment.',
+    };
+  }
 
   if (!response.ok || !payload.success) {
     return {

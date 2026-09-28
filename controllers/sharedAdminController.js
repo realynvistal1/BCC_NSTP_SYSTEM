@@ -366,7 +366,7 @@ exports.dashboard = async (req, res) => {
   try {
     const programCode = program(req);
     const [schedules] = await db.execute(
-      `SELECT id, program, ms_level, year, open_date, deadline
+      `SELECT id, program, ms_level, year, open_date, deadline, platoons_assigned_at
        FROM enrollment_schedules
        WHERE program=?
        ORDER BY id DESC`,
@@ -376,6 +376,7 @@ exports.dashboard = async (req, res) => {
     const dashboardSchedule = selectDashboardSchedule(schedules);
 
     const scheduleId = dashboardSchedule ? Number(dashboardSchedule.id) : null;
+    const assignmentPublished = Boolean(dashboardSchedule?.platoons_assigned_at);
 
     const [[counts]] = await db.execute(
       `SELECT COUNT(*) total,
@@ -427,22 +428,22 @@ exports.dashboard = async (req, res) => {
     return res.json({
       program: programCode,
       ...counts,
-      assigned: assigned.assigned || 0,
+      assigned: assignmentPublished ? Number(assigned.assigned || 0) : 0,
       ...(programCode === 'ROTC' ? {
         distribution: {
-          battalion_1: Number(assigned.battalion_1 || 0),
-          battalion_2: Number(assigned.battalion_2 || 0),
-          advance_course: Number(assigned.advance_course || 0),
-          special_platoons: Number(assigned.special_platoons || 0),
+          battalion_1: assignmentPublished ? Number(assigned.battalion_1 || 0) : 0,
+          battalion_2: assignmentPublished ? Number(assigned.battalion_2 || 0) : 0,
+          advance_course: assignmentPublished ? Number(assigned.advance_course || 0) : 0,
+          special_platoons: assignmentPublished ? Number(assigned.special_platoons || 0) : 0,
         },
       } : {
         distribution: {
-          Alpha: Number(assigned.company_alpha || 0),
-          Bravo: Number(assigned.company_bravo || 0),
-          Charlie: Number(assigned.company_charlie || 0),
-          Delta: Number(assigned.company_delta || 0),
-          Echo: Number(assigned.company_echo || 0),
-          Foxtrot: Number(assigned.company_foxtrot || 0),
+          Alpha: assignmentPublished ? Number(assigned.company_alpha || 0) : 0,
+          Bravo: assignmentPublished ? Number(assigned.company_bravo || 0) : 0,
+          Charlie: assignmentPublished ? Number(assigned.company_charlie || 0) : 0,
+          Delta: assignmentPublished ? Number(assigned.company_delta || 0) : 0,
+          Echo: assignmentPublished ? Number(assigned.company_echo || 0) : 0,
+          Foxtrot: assignmentPublished ? Number(assigned.company_foxtrot || 0) : 0,
         },
       }),
       schedule: dashboardSchedule
@@ -452,6 +453,7 @@ exports.dashboard = async (req, res) => {
             year: dashboardSchedule.year,
             open_date: dashboardSchedule.open_date,
             deadline: dashboardSchedule.deadline,
+            platoons_assigned_at: dashboardSchedule.platoons_assigned_at,
           }
         : null,
     });
@@ -510,6 +512,29 @@ exports.schedules = async (req, res) => {
       'SELECT id,ms_level,year,open_date,deadline FROM enrollment_schedules WHERE program=? ORDER BY year DESC, ms_level DESC, id DESC',
       [programCode]
     );
+
+    if (normalizedLevel === '2') {
+      const levelOneSchedule = existing.find((schedule) => (
+        String(schedule.ms_level) === '1'
+        && String(schedule.year).trim() === normalizedYear
+      ));
+      const levelOneDeadline = levelOneSchedule
+        ? new Date(levelOneSchedule.deadline).getTime()
+        : Number.NaN;
+
+      if (!levelOneSchedule) {
+        return res.status(409).json({
+          message: `Create the ${levelPrefix(programCode)} 1 schedule for SY ${normalizedYear} before creating ${levelPrefix(programCode)} 2.`,
+        });
+      }
+
+      if (!Number.isFinite(levelOneDeadline) || now <= levelOneDeadline) {
+        return res.status(409).json({
+          message: `Wait until the ${levelPrefix(programCode)} 1 schedule for SY ${normalizedYear} closes before creating ${levelPrefix(programCode)} 2.`,
+        });
+      }
+    }
+
     const blocking = existing.find((schedule) => now <= new Date(schedule.deadline).getTime());
 
     if (blocking) {
@@ -788,6 +813,8 @@ exports.updateEnrollment = async (req, res) => {
     }
 
     if (
+      programCode === 'ROTC'
+      &&
       String(record.ms_level) === '2'
       && (record.company || record.battalion || record.rotc_company || record.special_unit)
     ) {
@@ -795,75 +822,22 @@ exports.updateEnrollment = async (req, res) => {
     }
 
     if (programCode === 'CWTS') {
-      const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
-      const limit = 60;
-      const [counts] = await db.execute(
-        `SELECT company,COUNT(*) total
-         FROM students s
-         WHERE s.nstp_component='CWTS'
-           AND s.company IS NOT NULL
-           AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status='approved')
-         GROUP BY company`
-      );
-      const map = Object.fromEntries(companies.map((company) => [company, 0]));
-      counts.forEach((row) => {
-        map[row.company] = Number(row.total);
-      });
-
-        const company = companies.find((item) => map[item] < limit);
-      if (!company) {
-        await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [recordId]);
-        return res.status(409).json({
-          message: 'All CWTS companies are full. Enrollment was left pending.',
-        });
-      }
-
-      await db.execute('UPDATE students SET company=? WHERE id=?', [company, record.student_id]);
-      return res.json({
-        message: `Enrollment approved and automatically assigned to ${company} Company.`,
-      });
-    }
-
-    const [[preference]] = await db.execute(
-      'SELECT has_medical_condition,willing_to_be_medics,willing_to_be_military_police,willing_to_take_advance_course FROM students WHERE id=?',
-      [record.student_id]
-    );
-
-    const unit = platoonService.specialUnitForStudent(preference);
-    if (unit) {
-      if (unit !== 'HQ') {
-        const [[count]] = await db.execute(
-          "SELECT COUNT(*) total FROM students s WHERE s.special_unit=? AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status='approved')",
-          [unit]
-        );
-
-        if (Number(count.total || 0) >= 37) {
-          await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [recordId]);
-          return res.status(409).json({
-            message: `${unit} is already full (37/37). Enrollment was left pending.`,
-          });
-        }
-      }
-
       await db.execute(
-        'UPDATE students SET special_unit=?,platoon=?,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL WHERE id=?',
-        [unit, unit, record.student_id]
+        'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
+        [record.student_id]
       );
-
-      return res.json({ message: `Enrollment approved. Cadet assigned to ${unit}.` });
+      return res.json({
+        message: 'Enrollment approved. The student will appear in the Company List after enrollment closes and company assignment is completed.',
+      });
     }
 
     await db.execute(
-      'UPDATE students SET battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL WHERE id=?',
+      'UPDATE students SET battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
       [record.student_id]
     );
 
-    if (Number(preference?.willing_to_take_advance_course || 0) === 1) {
-      return res.json({ message: 'Enrollment approved. Cadet added to the Advance Course list.' });
-    }
-
     return res.json({
-      message: 'Enrollment approved. Cadet is ready for automatic platoon assignment after enrollment closes.',
+      message: 'Enrollment approved. Cadet will appear in the roster after enrollment closes and platoon assignment is completed.',
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -900,36 +874,14 @@ exports.bulkApprove = async (req, res) => {
         }
 
         if (programCode === 'CWTS') {
-          const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
-          const limit = 60;
-          const [counts] = await db.execute(
-            `SELECT s.company,COUNT(DISTINCT s.id) total
-             FROM students s
-             WHERE s.nstp_component='CWTS'
-               AND s.company IS NOT NULL
-               AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status='approved')
-             GROUP BY s.company`
-          );
-          const map = Object.fromEntries(companies.map((company) => [company, 0]));
-          counts.forEach((row) => {
-            map[row.company] = Number(row.total);
-          });
-
-          const company = companies.find((item) => map[item] < limit);
-          if (!company) {
-            failed += 1;
-            messages.push('CWTS companies are full.');
-            continue;
-          }
-
           await db.execute(
             "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
             [id]
           );
-
-          if (String(record.ms_level) !== '2' || !record.company) {
-            await db.execute('UPDATE students SET company=? WHERE id=?', [company, record.student_id]);
-          }
+          await db.execute(
+            'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
+            [record.student_id]
+          );
         } else {
           await db.execute(
             "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
@@ -937,37 +889,10 @@ exports.bulkApprove = async (req, res) => {
           );
 
           if (String(record.ms_level) !== '2') {
-            const [[preference]] = await db.execute(
-              'SELECT has_medical_condition,willing_to_be_medics,willing_to_be_military_police,willing_to_take_advance_course FROM students WHERE id=?',
+            await db.execute(
+              'UPDATE students SET special_unit=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,platoon=NULL WHERE id=?',
               [record.student_id]
             );
-
-            const unit = platoonService.specialUnitForStudent(preference);
-            if (unit) {
-              if (unit !== 'HQ') {
-                const [[count]] = await db.execute(
-                  "SELECT COUNT(*) total FROM students s WHERE s.special_unit=? AND EXISTS(SELECT 1 FROM student_ms_records r WHERE r.student_id=s.id AND r.status='approved')",
-                  [unit]
-                );
-
-                if (Number(count.total || 0) >= 37) {
-                  await db.execute("UPDATE student_ms_records SET status='pending' WHERE id=?", [id]);
-                  failed += 1;
-                  approved -= 1;
-                  continue;
-                }
-              }
-
-              await db.execute(
-                'UPDATE students SET special_unit=?,platoon=?,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL WHERE id=?',
-                [unit, unit, record.student_id]
-              );
-            } else {
-              await db.execute(
-                'UPDATE students SET special_unit=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL WHERE id=?',
-                [record.student_id]
-              );
-            }
           }
         }
 
@@ -1068,7 +993,7 @@ exports.roster = async (req, res) => {
     }
 
     const [schedules] = await db.execute(
-      `SELECT id, program, ms_level, year, open_date, deadline
+      `SELECT id, program, ms_level, year, open_date, deadline, platoons_assigned_at
        FROM enrollment_schedules
        WHERE program=?
        ORDER BY id DESC`,
@@ -1088,7 +1013,7 @@ exports.roster = async (req, res) => {
     const selectedScheduleId = !includeAllCycles && selectedSchedule ? Number(selectedSchedule.id) : null;
     const levelFilter = selectedScheduleId == null ? requestedLevel : '';
     const yearFilter = selectedScheduleId == null ? requestedYear : '';
-    const params = [programCode, programCode, selectedScheduleId, selectedScheduleId, levelFilter, levelFilter, yearFilter, yearFilter];
+    const params = [programCode, programCode, selectedScheduleId, selectedScheduleId, levelFilter, levelFilter, yearFilter, yearFilter, programCode];
 
     const [rows] = await db.execute(
       `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
@@ -1108,6 +1033,7 @@ exports.roster = async (req, res) => {
          AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
          AND (?='' OR smr.ms_level=?)
          AND (?='' OR COALESCE(es.year,'')=?)
+         AND (? NOT IN ('ROTC','CWTS') OR (es.platoons_assigned_at IS NOT NULL AND smr.updated_at<=es.platoons_assigned_at))
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
        ORDER BY (withdrawal_order.approved_at IS NOT NULL),withdrawal_order.approved_at,
                 CASE WHEN withdrawal_order.approved_at IS NOT NULL THEN s.id END,
@@ -1127,12 +1053,6 @@ exports.autoAssign = async (req, res) => {
   try {
     const programCode = program(req);
 
-    if (programCode === 'CWTS') {
-      return res.status(400).json({
-        message: 'CWTS company assignment happens automatically during approval, matching the system.',
-      });
-    }
-
     const msLevel = readLevel(req.body.ms_level || req.query.ms_level || '1');
     const requestedYear = readSchoolYear(req.body.school_year || req.query.school_year || '', { allowBlank: true });
 
@@ -1149,30 +1069,100 @@ exports.autoAssign = async (req, res) => {
     transactionOpen = true;
     const [scheduleRows] = await connection.execute(
       `SELECT * FROM enrollment_schedules
-       WHERE program='ROTC' AND ms_level=?
+       WHERE program=? AND ms_level=?
          AND (?='' OR year=?)
        ORDER BY id DESC LIMIT 1 FOR UPDATE`,
-      [msLevel, requestedYear, requestedYear]
+      [programCode, msLevel, requestedYear, requestedYear]
     );
     const selectedSchedule = scheduleRows[0] || null;
+    const levelName = programCode === 'ROTC' ? 'MS' : 'CWTS';
+    const assignmentName = programCode === 'ROTC' ? 'platoons' : 'companies';
 
     if (selectedSchedule && !(Date.now() > new Date(selectedSchedule.deadline).getTime())) {
       return res.status(400).json({
-        message: `Wait until the MS ${msLevel}${selectedSchedule.year ? ` (${selectedSchedule.year})` : ''} enrollment schedule closes before assigning platoons.`,
+        message: `Wait until the ${levelName} ${msLevel}${selectedSchedule.year ? ` (${selectedSchedule.year})` : ''} enrollment schedule closes before assigning ${assignmentName}.`,
       });
     }
 
     if (!selectedSchedule) {
       return res.status(400).json({
-        message: `No ROTC enrollment schedule found for MS ${msLevel} in school year ${requestedYear}.`,
+        message: `No ${programCode} enrollment schedule found for ${levelName} ${msLevel} in school year ${requestedYear}.`,
       });
     }
 
     if (selectedSchedule.platoons_assigned_at) {
-      return res.status(409).json({ message: 'Platoons have already been assigned for this enrollment schedule. Assignment can only run once.' });
+      return res.status(409).json({
+        message: `${programCode === 'ROTC' ? 'Platoons' : 'Companies'} have already been assigned for this enrollment schedule. Assignment can only run once.`,
+      });
     }
 
     const selectedScheduleId = selectedSchedule ? Number(selectedSchedule.id) : null;
+    const [[reviewState]] = await connection.execute(
+      `SELECT SUM(status='pending') pending
+       FROM student_ms_records
+       WHERE program=? AND CAST(schedule_id AS UNSIGNED)=?`,
+      [programCode, selectedScheduleId]
+    );
+    if (Number(reviewState.pending || 0) > 0) {
+      return res.status(409).json({
+        message: `Review all pending ${programCode} enrollments before assigning ${assignmentName}.`,
+      });
+    }
+
+    if (programCode === 'CWTS') {
+      const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+      const companyCapacity = 60;
+      const totalCapacity = companies.length * companyCapacity;
+      const [students] = await connection.execute(
+        `SELECT s.id,s.last_name,s.first_name,s.middle_name,s.student_id
+         FROM students s
+         JOIN student_ms_records r ON r.student_id=s.id
+         WHERE s.nstp_component='CWTS'
+           AND r.program='CWTS'
+           AND r.ms_level=?
+           AND r.status='approved'
+           AND CAST(r.schedule_id AS UNSIGNED)=?
+           AND r.id=(
+             SELECT MAX(x.id)
+             FROM student_ms_records x
+             WHERE x.student_id=s.id
+               AND x.program='CWTS'
+               AND x.ms_level=r.ms_level
+           )
+         ORDER BY s.last_name,s.first_name,s.middle_name,s.student_id,s.id`,
+        [msLevel, selectedScheduleId]
+      );
+
+      if (students.length > totalCapacity) {
+        return res.status(409).json({
+          message: `CWTS company capacity exceeded. ${students.length}/${totalCapacity} approved students.`,
+        });
+      }
+
+      for (let index = 0; index < students.length; index += 1) {
+        const company = companies[Math.floor(index / companyCapacity)];
+        await connection.execute(
+          `UPDATE students
+           SET company=?,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,
+               special_unit=NULL,platoon=?,updated_at=CURRENT_TIMESTAMP
+           WHERE id=?`,
+          [company, `${company} Company`, students[index].id]
+        );
+      }
+
+      await connection.execute(
+        'UPDATE enrollment_schedules SET platoons_assigned_at=CURRENT_TIMESTAMP WHERE id=?',
+        [selectedScheduleId]
+      );
+      await connection.commit();
+      transactionOpen = false;
+
+      return res.json({
+        message: `CWTS company assignment complete for CWTS ${msLevel} (${selectedSchedule.year}). ${students.length} student(s) assigned alphabetically from Alpha through Foxtrot.`,
+        assigned: students.length,
+      });
+    }
+
     const requestedYearFilter = selectedSchedule ? '' : requestedYear;
     const queryParams = [msLevel, selectedScheduleId, selectedScheduleId, requestedYearFilter, requestedYearFilter, msLevel];
 
@@ -1194,28 +1184,65 @@ exports.autoAssign = async (req, res) => {
     const platoons = 4;
     const slot = 37;
 
-    const candidates = rows.filter((student) => (
-      !student.rotc_company
-      && !student.special_unit
-      && !student.has_medical_condition
-      && !student.willing_to_take_advance_course
-      && !student.willing_to_be_medics
-      && !student.willing_to_be_military_police
+    const orderedRows = [...rows].sort((a, b) => {
+      const last = String(a.last_name || '').localeCompare(String(b.last_name || ''), undefined, { sensitivity: 'base' });
+      if (last) return last;
+      const first = String(a.first_name || '').localeCompare(String(b.first_name || ''), undefined, { sensitivity: 'base' });
+      if (first) return first;
+      const middle = String(a.middle_name || '').localeCompare(String(b.middle_name || ''), undefined, { sensitivity: 'base' });
+      return middle || Number(a.id) - Number(b.id);
+    });
+    const specialAssignments = orderedRows
+      .map((student) => ({ student, unit: platoonService.specialUnitForStudent(student) }))
+      .filter((entry) => entry.unit);
+    const medicsTotal = specialAssignments.filter((entry) => entry.unit === 'Medics').length;
+    const militaryPoliceTotal = specialAssignments.filter((entry) => entry.unit === 'MP').length;
+
+    if (medicsTotal > 37 || militaryPoliceTotal > 37) {
+      return res.status(409).json({
+        message: `Special Platoon capacity exceeded. Medics: ${medicsTotal}/37; Military Police: ${militaryPoliceTotal}/37.`,
+      });
+    }
+
+    const specialIds = new Set(specialAssignments.map((entry) => Number(entry.student.id)));
+    const advanceCadets = orderedRows.filter((student) => (
+      !specialIds.has(Number(student.id))
+      && Number(student.willing_to_take_advance_course || 0) === 1
     ));
+    const advanceIds = new Set(advanceCadets.map((student) => Number(student.id)));
+    const candidates = orderedRows.filter((student) => (
+      !specialIds.has(Number(student.id)) && !advanceIds.has(Number(student.id))
+    ));
+    const maleCandidates = candidates.filter((student) => student.sex === 'Male');
+    const femaleCandidates = candidates.filter((student) => student.sex === 'Female');
+    const battalionCapacity = maleCompanies.length * platoons * slot;
 
-    const assignedExisting = rows.filter((student) => student.rotc_company && !student.special_unit);
+    if (maleCandidates.length > battalionCapacity || femaleCandidates.length > battalionCapacity) {
+      return res.status(409).json({
+        message: `Regular platoon capacity exceeded. Battalion 1: ${maleCandidates.length}/${battalionCapacity}; Battalion 2: ${femaleCandidates.length}/${battalionCapacity}.`,
+      });
+    }
 
-    function countsFor(companies, sex) {
+    for (const { student, unit } of specialAssignments) {
+      await connection.execute(
+        'UPDATE students SET special_unit=?,platoon=?,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?',
+        [unit, unit, student.id]
+      );
+    }
+
+    for (const student of advanceCadets) {
+      await connection.execute(
+        "UPDATE students SET special_unit=NULL,platoon='Advance Course',battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        [student.id]
+      );
+    }
+
+    function countsFor(companies) {
       const counts = {};
       for (const company of companies) {
         for (let platoon = 1; platoon <= platoons; platoon += 1) {
           counts[`${company}|${platoon}`] = 0;
         }
-      }
-
-      for (const student of assignedExisting.filter((row) => row.sex === sex)) {
-        const key = `${student.rotc_company}|${student.rotc_platoon}`;
-        if (key in counts) counts[key] += 1;
       }
 
       return counts;
@@ -1224,18 +1251,7 @@ exports.autoAssign = async (req, res) => {
     async function assignGroup(list, battalion, companies, counts) {
       let assigned = 0;
 
-      for (const student of [...list].sort((a, b) => {
-        const last = String(a.last_name || '').localeCompare(String(b.last_name || ''), undefined, { sensitivity: 'base' });
-        if (last) return last;
-
-        const first = String(a.first_name || '').localeCompare(String(b.first_name || ''), undefined, { sensitivity: 'base' });
-        if (first) return first;
-
-        const middle = String(a.middle_name || '').localeCompare(String(b.middle_name || ''), undefined, { sensitivity: 'base' });
-        if (middle) return middle;
-
-        return Number(a.id) - Number(b.id);
-      })) {
+      for (const student of list) {
         let choice = null;
 
         outer:
@@ -1252,7 +1268,7 @@ exports.autoAssign = async (req, res) => {
         if (!choice) break;
 
         await connection.execute(
-          'UPDATE students SET battalion=?,rotc_company=?,rotc_platoon=?,platoon=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',
+          'UPDATE students SET battalion=?,rotc_company=?,rotc_platoon=?,platoon=?,special_unit=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?',
           [battalion, choice.company, choice.platoon, `${choice.company} - Platoon ${choice.platoon}`, student.id]
         );
 
@@ -1263,19 +1279,17 @@ exports.autoAssign = async (req, res) => {
       return assigned;
     }
 
-    const males = candidates.filter((student) => student.sex === 'Male');
-    const females = candidates.filter((student) => student.sex === 'Female');
     const battalionOneAssigned = await assignGroup(
-      males,
+      maleCandidates,
       1,
       maleCompanies,
-      countsFor(maleCompanies, 'Male')
+      countsFor(maleCompanies)
     );
     const battalionTwoAssigned = await assignGroup(
-      females,
+      femaleCandidates,
       2,
       femaleCompanies,
-      countsFor(femaleCompanies, 'Female')
+      countsFor(femaleCompanies)
     );
 
     await connection.execute('UPDATE enrollment_schedules SET platoons_assigned_at=CURRENT_TIMESTAMP WHERE id=?', [selectedScheduleId]);
@@ -1283,9 +1297,11 @@ exports.autoAssign = async (req, res) => {
     transactionOpen = false;
 
     return res.json({
-      message: `Automatic platoon assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${battalionOneAssigned + battalionTwoAssigned} cadet(s) assigned.`,
-      assigned: battalionOneAssigned + battalionTwoAssigned,
-      alreadyAssigned: rows.length - candidates.length,
+      message: `ROTC assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${rows.length} cadet(s) assigned across battalions, Advance Course, and Special Platoon.`,
+      assigned: rows.length,
+      battalionAssigned: battalionOneAssigned + battalionTwoAssigned,
+      advanceAssigned: advanceCadets.length,
+      specialAssigned: specialAssignments.length,
     });
   } catch (error) {
     console.error(error);

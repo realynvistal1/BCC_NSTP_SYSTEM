@@ -97,6 +97,7 @@ async function main() {
       body: {
         identifier: "' OR 1=1 --",
         password: "nottherightpassword",
+        portal: 'rotc-admin',
       },
       headers: {},
       secure: false,

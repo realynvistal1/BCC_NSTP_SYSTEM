@@ -511,6 +511,15 @@
 .warning-text {
   color: #d97706
 }
+.enrollment-component-field #rotcOnlyHint {
+  margin: 4px 0 0;
+  padding: 9px 11px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #b45309;
+  line-height: 1.4;
+}
 .enrollment-section-label {
   font-size: 12px;
   font-weight: 800;

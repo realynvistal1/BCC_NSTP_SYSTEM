@@ -14,7 +14,7 @@
   const clearError=()=>msg.classList.add('hidden');
   const program=()=>f.nstp_component.value;
   const course=()=>f.course.value;
-  const isMedicalNA=()=>program()==='CWTS'||course()==='BS Criminology';
+  const isMedicalNA=()=>course()==='BS Criminology';
   const checkFile=(input,label)=>{
     const file=input?.files?.[0];
     if(file&&file.size>MAX_FILE){
@@ -53,7 +53,7 @@
     }  else{
       const chosen=f.querySelector('input[name="has_medical_condition_choice"]:checked');
       $('#uploadArea')?.classList.toggle('hidden',!chosen);
-      if(chosen)$('#uploadIntro').textContent='Upload your Medical Certificate and X-ray';
+      if(chosen)$('#uploadIntro').textContent=cwts?'Upload your Medical Certificate':'Upload your Medical Certificate and X-ray';
     }
     $('#xrayGroup')?.classList.toggle('hidden',!rotc);
     if(f.xray_file_input)f.xray_file_input.required=rotc;
@@ -114,9 +114,36 @@
   if(crim)setProgram('ROTC');
   updateConditionalFields();
   });
+  const titleCaseFields=[
+    'last_name','first_name','middle_name','religion','place_of_birth',
+    'temporary_barangay','temporary_municipality','temporary_province',
+    'permanent_barangay','permanent_municipality','permanent_province',
+    'father_name','father_occupation','mother_name','mother_occupation',
+    'emergency_contact_name','emergency_contact_address','emergency_contact_relationship',
+    'complexion','medical_condition'
+  ];
+  const toTitleCase=value=>value
+    .toLocaleLowerCase('en-PH')
+    .replace(/(^|[\s'-])(\p{L})/gu,(_match,boundary,letter)=>`${boundary}${letter.toLocaleUpperCase('en-PH')}`);
+  titleCaseFields.forEach(name=>{
+    const input=f.elements[name];
+    if(!input)return;
+    input.setAttribute('autocapitalize','words');
+    input.addEventListener('input',()=>{
+      const start=input.selectionStart;
+      const end=input.selectionEnd;
+      const formatted=toTitleCase(input.value);
+      if(formatted===input.value)return;
+      input.value=formatted;
+      if(start!==null&&end!==null)input.setSelectionRange(start,end);
+    });
+  });
+  if(f.suffix){
+    f.suffix.setAttribute('autocapitalize','characters');
+    f.suffix.addEventListener('input',()=>{f.suffix.value=f.suffix.value.toLocaleUpperCase('en-PH')});
+  }
   f.student_id.addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,10);e.target.value=d.length>6?`${d.slice(0,6)}-${d.slice(6)}`:d});
   [f.contact_number,f.emergency_contact_contact_number].forEach(input=>input.addEventListener('input',e=>{let d=e.target.value.replace(/\D/g,'').slice(0,11);if(d.length>=2&&!d.startsWith('09'))d='09'+d.slice(2);e.target.value=d}));
-  f.username.addEventListener('input',e=>e.target.value=e.target.value.toUpperCase());
   const addressFields=['barangay','municipality','province'];
   const syncPermanentAddress=()=>{
     if(!$('#sameAsTemporary').checked)return;
@@ -147,7 +174,7 @@
   $('#medicalConditionName').classList.toggle('hidden',!yes);
   if(!yes)f.medical_condition.value='';
   $('#uploadArea').classList.remove('hidden');
-  $('#uploadIntro').textContent='Upload your Medical Certificate and X-ray';
+  $('#uploadIntro').textContent=program()==='CWTS'?'Upload your Medical Certificate':'Upload your Medical Certificate and X-ray';
   }));
   f.medical_certificate_file.addEventListener('change',()=>{try{checkFile(f.medical_certificate_file,$('#medicalCertificateLabel'));clearError()}catch(e){showError(e.message)}});
   f.xray_file_input.addEventListener('change',()=>{try{checkFile(f.xray_file_input,$('#xrayLabel'));clearError()}catch(e){showError(e.message)}});

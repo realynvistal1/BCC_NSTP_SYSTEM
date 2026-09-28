@@ -323,11 +323,11 @@ async function findAdmin(identifier, portal) {
 
 async function findStudent(identifier) {
   const [rows] = await db.execute(
-    `SELECT id, email, username, password, role, nstp_component
+    `SELECT id, email, password, role, nstp_component
      FROM students
-     WHERE (email = ? OR username = ?) AND role='student'
+     WHERE email = ? AND role='student'
      LIMIT 1`,
-    [identifier, identifier]
+    [identifier]
   );
 
   return rows[0] || null;
@@ -356,11 +356,17 @@ exports.login = async (req, res) => {
     }
 
     if (!loginValue || !plainPassword) {
-      return res.status(400).json({ message: 'Email/username and password are required.' });
+      return res.status(400).json({
+        message: requestedPortal === 'student'
+          ? 'Email and password are required.'
+          : 'Email/username and password are required.',
+      });
     }
 
     if (loginValue.length > MAX_LOGIN_IDENTIFIER_LENGTH) {
-      return res.status(400).json({ message: 'Email/username is too long.' });
+      return res.status(400).json({
+        message: requestedPortal === 'student' ? 'Email is too long.' : 'Email/username is too long.',
+      });
     }
 
     const loginKey = loginValue.toLowerCase();

@@ -15,7 +15,8 @@
     "db:seed:students": "node database/seed-students.js",
     "verify:sqli": "node scripts/verify-sqli-hardening.js",
     "verify:password-otp": "node scripts/verify-password-change-otp.js",
-    "verify:email-change": "node scripts/verify-email-change.js"
+    "verify:email-change": "node scripts/verify-email-change.js",
+    "verify:schedule-progression": "node scripts/verify-schedule-progression.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

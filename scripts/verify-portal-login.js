@@ -10,12 +10,14 @@ async function main() {
   const captcha = require('../services/captchaService');
   const originalCaptcha = captcha.verifyToken;
   try {
-    for (const table of ['admins', 'students']) {
-      await connection.execute(`CREATE TEMPORARY TABLE ${table} (
-        id INT PRIMARY KEY, email VARCHAR(255), username VARCHAR(255), password VARCHAR(255),
-        role VARCHAR(20), program VARCHAR(20), nstp_component VARCHAR(20)
-      ) ENGINE=InnoDB`);
-    }
+    await connection.execute(`CREATE TEMPORARY TABLE admins (
+      id INT PRIMARY KEY, email VARCHAR(255), username VARCHAR(255), password VARCHAR(255),
+      role VARCHAR(20), program VARCHAR(20), nstp_component VARCHAR(20)
+    ) ENGINE=InnoDB`);
+    await connection.execute(`CREATE TEMPORARY TABLE students (
+      id INT PRIMARY KEY, email VARCHAR(255), password VARCHAR(255),
+      role VARCHAR(20), program VARCHAR(20), nstp_component VARCHAR(20)
+    ) ENGINE=InnoDB`);
     const password = 'PortalVerification123!';
     const hash = await authService.hashPassword(password);
     const accounts = [
@@ -26,8 +28,13 @@ async function main() {
     ];
     for (const account of accounts) {
       account.email = `test${account.id}@example.test`;
-      await connection.execute(`INSERT INTO ${account.table}(id,email,username,password,role,program,nstp_component) VALUES(?,?,?,?,?,?,?)`,
-        [account.id, account.email, `test${account.id}`, hash, account.role, account.program, account.program]);
+      if (account.table === 'students') {
+        await connection.execute('INSERT INTO students(id,email,password,role,program,nstp_component) VALUES(?,?,?,?,?,?)',
+          [account.id, account.email, hash, account.role, account.program, account.program]);
+      } else {
+        await connection.execute('INSERT INTO admins(id,email,username,password,role,program,nstp_component) VALUES(?,?,?,?,?,?,?)',
+          [account.id, account.email, `test${account.id}`, hash, account.role, account.program, account.program]);
+      }
     }
     db.execute = (sql, params) => connection.execute(sql.replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE IF NOT EXISTS'), params);
     captcha.verifyToken = async () => ({ ok: true });

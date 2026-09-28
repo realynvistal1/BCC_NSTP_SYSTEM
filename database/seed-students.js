@@ -91,7 +91,6 @@ function buildStudent(component, index) {
   const course = at(COURSES, index * 7);
   const studentNo = makeStudentId(component, index + 1);
   const email = `${component.toLowerCase()}.ms1.seed.${String(index + 1).padStart(4, "0")}@bcc.test`;
-  const username = `${component.toLowerCase()}_ms1_seed_${String(index + 1).padStart(4, "0")}`;
 
   const hasMedicalCondition = isRotc && index % 25 === 0 ? 1 : 0;
   const willingToBeMedics = isRotc && !hasMedicalCondition && index % 18 === 0 ? 1 : 0;
@@ -137,7 +136,6 @@ function buildStudent(component, index) {
     medicalCertificate: `/uploads/seed/medical-${component.toLowerCase()}-${index + 1}.pdf`,
     xrayFile: isRotc ? `/uploads/seed/xray-${index + 1}.pdf` : null,
     email,
-    username,
     photo: `/uploads/seed/photo-${index + 1}.jpg`,
     corFile: `/uploads/seed/cor-${index + 1}.pdf`,
   };
@@ -163,8 +161,8 @@ async function ensureMs1Schedule(db, program) {
 
 async function upsertStudent(db, hash, student, scheduleId) {
   const [existingRows] = await db.execute(
-    "SELECT id FROM students WHERE email=? OR username=? LIMIT 1",
-    [student.email, student.username]
+    "SELECT id FROM students WHERE email=? LIMIT 1",
+    [student.email]
   );
 
   let studentPk;
@@ -179,7 +177,7 @@ async function upsertStudent(db, hash, student, scheduleId) {
         emergency_contact_relationship=?,emergency_contact_contact_number=?,willing_to_take_advance_course=?,willing_to_be_medics=?,
         willing_to_be_military_police=?,course=?,year_level=?,nstp_component=?,height=?,weight=?,blood_type=?,complexion=?,
         has_medical_condition=?,medical_condition=?,medical_certificate=?,xray_file=?,company=NULL,battalion=NULL,rotc_company=NULL,
-        rotc_platoon=NULL,special_unit=NULL,platoon=NULL,email=?,username=?,password=?,photo=?,cor_file=?,role='student'
+        rotc_platoon=NULL,special_unit=NULL,platoon=NULL,email=?,password=?,photo=?,cor_file=?,role='student'
        WHERE id=?`,
       [
         student.studentId, student.lastName, student.firstName, student.middleName, student.religion, student.birthdate, student.sex,
@@ -189,7 +187,7 @@ async function upsertStudent(db, hash, student, scheduleId) {
         student.emergencyRelationship, student.emergencyContactNumber, student.willingToTakeAdvanceCourse, student.willingToBeMedics,
         student.willingToBeMilitaryPolice, student.course, student.yearLevel, student.component, student.height, student.weight,
         student.bloodType, student.complexion, student.hasMedicalCondition, student.medicalCondition, student.medicalCertificate,
-        student.xrayFile, student.email, student.username, hash,
+        student.xrayFile, student.email, hash,
         student.photo, student.corFile, studentPk,
       ]
     );
@@ -201,8 +199,8 @@ async function upsertStudent(db, hash, student, scheduleId) {
         father_name,father_occupation,mother_name,mother_occupation,emergency_contact_name,emergency_contact_address,
         emergency_contact_relationship,emergency_contact_contact_number,willing_to_take_advance_course,willing_to_be_medics,
         willing_to_be_military_police,course,year_level,nstp_component,height,weight,blood_type,complexion,has_medical_condition,
-        medical_condition,medical_certificate,xray_file,email,username,password,photo,cor_file,role
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'student')`,
+        medical_condition,medical_certificate,xray_file,email,password,photo,cor_file,role
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'student')`,
       [
         student.studentId, student.lastName, student.firstName, student.middleName, student.religion, student.birthdate, student.sex,
         student.contactNumber, student.placeOfBirth, student.temporaryBarangay, student.temporaryMunicipality, student.temporaryProvince,
@@ -211,7 +209,7 @@ async function upsertStudent(db, hash, student, scheduleId) {
         student.emergencyRelationship, student.emergencyContactNumber, student.willingToTakeAdvanceCourse, student.willingToBeMedics,
         student.willingToBeMilitaryPolice, student.course, student.yearLevel, student.component, student.height, student.weight,
         student.bloodType, student.complexion, student.hasMedicalCondition, student.medicalCondition, student.medicalCertificate,
-        student.xrayFile, student.email, student.username, hash, student.photo, student.corFile,
+        student.xrayFile, student.email, hash, student.photo, student.corFile,
       ]
     );
     studentPk = inserted.insertId;

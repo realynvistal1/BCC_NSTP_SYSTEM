@@ -78,7 +78,6 @@ CREATE TABLE IF NOT EXISTS `students` (
   `xray_file` LONGTEXT DEFAULT NULL,
   -- Account Info
   `email` VARCHAR(255) NOT NULL,
-  `username` VARCHAR(100) NOT NULL,
   `password` VARCHAR(255) NOT NULL,
   `photo` LONGTEXT DEFAULT NULL,
   `cor_file` LONGTEXT DEFAULT NULL,
@@ -101,7 +100,6 @@ CREATE TABLE IF NOT EXISTS `students` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_email` (`email`),
-  UNIQUE KEY `uk_username` (`username`),
   KEY `idx_student_id` (`student_id`),
   KEY `idx_nstp_component` (`nstp_component`),
   KEY `idx_company` (`company`),

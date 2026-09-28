@@ -48,6 +48,21 @@
 .student-record-head {
   flex: 0 0 auto;
 }
+.student-record-modal-shell .modal-eyebrow {
+  font-size: 11px;
+}
+.student-record-modal-shell .student-record-head h3 {
+  font-size: 20px;
+}
+.student-record-modal-shell .student-record-head p {
+  font-size: 13px;
+}
+.student-record-modal-shell .detail-status-bar small {
+  font-size: 10px;
+}
+.student-record-modal-shell .detail-status-bar strong {
+  font-size: 12px;
+}
 .detail-avatar-button {
   border: 0;
   padding: 0;
@@ -74,7 +89,7 @@
 }
 .student-detail-section-head h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: .04em;
   text-transform: uppercase;
   color: #475569;
@@ -87,6 +102,13 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px 22px;
+}
+.student-record-modal-shell .detail-field small {
+  font-size: 10px;
+}
+.student-record-modal-shell .detail-field strong {
+  font-size: 12px;
+  line-height: 1.45;
 }
 .document-grid {
   display: grid;
@@ -239,6 +261,10 @@ button.document-thumb {
   margin-top: 6px;
   font-size: 11px;
   color: #94a3b8;
+}
+.field-help.error-text {
+  color: #dc2626;
+  font-weight: 600;
 }
 @media (max-width: 760px) {
   .student-detail-grid, .document-grid {
