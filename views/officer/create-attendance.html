@@ -77,16 +77,16 @@
           <div class="attendance-step locked" id="typeStep">
             <div class="attendance-step-head"><span class="step-number">3</span><div><h2>Attendance Type</h2><p>IN must be completed before OUT becomes available.</p></div></div>
             <div class="attendance-type-grid">
-              <button class="attendance-type-btn" id="timeInBtn" type="button"><strong>Time In</strong><span>Student arrival attendance</span></button>
-              <button class="attendance-type-btn" id="timeOutBtn" type="button"><strong>Time Out</strong><span>Student dismissal attendance</span></button>
+              <button class="attendance-type-btn" id="timeInBtn" type="button" disabled><strong>Time In</strong><span>Student arrival attendance</span></button>
+              <button class="attendance-type-btn" id="timeOutBtn" type="button" disabled><strong>Time Out</strong><span>Student dismissal attendance</span></button>
             </div>
           </div>
 
           <div class="attendance-step locked" id="scheduleStep">
             <div class="attendance-step-head"><span class="step-number">4</span><div><h2>Set Schedule</h2><p>The first period is Present; the next 15 minutes are Late.</p></div></div>
             <div class="attendance-form-grid">
-              <label class="form-field"><span>Opening Date & Time</span><input id="attendanceOpenDate" type="datetime-local"></label>
-              <label class="form-field"><span>On-time Closing Time</span><input id="attendanceCloseDate" type="datetime-local"></label>
+              <label class="form-field"><span>Opening Date & Time</span><input id="attendanceOpenDate" type="datetime-local" disabled></label>
+              <label class="form-field"><span>On-time Closing Time</span><input id="attendanceCloseDate" type="datetime-local" disabled></label>
             </div>
             <div class="late-rule-box"><strong>15-minute Late Window</strong><span>After the closing time, students can still mark for 15 minutes and will automatically be recorded as Late. After that, unmarked eligible students become Absent.</span></div>
           </div>
@@ -94,7 +94,7 @@
           <div class="attendance-step locked" id="locationStep">
             <div class="attendance-step-head"><span class="step-number">5</span><div><h2>Attendance Location</h2><p>Move the attendance point on the map. The allowed geolocation radius stays fixed at 100 meters.</p></div></div>
             <div class="location-action-row">
-              <button class="btn primary" id="captureDirectorLocation" type="button">Use My Current Location</button>
+              <button class="btn primary" id="captureDirectorLocation" type="button" disabled>Use My Current Location</button>
               <span id="locationStatus" class="location-status">No location captured yet.</span>
             </div>
             <div id="attendanceMap" class="attendance-map"></div>
@@ -128,6 +128,19 @@
 
       <div class="footer-note">Buenavista Community College • ROTC &amp; CWTS NSTP Management System</div>
     </main>
+  </div>
+
+  <div class="app-dialog hidden" id="attendanceSuccessModal" role="dialog" aria-modal="true" aria-labelledby="attendanceSuccessTitle">
+    <div class="app-dialog-backdrop" id="attendanceSuccessBackdrop"></div>
+    <div class="app-dialog-card attendance-success-card">
+      <div class="attendance-success-icon" aria-hidden="true">&#10003;</div>
+      <div class="attendance-success-copy">
+        <span>Attendance Saved</span>
+        <h2 id="attendanceSuccessTitle">Attendance created successfully</h2>
+        <p id="attendanceSuccessMessage">The attendance session has been created successfully.</p>
+      </div>
+      <button class="btn primary" id="closeAttendanceSuccess" type="button">Done</button>
+    </div>
   </div>
 
   <div id="toast" class="hidden"></div>
