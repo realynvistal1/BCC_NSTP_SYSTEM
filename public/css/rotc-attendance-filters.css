@@ -1,4 +1,4 @@
-body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card {
+body[data-page="attendance-summary"] #attendanceSummaryStats .attendance-stat-card {
   --stat-background: #dceafb;
   --stat-border: #376da8;
   --stat-text: #24476c;
@@ -11,7 +11,7 @@ body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card {
   box-shadow: 0 5px 14px rgba(30, 64, 100, .07);
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card span {
+body[data-page="attendance-summary"] #attendanceSummaryStats .attendance-stat-card span {
   color: var(--stat-text);
   font-size: 12px;
   font-weight: 800;
@@ -19,7 +19,7 @@ body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card span {
   line-height: 1.4;
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card strong {
+body[data-page="attendance-summary"] #attendanceSummaryStats .attendance-stat-card strong {
   display: block;
   margin-top: 7px;
   color: var(--stat-text);
@@ -29,36 +29,36 @@ body[data-role="rotc"] #attendanceSummaryStats .attendance-stat-card strong {
   line-height: 1.15;
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .present {
+body[data-page="attendance-summary"] #attendanceSummaryStats .present {
   --stat-background: #d5f0e2;
   --stat-border: #4b9772;
   --stat-text: #155338;
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .late {
+body[data-page="attendance-summary"] #attendanceSummaryStats .late {
   --stat-background: #ffebbf;
   --stat-border: #be8a29;
   --stat-text: #754b08;
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .absent {
+body[data-page="attendance-summary"] #attendanceSummaryStats .absent {
   --stat-background: #fbdce1;
   --stat-border: #bd6374;
   --stat-text: #8b263b;
 }
 
-body[data-role="rotc"] #attendanceSummaryStats .unmarked {
+body[data-page="attendance-summary"] #attendanceSummaryStats .unmarked {
   --stat-background: #e2e5ed;
   --stat-border: #8792a8;
   --stat-text: #3d4960;
 }
 
-body[data-role="rotc"] .attendance-summary-head {
+body[data-page="attendance-summary"] .attendance-summary-head {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "filters";
 }
 
-body[data-role="rotc"] .summary-status-export {
+body[data-page="attendance-summary"] .summary-status-export {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -66,51 +66,68 @@ body[data-role="rotc"] .summary-status-export {
   gap: 10px;
 }
 
-body[data-role="rotc"] .summary-status-export select {
+body[data-page="attendance-summary"] .summary-status-export select {
   width: min(100%, 340px);
 }
 
-body[data-role="rotc"] .summary-status-export button {
+body[data-page="attendance-summary"] .summary-status-export button {
   min-height: 38px;
 }
 
-body[data-role="rotc"] #attendanceSummaryTitle {
+body[data-role="cwts"][data-page="attendance-summary"] .summary-actions {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, .8fr) auto;
+  align-items: center;
+}
+
+body[data-role="cwts"][data-page="attendance-summary"] .summary-status-export {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+body[data-role="cwts"][data-page="attendance-summary"] .summary-status-export select {
+  width: 100%;
+}
+
+body[data-page="attendance-summary"] #attendanceSummaryTitle {
   color: #204e7b;
   font-size: 20px;
   font-weight: 800;
 }
 
-body[data-role="rotc"] #attendanceSummaryMeta {
+body[data-page="attendance-summary"] #attendanceSummaryMeta {
   color: #48617b;
   font-size: 12px;
   font-weight: 600;
 }
 
-body[data-role="rotc"] .summary-actions select {
+body[data-page="attendance-summary"] .summary-actions select {
   color: #24476c;
   font-weight: 700;
   border-color: #b3c9e0;
   background-color: #f0f6fc;
 }
 
-body[data-role="rotc"] #attendanceSummaryContent th {
+body[data-page="attendance-summary"] #attendanceSummaryContent th {
   color: #294e75;
   background: #e7f0fa;
   font-weight: 800;
 }
 
-body[data-role="rotc"] #attendanceSummaryContent td {
+body[data-page="attendance-summary"] #attendanceSummaryContent td {
   color: #29425e;
   font-weight: 600;
 }
 
-body[data-role="rotc"] #attendanceSummaryContent td strong {
+body[data-page="attendance-summary"] #attendanceSummaryContent td strong {
   color: #173f69;
   font-size: 14px;
   font-weight: 800;
 }
 
-body[data-role="rotc"] #attendanceSummaryContent td small {
+body[data-page="attendance-summary"] #attendanceSummaryContent td small {
   display: block;
   margin-top: 4px;
   color: #52677e;
@@ -192,6 +209,21 @@ body[data-role="rotc"] #attendanceSummaryContent td small {
 
   .rotc-summary-filters .attendance-summary-toolbar select {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 700px) {
+  body[data-role="cwts"][data-page="attendance-summary"] .summary-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-role="cwts"][data-page="attendance-summary"] .summary-status-export {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-role="cwts"][data-page="attendance-summary"] .summary-status-export button {
+    width: 100%;
   }
 }
 
