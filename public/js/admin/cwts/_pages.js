@@ -85,7 +85,7 @@
   }
   if(page==='grades'){
     const rows=await API.get(`/api/admin/${p}/grades`);
-    c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Encode Grades</h2><p class="panel-subtitle">Enter midterm and final grades using the 1.00â€“5.00 college grading scale. A final grade from 1.00 to 3.00 is Passed.</p></div></div>${table(['Student','MS Level','Midterm','Final','Average','Status','Action'],rows.map(x=>`<tr><td><strong>${
+    c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Encode Grades</h2><p class="panel-subtitle">Enter midterm and final grades using the 1.00â€“5.00 college grading scale. A final grade from 1.00 to 3.00 is Passed.</p></div></div>${table(['Student','NSTP Level','Midterm','Final','Average','Status','Action'],rows.map(x=>`<tr><td><strong>${
       esc(x.student_no)
     }
     </strong><br>${
@@ -94,10 +94,10 @@
     </td><td><select id="gms${x.student_id}"><option value="1" ${
       String(x.ms_level)==='1'?'selected':''
     }
-    >MS 1</option><option value="2" ${
+    >NSTP 1</option><option value="2" ${
       String(x.ms_level)==='2'?'selected':''
     }
-    >MS 2</option></select></td><td><input id="m${x.student_id}" type="number" min="1" max="5" step="0.01" value="${x.midterm??''}"></td><td><input id="f${x.student_id}" type="number" min="1" max="5" step="0.01" value="${x.final_term??''}"></td><td>${
+    >NSTP 2</option></select></td><td><input id="m${x.student_id}" type="number" min="1" max="5" step="0.01" value="${x.midterm??''}"></td><td><input id="f${x.student_id}" type="number" min="1" max="5" step="0.01" value="${x.final_term??''}"></td><td>${
       x.grade??'-'
     }
     </td><td>${
