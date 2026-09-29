@@ -785,6 +785,32 @@ body[data-portal-theme="officer"] .progress-meta span {
 .schedule-modal-card {
   width: min(650px, 96vw)
 }
+#scheduleModal .schedule-modal-card {
+  width: min(860px, calc(100vw - 36px));
+  max-width: 860px;
+  border-radius: 24px
+}
+#scheduleModal .app-dialog-head {
+  padding: 26px 28px 22px
+}
+#scheduleModal .modal-eyebrow {
+  font-size: 11px
+}
+#scheduleModal .app-dialog-head h3 {
+  margin: 5px 0 6px;
+  font-size: 23px;
+  line-height: 1.25
+}
+#scheduleModal .app-dialog-head p {
+  font-size: 13px;
+  line-height: 1.55
+}
+#scheduleModal .modal-close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  font-size: 22px
+}
 .app-dialog-head {
   display: flex;
   align-items: flex-start;
@@ -825,6 +851,48 @@ body[data-portal-theme="officer"] .progress-meta span {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   padding: 20px 22px
+}
+#scheduleModal .schedule-form-old {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 20px;
+  padding: 24px 28px 28px
+}
+#scheduleModal .schedule-form-old .field {
+  min-width: 0;
+  align-self: start;
+  align-content: start;
+  gap: 0
+}
+#scheduleModal .schedule-form-old .field label {
+  margin-bottom: 8px;
+  font-size: 12px
+}
+#scheduleModal .schedule-form-old input,
+#scheduleModal .schedule-form-old select {
+  min-height: 50px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  font-size: 14px
+}
+#scheduleModal .field-help {
+  display: block;
+  margin-top: 8px;
+  color: #7c8da5;
+  font-size: 12px;
+  line-height: 1.45
+}
+#scheduleModal .time-parts {
+  grid-template-columns: minmax(0, 1fr)
+}
+#scheduleModal .app-dialog-actions {
+  gap: 10px;
+  padding-top: 8px
+}
+#scheduleModal .app-dialog-actions .btn {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 13px
 }
 .schedule-form-old .field label, .reject-box label {
   display: block;
@@ -1304,6 +1372,18 @@ body[data-portal-theme="officer"] .progress-meta span {
   }
   .schedule-form-old {
     grid-template-columns: 1fr
+  }
+  #scheduleModal .app-dialog-head {
+    padding: 20px 18px
+  }
+  #scheduleModal .schedule-form-old {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px 18px 22px
+  }
+  #scheduleModal .schedule-form-old input,
+  #scheduleModal .schedule-form-old select {
+    font-size: 16px
   }
   .detail-grid {
     grid-template-columns: 1fr
