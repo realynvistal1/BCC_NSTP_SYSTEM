@@ -79,14 +79,14 @@ async function adminPage(_role, page, content) {
           </div>
         </div>
         ${table(
-          ['Student', 'MS Level', 'Midterm', 'Final', 'Average', 'Status', 'Action'],
+          ['Student', 'NSTP Level', 'Midterm', 'Final', 'Average', 'Status', 'Action'],
           rows.map((row) => `
             <tr>
               <td><strong>${esc(row.student_no)}</strong><br>${esc(`${row.last_name}, ${row.first_name}`)}</td>
               <td>
                 <select id="gms${row.student_id}">
-                  <option value="1" ${String(row.ms_level) === '1' ? 'selected' : ''}>MS 1</option>
-                  <option value="2" ${String(row.ms_level) === '2' ? 'selected' : ''}>MS 2</option>
+                  <option value="1" ${String(row.ms_level) === '1' ? 'selected' : ''}>NSTP 1</option>
+                  <option value="2" ${String(row.ms_level) === '2' ? 'selected' : ''}>NSTP 2</option>
                 </select>
               </td>
               <td><input id="m${row.student_id}" type="number" min="1" max="5" step="0.01" value="${row.midterm ?? ''}"></td>
