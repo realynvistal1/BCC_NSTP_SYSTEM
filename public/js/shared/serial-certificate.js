@@ -465,8 +465,8 @@ async function renderAdminSerial(content, program) {
             </select></label>
           <label class="serial-filter"><select id="serialLevel">
               <option value="">All Levels</option>
-              <option value="1">${program === 'cwts' ? 'CWTS' : 'MS'} 1</option>
-              <option value="2">${program === 'cwts' ? 'CWTS' : 'MS'} 2</option>
+              <option value="1">NSTP 1</option>
+              <option value="2">NSTP 2</option>
             </select></label>
           <label class="serial-filter"><select id="serialSY">
               <option value="">All School Years</option>
@@ -493,7 +493,16 @@ async function renderAdminSerial(content, program) {
                 </select></label>`}
         </div>
         ${table(
-          ['Student', 'Course / Year', 'Assignment', 'MS 1 Grade', 'MS 2 Grade', 'Eligibility', 'Serial Number', 'Date Assigned'],
+          [
+            'Student',
+            'Course / Year',
+            'Assignment',
+            'NSTP 1 Grade',
+            'NSTP 2 Grade',
+            'Eligibility',
+            'Serial Number',
+            'Date Assigned',
+          ],
           list.map((row) => `
             <tr>
               <td class="serial-student-cell"><strong>${esc(row.student_no)}</strong><br>${esc(`${row.last_name}, ${row.first_name}`)}</td>
