@@ -30,6 +30,7 @@
 html {
   scroll-behavior: smooth
 }
+
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -38,25 +39,29 @@ body {
   min-height: 100vh
 }
 
-body[data-portal-theme="student"] {
+body[data-portal-theme="student"],
+body[data-role="student"] {
   background:
     radial-gradient(circle at top right, rgba(163, 210, 255, .18), transparent 24%),
     linear-gradient(180deg, #f7fbff 0%, #eef4fb 100%)
 }
 
-body[data-portal-theme="rotc"] {
+body[data-portal-theme="rotc"],
+body[data-role="rotc"] {
   background:
     radial-gradient(circle at top right, rgba(114, 146, 186, .16), transparent 22%),
     linear-gradient(180deg, #f7f9fc 0%, #edf1f7 100%)
 }
 
-body[data-portal-theme="cwts"] {
+body[data-portal-theme="cwts"],
+body[data-role="cwts"] {
   background:
     radial-gradient(circle at top right, rgba(143, 208, 188, .13), transparent 24%),
     linear-gradient(180deg, #f6f8fb 0%, #eef2f7 100%)
 }
 
-body[data-portal-theme="officer"] {
+body[data-portal-theme="officer"],
+body[data-role="officer"] {
   background:
     radial-gradient(circle at top right, rgba(178, 188, 206, .14), transparent 24%),
     linear-gradient(180deg, #f7f8fb 0%, #edf1f5 100%)
@@ -70,6 +75,17 @@ button, input, select, textarea {
 }
 .hidden {
   display: none!important
+}
+.sr-only {
+  position: absolute!important;
+  width: 1px!important;
+  height: 1px!important;
+  padding: 0!important;
+  margin: -1px!important;
+  overflow: hidden!important;
+  clip: rect(0, 0, 0, 0)!important;
+  white-space: nowrap!important;
+  border: 0!important
 }
 .shell {
   display: flex;
@@ -847,6 +863,19 @@ body {
   text-align: center;
   color: #64748b;
 }
+#content.content-ready {
+  animation: nstp-content-in .16s ease-out both
+}
+@keyframes nstp-content-in {
+  from {
+    opacity: .78;
+    transform: translateY(2px)
+  }
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
 .page-spinner {
   width: 34px;
   height: 34px;
@@ -871,44 +900,66 @@ body {
 .route-loading-overlay {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, .28);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity .22s ease;
-  z-index: 120;
+  transition: opacity .08s ease;
+  z-index: 1000;
 }
 .route-loading-overlay.visible {
   opacity: 1;
   pointer-events: auto;
 }
-.route-loading-card {
-  min-width: 220px;
-  padding: 18px 22px;
-  border-radius: 22px;
+.route-loading-bar {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: block;
+  width: 42%;
+  height: 3px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(90deg, #2563eb, #60a5fa, #22d3ee);
+  box-shadow: 0 0 12px rgba(37, 99, 235, .45);
+  animation: route-progress .55s ease-in-out infinite;
+}
+.route-loading-status {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 999px;
   background: rgba(255, 255, 255, .96);
-  border: 1px solid rgba(148, 163, 184, .22);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  color: #1f2937;
-  text-align: center;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  transform: translateX(-50%);
 }
-.route-loading-spinner {
-  width: 34px;
-  height: 34px;
+.route-loading-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 3px solid rgba(59, 130, 246, .18);
-  border-top-color: #3b82f6;
-  animation: route-spin .75s linear infinite;
+  background: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, .14);
+  animation: route-pulse .7s ease-in-out infinite alternate;
 }
-@keyframes route-spin {
+@keyframes route-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
+}
+@keyframes route-pulse {
   to {
-    transform: rotate(360deg);
+    opacity: .5;
+    transform: scale(.78)
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-loading-bar,
+  .route-loading-dot,
+  #content.content-ready {
+    animation: none;
   }
 }
 
