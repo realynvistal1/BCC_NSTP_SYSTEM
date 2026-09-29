@@ -183,9 +183,10 @@ async function loadStudentAttendance() {
   const historyNode = $('#studentAttendanceHistory');
   const latest = profile.records?.[0];
   const student = profile.student || {};
-  const attendanceLabel = student.nstp_component === 'CWTS'
+  const studentProgram = String(student.nstp_component || '').toUpperCase();
+  const attendanceLabel = studentProgram === 'CWTS'
     ? 'CS (Community Service)'
-    : student.nstp_component === 'ROTC'
+    : studentProgram === 'ROTC'
       ? 'MI (Military Instruction)'
       : '';
   $('#studentAttendanceHistoryDescription').textContent = attendanceLabel
@@ -267,18 +268,33 @@ async function loadStudentAttendance() {
     updateStudentLocationPreview(session);
   }
 
-  const rows = history.map((row) => `
-    <tr>
-      <td>${row.program === 'CWTS' ? 'CS' : 'MI'} ${esc(row.mi_number || '-')}</td>
-      <td>${String(row.mi_type || '').toUpperCase()}</td>
-      <td>${fmtA(row.open_date)}</td>
-      <td>${fmtT(row.created_at)}</td>
-      <td>${badge(row.status)}</td>
-    </tr>
-  `);
+  const rows = history.map((row) => {
+    const rowProgram = String(row.program || studentProgram).toUpperCase();
+    const isCwts = rowProgram === 'CWTS';
+
+    return `
+      <tr>
+        <td><strong>${isCwts ? 'CWTS' : 'MS'} ${esc(row.ms_level || '-')}</strong></td>
+        <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
+        <td>${isCwts ? 'CS' : 'MI'} ${esc(row.mi_number || '-')}</td>
+        <td>${String(row.mi_type || '').toUpperCase()}</td>
+        <td>${fmtA(row.open_date)}</td>
+        <td>${fmtT(row.created_at)}</td>
+        <td>${badge(row.status)}</td>
+      </tr>
+    `;
+  });
 
   historyNode.innerHTML = table(
-    ['Session', 'Type', 'Date', 'Marked At', 'Status'],
+    [
+      studentProgram === 'CWTS' ? 'CWTS Level' : studentProgram === 'ROTC' ? 'MS Level' : 'NSTP Level',
+      'School Year',
+      'Session',
+      'Type',
+      'Date',
+      'Marked At',
+      'Status',
+    ],
     rows
   );
 }
