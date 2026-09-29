@@ -129,14 +129,7 @@ async function renderEnrollmentSchedule(p,c){
   const active = rows.filter(x => ['open', 'upcoming'].includes(scheduleStatus(x.open_date, x.deadline).key));
   const closed = rows.filter(x => scheduleStatus(x.open_date, x.deadline).key === 'closed');
   const currentYear = new Date().getFullYear();
-  const sorted = [...rows].sort(
-    (a, b) => String(b.year).localeCompare(String(a.year)) || String(b.ms_level).localeCompare(String(a.ms_level))
-  );
-  const closedLevelOneYears = new Set(
-    rows
-      .filter(x => String(x.ms_level) === '1' && scheduleStatus(x.open_date, x.deadline).key === 'closed')
-      .map(x => String(x.year).trim())
-  );
+  const sorted = [...rows].sort((a, b) => Number(b.id) - Number(a.id));
 
   let nextLevel = '1';
   let nextYear = `${currentYear}-${currentYear + 1}`;
@@ -210,15 +203,15 @@ async function renderEnrollmentSchedule(p,c){
           <div class="field">
             <label>${p === 'cwts' ? 'CWTS Level' : 'MS Level'}</label>
             <select name="ms_level" aria-label="Enrollment level" required>
-              <option value="1" ${String(nextLevel) === '1' ? 'selected' : ''}>${prefix} 1</option>
-              <option value="2" ${String(nextLevel) === '2' ? 'selected' : ''}>${prefix} 2</option>
+              <option value="1" ${String(nextLevel) === '1' ? 'selected' : 'disabled'}>${prefix} 1</option>
+              <option value="2" ${String(nextLevel) === '2' ? 'selected' : 'disabled'}>${prefix} 2</option>
             </select>
-            <small class="field-help" id="scheduleLevelHelp">Create and close ${prefix} 1 before creating ${prefix} 2 for the same school year.</small>
+            <small class="field-help" id="scheduleLevelHelp"></small>
           </div>
           <div class="field">
             <label>School Year</label>
             <input name="year" value="${esc(nextYear)}" placeholder="2026-2027" required>
-            <small class="field-help">Enter the school year you want to use for this schedule.</small>
+            <small class="field-help" id="scheduleYearHelp">Enter the school year you want to use for this schedule.</small>
           </div>
           <div class="field"><label>Opening Date</label><input name="open_day" type="date" required></div>
           <div class="field time-field">
@@ -292,8 +285,10 @@ async function renderEnrollmentSchedule(p,c){
   const scheduleForm = $('#scheduleForm');
   const levelSelect = scheduleForm.elements.ms_level;
   const yearInput = scheduleForm.elements.year;
+  const levelOneOption = levelSelect.querySelector('option[value="1"]');
   const levelTwoOption = levelSelect.querySelector('option[value="2"]');
   const levelHelp = $('#scheduleLevelHelp');
+  const yearHelp = $('#scheduleYearHelp');
   const openDayInput = scheduleForm.elements.open_day;
   const openTimeInput = scheduleForm.elements.open_time;
   const deadlineDayInput = scheduleForm.elements.deadline_day;
@@ -301,13 +296,30 @@ async function renderEnrollmentSchedule(p,c){
   const dateHelp = $('#scheduleDateHelp');
 
   function refreshLevelAvailability() {
-    const schoolYear = yearInput.value.trim();
-    const levelTwoAvailable = closedLevelOneYears.has(schoolYear);
-    levelTwoOption.disabled = !levelTwoAvailable;
-    if (!levelTwoAvailable && levelSelect.value === '2') levelSelect.value = '1';
-    levelHelp.textContent = levelTwoAvailable
-      ? `${prefix} 1 for SY ${schoolYear} is closed. ${prefix} 2 can now be scheduled.`
-      : `Create and close ${prefix} 1 for SY ${schoolYear || 'the selected school year'} before creating ${prefix} 2.`;
+    const requiredLevel = String(nextLevel);
+    levelOneOption.disabled = requiredLevel !== '1';
+    levelTwoOption.disabled = requiredLevel !== '2';
+    levelSelect.value = requiredLevel;
+
+    if (requiredLevel === '2') {
+      yearInput.value = String(nextYear);
+      yearInput.readOnly = true;
+      levelHelp.textContent = `${prefix} 1 is complete. ${prefix} 2 is required next for the same school year.`;
+      yearHelp.textContent = `The school year stays at ${nextYear} for ${prefix} 2.`;
+      return;
+    }
+
+    if (sorted[0]) {
+      yearInput.value = String(nextYear);
+      yearInput.readOnly = true;
+      levelHelp.textContent = `${prefix} 2 is complete. You can now create the next ${prefix} 1 schedule.`;
+      yearHelp.textContent = `The new cycle automatically advances to SY ${nextYear}.`;
+      return;
+    }
+
+    yearInput.readOnly = false;
+    levelHelp.textContent = `${prefix} 1 is required for the first enrollment schedule.`;
+    yearHelp.textContent = 'Enter the school year for the first enrollment cycle.';
   }
 
   yearInput.addEventListener('input', refreshLevelAvailability);
@@ -725,6 +737,7 @@ function openDeleteStudentDialog(student, program, trigger) {
 async function renderEnrollmentList(p,c){
   const rows=await API.get(`/api/admin/${p}/enrollments`);
   const schedules=await API.get(`/api/admin/${p}/enrollment-schedule`);
+  document.getElementById('modalMount')?.remove();
   const program=p.toUpperCase(),prefix=p==='cwts'?'CWTS':'MS';
   rows.forEach(x=>{x.school_year=String(x.school_year||'').trim()});
   const schoolYears=[...new Set([
@@ -751,6 +764,13 @@ async function renderEnrollmentList(p,c){
     esc(y)
   }
   </option>`).join('')}</select><select id="filterMedical"><option value="">Medical: All</option><option value="yes">With Medical Condition</option><option value="no">No Medical Condition</option></select>${p==='rotc'?`<select id="filterPreference"><option value="">All Preferences</option><option value="medics">Medics</option><option value="mp">MP</option><option value="advance">Advance Course</option></select>`:''}<button class="clear-filter-btn" id="clearFilters">Clear Filters</button></div></section><div class="bulk-action-row"><div id="filterResultText">Showing ${rows.length} enrollment${rows.length===1?'':'s'}</div><div class="actions"><button class="btn danger" id="rejectAllPending">Reject All Pending (<span id="bulkRejectCount">${counts.pending}</span>)</button><button class="btn success" id="approveAllPending">Approve All Pending (<span id="bulkCount">${counts.pending}</span>)</button></div></div><section class="enrollment-table-card"><div class="table-scroll"><table class="data-table enrollment-data-table"><thead><tr><th>Student</th><th>Student ID</th><th>Course & Year</th><th>${p==='cwts'?'CWTS Level':'MS Level'}</th><th>SY</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody id="enrollmentRows"></tbody></table></div><div id="enrollmentEmpty" class="empty-state-card hidden">${icon('enrollment')}<strong>No enrollments found</strong><span>Try adjusting your search or filters.</span></div></section><div id="modalMount"></div>`;
+  const modalMount = c.querySelector('#modalMount');
+  document.body.appendChild(modalMount);
+  function ensureModalHost() {
+    const host = document.getElementById('modalMount');
+    if (host && host.parentElement !== document.body) document.body.appendChild(host);
+    return host;
+  }
   let activeStatus='all';
   function filterValues(overrides={}){
     return {
@@ -884,17 +904,17 @@ async function renderEnrollmentList(p,c){
   async function openDetail(id){
     const listRow=rows.find(r=>Number(r.record_id)===id);
     if(!listRow)return;
-    $('#modalMount').innerHTML=`<div class="app-dialog" id="enrollmentModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card enrollment-detail-card"><div class="page-loading"><span class="page-spinner"></span><strong>Loading student record...</strong></div></div></div>`;
+    ensureModalHost().innerHTML=`<div class="app-dialog" id="enrollmentModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card enrollment-detail-card"><div class="page-loading"><span class="page-spinner"></span><strong>Loading student record...</strong></div></div></div>`;
     let x;
     try {
       x=await API.get(`/api/admin/${p}/enrollments/${id}`);
       x.school_year=listRow.school_year;
     } catch(error) {
-      $('#modalMount').innerHTML='';
+      ensureModalHost().innerHTML='';
       toast(error.message,true);
       return;
     }
-    $('#modalMount').innerHTML=enrollmentDetailModal(x,p);
+    ensureModalHost().innerHTML=enrollmentDetailModal(x,p);
     const modal=$('#enrollmentModal');
     function close(){
       modal.remove()
@@ -1041,7 +1061,7 @@ async function renderEnrollmentList(p,c){
     $('#bulkRejectModal')?.remove();
   }
   function openBulkRejectModal(ids){
- $('#modalMount').innerHTML=`<div class="app-dialog" id="bulkRejectModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card schedule-modal-card"><div class="app-dialog-head"><div><span class="modal-eyebrow">${program} Enrollment</span><h3>Reject All Pending</h3><p>Enter the rejection reason that will be shown to all selected students.</p></div><button type="button" class="modal-close" id="closeBulkRejectModal">x</button></div><div class="schedule-form-old" style="grid-template-columns:1fr"><div class="reject-box" style="display:block"><label for="bulkRejectReason">Rejection reason</label><textarea id="bulkRejectReason" rows="5" placeholder="Enter the reason or correction needed..."></textarea></div><div class="app-dialog-actions"><button type="button" class="btn" id="cancelBulkReject">Cancel</button><button type="button" class="btn danger" id="confirmBulkReject">Reject Selected</button></div></div></div></div>`;
+ ensureModalHost().innerHTML=`<div class="app-dialog" id="bulkRejectModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card schedule-modal-card"><div class="app-dialog-head"><div><span class="modal-eyebrow">${program} Enrollment</span><h3>Reject All Pending</h3><p>Enter the rejection reason that will be shown to all selected students.</p></div><button type="button" class="modal-close" id="closeBulkRejectModal">x</button></div><div class="schedule-form-old" style="grid-template-columns:1fr"><div class="reject-box" style="display:block"><label for="bulkRejectReason">Rejection reason</label><textarea id="bulkRejectReason" rows="5" placeholder="Enter the reason or correction needed..."></textarea></div><div class="app-dialog-actions"><button type="button" class="btn" id="cancelBulkReject">Cancel</button><button type="button" class="btn danger" id="confirmBulkReject">Reject Selected</button></div></div></div></div>`;
     $('#closeBulkRejectModal').onclick=closeBulkRejectModal;
     $('#cancelBulkReject').onclick=closeBulkRejectModal;
     $('#bulkRejectModal .app-dialog-backdrop').onclick=closeBulkRejectModal;
@@ -1497,7 +1517,7 @@ async function renderROTCRoster(c, specialOnly = false) {
     const total = battalionOne.length + battalionTwo.length + specialTotal + advanceTotal;
     const battalionCap = maleCompanies.length * platoons * platoonCap;
 
-    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Assigned Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
 
     $("#rosterMs").onchange = (event) => {
       selectedLevel = event.target.value;
