@@ -857,11 +857,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         rotc: 'ROTC',
         cwts: 'CWTS',
         'advance-course': 'ROTC',
+        'special-platoon': 'ROTC',
       };
 
       if (map[queryProgram]) {
         $('#viewProgram').value = map[queryProgram];
-        if (queryProgram === 'advance-course') officerAttendanceFilterState.group = 'advance-course';
+        if (queryProgram === 'advance-course' || queryProgram === 'special-platoon') {
+          officerAttendanceFilterState.group = queryProgram;
+        }
       }
     }
 
