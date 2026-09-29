@@ -1,4 +1,8 @@
 const DEFAULT_SCORE_THRESHOLD = 0.5;
+const VERIFY_ENDPOINTS = [
+  'https://www.google.com/recaptcha/api/siteverify',
+  'https://www.recaptcha.net/recaptcha/api/siteverify',
+];
 
 function readEnabledFlag(value) {
   return String(value || '').trim().toLowerCase() === 'true';
@@ -39,6 +43,35 @@ function isLocalHost(value) {
   return ['localhost', '127.0.0.1', '::1'].includes(normalized);
 }
 
+async function requestVerification(body) {
+  let lastError = null;
+
+  for (const endpoint of VERIFY_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return { payload: await response.json() };
+    } catch (error) {
+      lastError = error;
+      const provider = new URL(endpoint).hostname;
+      console.error(`reCAPTCHA verification endpoint ${provider} unavailable:`, error.message);
+    }
+  }
+
+  throw lastError || new Error('No reCAPTCHA verification endpoint is available.');
+}
+
 async function verifyToken(token, action, context = {}) {
   if (!isEnabled()) {
     return { ok: true, skipped: true };
@@ -70,20 +103,11 @@ async function verifyToken(token, action, context = {}) {
     response: normalizedToken,
   });
 
-  let response;
   let payload;
   try {
-    response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body,
-      signal: AbortSignal.timeout(10000),
-    });
-    payload = await response.json();
+    ({ payload } = await requestVerification(body));
   } catch (error) {
-    console.error('reCAPTCHA verification service unavailable:', error.message);
+    console.error('All reCAPTCHA verification endpoints are unavailable:', error.message);
     return {
       ok: false,
       reason: 'provider-unavailable',
@@ -91,7 +115,7 @@ async function verifyToken(token, action, context = {}) {
     };
   }
 
-  if (!response.ok || !payload.success) {
+  if (!payload.success) {
     return {
       ok: false,
       reason: 'verification-failed',
