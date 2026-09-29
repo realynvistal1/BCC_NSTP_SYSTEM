@@ -128,7 +128,7 @@ async function run() {
           const grade = grades.calculateGrade(midterm, finalTerm);
           await connection.execute(
             'INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program) VALUES(?,?,?,?,?,?,?)',
-            [inserted.insertId, level, midterm, finalTerm, grade, grades.statusFromGrade(grade), program]
+            [inserted.insertId, level, midterm, finalTerm, grade, grades.statusFromGrade(grade, student.course), program]
           );
         }
         await connection.execute('INSERT INTO serial_numbers(student_id,serial_number,program) VALUES(?,?,?)', [inserted.insertId, serial, program]);
