@@ -155,7 +155,7 @@ function bindOfficerRosterFilters(state, rerender){
     rerender();
   });
 }
-async function officerPage(page,c){
+async function officerPageBase(page,c){
   if(page==='dashboard'){
     const [d,b1,b2,adv,cwts,enroll]=await Promise.all([API.get('/api/officer/dashboard'),API.get('/api/officer/roster/battalion-1'),API.get('/api/officer/roster/battalion-2'),API.get('/api/officer/roster/advance-course'),API.get('/api/officer/roster/cwts'),API.get('/api/officer/enrollments')]);
     const battalionCap=4*4*37,cwtsCap=6*60;
@@ -297,48 +297,6 @@ async function officerPage(page,c){
     return
   }
 }
-async function viewSession(id) {
-  try {
-    const rows = await API.get(`/api/officer/attendance/sessions/${id}/records`);
-    const tableRows = rows.map(x => {
-      const status = x.status ? badge(x.status) : badge('Not recorded');
-
-      return `
-        <tr>
-          <td>
-            <strong>${esc(x.student_no)}</strong><br>
-            ${esc(x.last_name + ', ' + x.first_name)}
-          </td>
-          <td>${esc(x.nstp_component)}</td>
-          <td>${status}</td>
-          <td>
-            <select onchange="setAttendance(${id},${x.student_id},this.value)">
-              <option value="">Select status</option>
-              <option value="present" ${x.status === 'present' ? 'selected' : ''}>Present</option>
-              <option value="late" ${x.status === 'late' ? 'selected' : ''}>Late</option>
-              <option value="absent" ${x.status === 'absent' ? 'selected' : ''}>Absent</option>
-            </select>
-          </td>
-        </tr>`;
-    });
-
-    $('#sessionRecords').innerHTML = `
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Session #${id} Student Records</h2>
-            <p class="panel-subtitle">
-              Students who have not marked attendance appear as "Not recorded".
-            </p>
-          </div>
-        </div>
-        ${table(['Student', 'Program', 'Status', 'Update'], tableRows)}
-      </div>`;
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-
 async function setAttendance(sessionId, studentId, status) {
   if (!status) return;
 
@@ -354,9 +312,8 @@ async function setAttendance(sessionId, studentId, status) {
   }
 }
 
-// Override only the dashboard markup so the Director portal matches the ROTC/CWTS dashboard structure.
-const officerPageBase = officerPage;
-officerPage = async function(page, c) {
+// Use the current dashboard markup while delegating the remaining roster pages to the base renderer.
+async function officerPage(page, c) {
   if (page !== 'dashboard') {
     return officerPageBase(page,c);
   }
@@ -422,7 +379,7 @@ officerPage = async function(page, c) {
 
   c.innerHTML = `${summaryMarkup}${shortcutMarkup}`;
   bindOfficerEnrollmentLists();
-};
+}
 
 // Override the current officer attendance modal helpers with the current API shape.
 async function viewSession(id) {
