@@ -58,29 +58,36 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         ? rows.map((row) => `
           <article class="withdraw-card">
             <div class="withdraw-card-top">
-              <div class="withdraw-avatar">${esc((row.first_name || '?')[0])}${esc((row.last_name || '?')[0])}</div>
+              <div class="withdraw-avatar">
+                <span>${esc((row.first_name || '?')[0])}${esc((row.last_name || '?')[0])}</span>
+                <img src="/api/admin/rotc/students/${Number(row.student_id)}/photo" alt="${esc(`${row.first_name || ''} ${row.last_name || ''}`.trim())} 2x2 photo" loading="lazy">
+              </div>
               <div class="withdraw-student">
                 <h3>${esc(row.last_name)}, ${esc(row.first_name)}</h3>
                 <p>${esc(row.student_no)} - ${esc(row.course)} - ${esc(row.year_level)}</p>
                 <small>Submitted ${formatWithdrawDate(row.created_at)}</small>
               </div>
+            </div>
+            <div class="withdraw-card-content">
+              <div class="withdraw-reason">
+                <small>Reason for Withdrawal</small>
+                <p>${esc(row.reason)}</p>
+              </div>
+              ${row.status === 'rejected' && row.admin_remarks
+                ? `<div class="withdraw-decision rejected"><small>Administrator Remarks</small><p>${esc(row.admin_remarks)}</p></div>`
+                : ''}
+              ${row.status === 'approved'
+                ? '<div class="withdraw-decision approved"><small>Approved Result</small><p>Returned to the regular cadet roster.</p></div>'
+                : ''}
+            </div>
+            <div class="withdraw-card-side">
               ${badge(row.status)}
-            </div>
-            <div class="withdraw-reason">
-              <small>Reason for Withdrawal</small>
-              <p>${esc(row.reason)}</p>
-            </div>
-            ${row.status === 'rejected' && row.admin_remarks
-              ? `<div class="notice error"><strong>Admin Remarks:</strong> ${esc(row.admin_remarks)}</div>`
-              : ''}
-            ${row.status === 'approved'
-              ? '<div class="notice success">Student has been reverted to a regular cadet and assigned to the regular ROTC roster.</div>'
-              : ''}
-            <div class="actions">
-              <button class="btn primary" data-wdetails="${row.student_id}" data-level="${esc(row.ms_level || '1')}">View Details</button>
-            ${row.status === 'pending'
-              ? '<button class="btn success" data-wapprove="' + row.id + '">Approve</button><button class="btn danger ghost" data-wreject="' + row.id + '">Reject</button>'
-              : ''}
+              <div class="actions withdraw-card-actions">
+                <button class="btn primary" type="button" data-wdetails="${row.student_id}" data-level="${esc(row.ms_level || '1')}">View Full Record</button>
+                ${row.status === 'pending'
+                  ? '<button class="btn success" data-wapprove="' + row.id + '">Approve</button><button class="btn danger ghost" data-wreject="' + row.id + '">Reject</button>'
+                  : ''}
+              </div>
             </div>
           </article>
         `).join('')
@@ -93,8 +100,23 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         };
       });
 
+      $$('.withdraw-avatar img').forEach((photo) => {
+        photo.onerror = () => photo.classList.add('photo-unavailable');
+      });
+
       $$('[data-wdetails]').forEach((button) => {
-        button.onclick = () => openRotcStudentRecord(Number(button.dataset.wdetails), button.dataset.level);
+        button.onclick = async () => {
+          const originalLabel = button.textContent;
+          button.disabled = true;
+          button.textContent = 'Loading Record...';
+
+          try {
+            await openRotcStudentRecord(Number(button.dataset.wdetails), button.dataset.level);
+          } finally {
+            button.disabled = false;
+            button.textContent = originalLabel;
+          }
+        };
       });
 
       $$('[data-wapprove]').forEach((button) => {
