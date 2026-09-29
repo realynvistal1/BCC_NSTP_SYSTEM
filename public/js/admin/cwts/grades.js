@@ -14,12 +14,13 @@ function gradeMap(rows) {
   return map;
 }
 
-function gradeStatus(avg) {
+function gradeStatus(avg, course = '') {
   if (avg === null) {
     return { label: '-', cls: 'neutral' };
   }
 
-  return avg >= 1 && avg <= 3
+  const passingLimit = /criminology/i.test(String(course)) ? 2.5 : 3;
+  return avg >= 1 && avg <= passingLimit
     ? { label: 'Passed', cls: 'success' }
     : { label: 'Failed', cls: 'danger' };
 }
@@ -233,13 +234,21 @@ async function renderAdminGrades(_program, content) {
         <small>Total Students</small>
         <strong id="gradeTotal">${students.length}</strong>
       </div>
-      <div class="grade-summary-card green">
+      <div class="grade-summary-card blue">
         <small>Graded</small>
         <strong id="gradeGraded">0</strong>
       </div>
       <div class="grade-summary-card amber">
         <small>Ungraded</small>
         <strong id="gradeUngraded">0</strong>
+      </div>
+      <div class="grade-summary-card green">
+        <small>Passed</small>
+        <strong id="gradePassed">0</strong>
+      </div>
+      <div class="grade-summary-card red">
+        <small>Failed</small>
+        <strong id="gradeFailed">0</strong>
       </div>
     </div>
     <section class="panel grade-panel">
@@ -301,6 +310,18 @@ async function renderAdminGrades(_program, content) {
       : grades.has(`${student.student_id}|1`) || grades.has(`${student.student_id}|2`);
   }
 
+  function studentGradeState(student, level) {
+    const levels = level ? [String(level)] : ['1', '2'];
+    const studentGrades = levels
+      .map((currentLevel) => grades.get(`${student.student_id}|${currentLevel}`))
+      .filter(Boolean);
+
+    if (!studentGrades.length) return 'ungraded';
+    return studentGrades.some((grade) => (
+      gradeStatus(Number(grade.grade), student.course).label === 'Failed'
+    )) ? 'failed' : 'passed';
+  }
+
   function filtered() {
     const level = $('#gradeLevel').value;
     const schoolYear = $('#gradeSY').value;
@@ -337,27 +358,37 @@ async function renderAdminGrades(_program, content) {
     const rows = filtered();
     const level = $('#gradeLevel').value;
     const graded = rows.filter((student) => hasGrade(student, level)).length;
+    const passed = rows.filter((student) => studentGradeState(student, level) === 'passed').length;
+    const failed = rows.filter((student) => studentGradeState(student, level) === 'failed').length;
 
     $('#gradeTotal').textContent = rows.length;
     $('#gradeGraded').textContent = graded;
+    $('#gradePassed').textContent = passed;
+    $('#gradeFailed').textContent = failed;
     $('#gradeUngraded').textContent = rows.length - graded;
 
     $('#gradeRows').innerHTML = rows.length
       ? rows.map((student, index) => {
         const gradedAlready = hasGrade(student, level);
+        const gradeState = studentGradeState(student, level);
         const middleInitial = student.middle_name ? ` ${esc(student.middle_name[0])}.` : '';
         const suffix = student.suffix ? ` ${esc(student.suffix)}` : '';
+        const statusBadge = gradeState === 'failed'
+          ? '<span class="badge danger grade-result-badge">Failed</span>'
+          : gradeState === 'passed'
+            ? '<span class="badge success grade-result-badge">Passed</span>'
+            : '<span class="badge warning grade-result-badge">Ungraded</span>';
 
         return `
-          <tr>
+          <tr class="grade-row-${gradeState}">
             <td>${index + 1}</td>
             <td>${esc(student.student_no)}</td>
             <td><strong>${esc(student.last_name)}, ${esc(student.first_name)}${middleInitial}${suffix}</strong></td>
             <td>${esc(student.course)} - ${esc(student.year_level)}</td>
-            <td>${gradedAlready ? '<span class="badge success">Graded</span>' : '<span class="badge warning">Ungraded</span>'}</td>
+            <td>${statusBadge}</td>
             <td>
-              <button class="btn small ${gradedAlready ? 'success' : 'secondary'}" data-grade-student="${student.student_id}">
-                ${gradedAlready ? 'View / Edit' : 'Encode'}
+              <button class="btn small ${gradeState === 'failed' ? 'danger' : gradedAlready ? 'success' : 'secondary'}" data-grade-student="${student.student_id}">
+                ${gradeState === 'failed' ? 'Review / Edit' : gradedAlready ? 'View / Edit' : 'Encode'}
               </button>
             </td>
           </tr>
@@ -477,11 +508,11 @@ async function renderAdminGrades(_program, content) {
         const input = $(`#${key}${level}`);
 
         if (input && !input.disabled) {
-          input.addEventListener('input', () => updateCalc(level));
+          input.addEventListener('input', () => updateCalc(level, student.course));
         }
       });
 
-      updateCalc(level);
+      updateCalc(level, student.course);
     });
 
     $('#saveGrades').onclick = async () => {
@@ -542,7 +573,7 @@ async function renderAdminGrades(_program, content) {
     };
   }
 
-  function updateCalc(level) {
+  function updateCalc(level, course) {
     const midterm = $(`#mid${level}`);
     const finalTerm = $(`#fin${level}`);
 
@@ -551,7 +582,7 @@ async function renderAdminGrades(_program, content) {
     }
 
     const avg = avgGrade(midterm.value, finalTerm.value);
-    const status = gradeStatus(avg);
+    const status = gradeStatus(avg, course);
 
     $(`#avg${level}`).textContent = avg === null ? '' : `Avg: ${avg.toFixed(2)}`;
     $(`#st${level}`).textContent = status.label;
