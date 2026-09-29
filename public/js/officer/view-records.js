@@ -1,19 +1,19 @@
 function officerRecordAssignment(row, program) {
   if (program === 'CWTS') {
-    return row.company ? `Company ${row.company}` : '-';
+    return row.company ? `${row.company} Company` : '-';
+  }
+
+  if (row.special_unit) {
+    return `Special Unit - ${row.special_unit}`;
   }
 
   if (Number(row.willing_to_take_advance_course)) {
     return 'Advance Course';
   }
 
-  if (row.special_unit) {
-    return row.special_unit;
-  }
-
   return [
     row.battalion ? `Battalion ${row.battalion}` : '',
-    row.rotc_company,
+    row.rotc_company ? `${row.rotc_company} Company` : '',
     row.rotc_platoon ? `Platoon ${row.rotc_platoon}` : '',
   ].filter(Boolean).join(' - ') || '-';
 }
@@ -554,9 +554,7 @@ async function renderOfficerRecords(content) {
               ${officerInfoItem(`${pfx} Level`, `${pfx} ${level}`)}
               ${officerInfoItem('School Year', cycle.school_year ? `SY ${cycle.school_year}` : '-')}
               ${officerInfoItem('Enrollment Status', cycle.status)}
-              ${program === 'ROTC'
-                ? `${officerInfoItem('Battalion', student.battalion ? `Battalion ${student.battalion}` : '-')}${officerInfoItem('Company', student.rotc_company || '-')}${officerInfoItem('Platoon', student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '-')}${officerInfoItem('Special Unit', student.special_unit || '-')}${officerInfoItem('Advance Course', student.willing_to_take_advance_course ? 'Yes' : 'No')}`
-                : officerInfoItem('CWTS Company', student.company || '-') }
+              ${officerInfoItem('Assignment', officerRecordAssignment(student, program))}
             </div>
           </section>
           <section class="record-section">
