@@ -38,6 +38,29 @@
   .delete-student-form { padding: 20px; }
 }
 /* Enrollment student record modal ---------------------------------------- */
+body > #modalMount {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+}
+body > #modalMount:empty {
+  display: none;
+}
+body > #modalMount .app-dialog {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  pointer-events: auto;
+}
 .student-record-modal-shell {
   width: min(980px, calc(100vw - 32px));
   max-height: 92vh;
