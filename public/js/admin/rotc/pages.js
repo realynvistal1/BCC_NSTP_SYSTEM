@@ -8,6 +8,7 @@ async function adminPage(_role, page, content) {
     const approved = Number(data.approved || 0);
     const rejected = Number(data.rejected || 0);
     const assigned = Number(data.assigned || 0);
+    const pendingWithdrawals = Number(data.withdrawals?.pending || 0);
     const approvalRate = total ? Math.round((approved / total) * 100) : 0;
     const pendingRate = total ? Math.round((pending / total) * 100) : 0;
     const program = programKey.toUpperCase();
@@ -56,6 +57,7 @@ async function adminPage(_role, page, content) {
           ${dashCard('Grades', 'Encode Grades', `Tap to encode ${program} grades.`, `/admin/${programKey}/grades`, 'grades', 'orange')}
           ${dashCard('Attendance Offenses', 'Review Violations', 'Tap to view students with attendance violations.', `/admin/${programKey}/offenses`, 'offense', 'orange')}
           ${dashCard('Serial Number', 'Manage Numbers', 'Tap to view and manage serial numbers.', `/admin/${programKey}/serial-number`, 'serial', 'purple')}
+          ${dashCard('Withdrawal Requests', `${pendingWithdrawals} Pending`, pendingWithdrawals ? 'Review and decide pending Advance Course withdrawal requests.' : 'No pending Advance Course withdrawal requests.', `/admin/${programKey}/withdrawal-requests`, 'refresh', 'purple')}
           ${dashCard('Settings', 'Account Settings', 'Manage your account and settings.', `/admin/${programKey}/settings`, 'settings', 'blue')}
         </div>
       </section>
@@ -80,14 +82,14 @@ async function adminPage(_role, page, content) {
           </div>
         </div>
         ${table(
-          ['Student', 'MS Level', 'Midterm', 'Final', 'Average', 'Status', 'Action'],
+          ['Student', 'NSTP Level', 'Midterm', 'Final', 'Average', 'Status', 'Action'],
           rows.map((row) => `
             <tr>
               <td><strong>${esc(row.student_no)}</strong><br>${esc(`${row.last_name}, ${row.first_name}`)}</td>
               <td>
                 <select id="gms${row.student_id}">
-                  <option value="1" ${String(row.ms_level) === '1' ? 'selected' : ''}>MS 1</option>
-                  <option value="2" ${String(row.ms_level) === '2' ? 'selected' : ''}>MS 2</option>
+                  <option value="1" ${String(row.ms_level) === '1' ? 'selected' : ''}>NSTP 1</option>
+                  <option value="2" ${String(row.ms_level) === '2' ? 'selected' : ''}>NSTP 2</option>
                 </select>
               </td>
               <td><input id="m${row.student_id}" type="number" min="1" max="5" step="0.01" value="${row.midterm ?? ''}"></td>
