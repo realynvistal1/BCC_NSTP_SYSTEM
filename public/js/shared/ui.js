@@ -1133,7 +1133,8 @@ function bindRosterExpanders(){
     };
   });
 }
-async function renderCWTSCompanyRoster(c){
+// Deprecated single-cycle renderer retained for reference; active pages use renderCWTSCompanyRoster below.
+async function renderLegacyCWTSCompanyRoster(c){
   const rows=await API.get('/api/admin/cwts/roster');
   const companies=['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot'],limit=60;
   let alphabetical=false;
@@ -1158,7 +1159,8 @@ async function renderCWTSCompanyRoster(c){
   ;
   draw();
 }
-async function renderROTCRoster(c,specialOnly=false){
+// Deprecated single-cycle renderer retained for reference; active pages use renderROTCRoster below.
+async function renderLegacyROTCRoster(c,specialOnly=false){
   const [rows,schedules]=await Promise.all([API.get('/api/admin/rotc/roster'),API.get('/api/admin/rotc/enrollment-schedule')]);
   const maleCos=['Alpha','Bravo','Charlie','Delta'],femaleCos=['Echo','Foxtrot','Golf','Hotel'],platoonCap=37,platoons=4;
   const latest=[...schedules].sort((a,b)=>Number(b.id)-Number(a.id))[0];
