@@ -105,6 +105,18 @@ async function renderAdminSerial(content, program) {
   const schedules = await API.get(`/api/admin/${program}/enrollment-schedule`);
   let settings = await API.get(`/api/admin/${program}/certificate-settings`);
   let importReport = null;
+  let modalHost = document.getElementById('serialModalHost');
+
+  if (!modalHost) {
+    modalHost = document.createElement('div');
+    modalHost.id = 'serialModalHost';
+  }
+
+  // Keep dialogs outside the page content. A fixed dialog nested in the main
+  // shell can be positioned relative to that shell instead of the viewport.
+  document.body.appendChild(modalHost);
+  modalHost.innerHTML = '';
+
   let state = {
     q: '',
     elig: 'All',
@@ -526,7 +538,6 @@ async function renderAdminSerial(content, program) {
           `)
         )}
       </div>
-      <div id="serialModalHost"></div>
     `;
 
     $('#serialElig').value = state.elig;
@@ -623,7 +634,7 @@ async function renderAdminSerial(content, program) {
       return toast('Complete Certificate Settings first.', true);
     }
 
-    $('#serialModalHost').innerHTML = `
+    modalHost.innerHTML = `
       <div class="app-dialog">
         <div class="app-dialog-backdrop" data-close></div>
         <section class="app-dialog-card settings-modal">
@@ -654,7 +665,7 @@ async function renderAdminSerial(content, program) {
 
     $$('[data-close]').forEach((node) => {
       node.onclick = () => {
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
       };
     });
 
@@ -673,7 +684,7 @@ async function renderAdminSerial(content, program) {
 
         toast(result.message);
         rows = await API.get(`/api/admin/${program}/serial-numbers`);
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
         draw();
       } catch (error) {
         toast(error.message, true);
@@ -691,7 +702,7 @@ async function renderAdminSerial(content, program) {
       return;
     }
 
-    $('#serialModalHost').innerHTML = `
+    modalHost.innerHTML = `
       <div class="app-dialog">
         <div class="app-dialog-backdrop" data-close></div>
         <section class="app-dialog-card settings-modal">
@@ -786,7 +797,7 @@ async function renderAdminSerial(content, program) {
 
     $$('[data-close]').forEach((node) => {
       node.onclick = () => {
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
       };
     });
 
@@ -811,7 +822,7 @@ async function renderAdminSerial(content, program) {
         const result = await API.post(`/api/admin/${program}/certificate-settings`, body);
         settings = result.settings;
         toast(result.message);
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
         draw();
       } catch (error) {
         toast(error.message, true);
@@ -835,7 +846,7 @@ async function renderAdminSerial(content, program) {
       return toast('Complete Certificate Settings first.', true);
     }
 
-    $('#serialModalHost').innerHTML = `
+    modalHost.innerHTML = `
       <div class="app-dialog">
         <div class="app-dialog-backdrop" data-close></div>
         <section class="app-dialog-card settings-modal">
@@ -867,7 +878,7 @@ async function renderAdminSerial(content, program) {
 
     $$('[data-close]').forEach((node) => {
       node.onclick = () => {
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
       };
     });
 
@@ -888,7 +899,7 @@ async function renderAdminSerial(content, program) {
         const result = await API.post(`/api/admin/${program}/serial-numbers/import`, body);
         importReport = result;
         rows = await API.get(`/api/admin/${program}/serial-numbers`);
-        $('#serialModalHost').innerHTML = '';
+        modalHost.innerHTML = '';
         toast(result.message || 'Bulk import completed.');
         draw();
       } catch (error) {
