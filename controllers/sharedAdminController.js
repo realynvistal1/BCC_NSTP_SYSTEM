@@ -29,6 +29,52 @@ function levelPrefix(programCode) {
   return programCode === 'CWTS' ? 'CWTS' : 'MS';
 }
 
+function nextSchoolYear(schoolYear) {
+  const match = String(schoolYear || '').trim().match(/^(\d{4})-(\d{4})$/);
+  if (!match) return null;
+
+  const startYear = Number(match[1]);
+  const endYear = Number(match[2]);
+  if (endYear !== startYear + 1) return null;
+
+  return `${startYear + 1}-${endYear + 1}`;
+}
+
+async function hasPassedLevelOneGrade(studentId, programCode) {
+  const [rows] = await db.execute(
+    `SELECT g.grade,g.midterm,g.final_term,s.course
+     FROM student_grades g
+     JOIN students s ON s.id=g.student_id
+     WHERE g.student_id=? AND g.program=? AND g.ms_level='1'
+       AND g.midterm IS NOT NULL AND g.final_term IS NOT NULL
+     LIMIT 1`,
+    [studentId, programCode]
+  );
+
+  return Boolean(
+    rows[0]
+    && gradesService.statusFromGrade(rows[0].grade, rows[0].course) === 'Passed'
+  );
+}
+
+async function snapshotCycleAssignments(connection, scheduleId, programCode) {
+  await connection.execute(
+    `UPDATE student_ms_records smr
+     JOIN students s ON s.id=smr.student_id
+     SET smr.assignment_battalion=CASE WHEN smr.program='ROTC' THEN s.battalion ELSE NULL END,
+         smr.assignment_company=CASE WHEN smr.program='ROTC' THEN s.rotc_company ELSE s.company END,
+         smr.assignment_platoon=CASE WHEN smr.program='ROTC' THEN s.rotc_platoon ELSE NULL END,
+         smr.assignment_special_unit=CASE WHEN smr.program='ROTC' THEN s.special_unit ELSE NULL END,
+         smr.assignment_is_advance=CASE
+           WHEN smr.program='ROTC' AND s.special_unit IS NULL AND COALESCE(s.willing_to_take_advance_course,0)=1 THEN 1
+           ELSE 0
+         END,
+         smr.assignment_label=s.platoon
+     WHERE smr.program=? AND CAST(smr.schedule_id AS UNSIGNED)=? AND smr.status='approved'`,
+    [programCode, scheduleId]
+  );
+}
+
 function hasSettingValue(value) {
   return String(value || '').trim().length > 0;
 }
@@ -523,9 +569,38 @@ exports.schedules = async (req, res) => {
 
     const now = Date.now();
     const [existing] = await db.execute(
-      'SELECT id,ms_level,year,open_date,deadline FROM enrollment_schedules WHERE program=? ORDER BY year DESC, ms_level DESC, id DESC',
+      'SELECT id,ms_level,year,open_date,deadline FROM enrollment_schedules WHERE program=? ORDER BY id DESC',
       [programCode]
     );
+
+    const latestSchedule = existing[0] || null;
+    const requiredNextLevel = latestSchedule && String(latestSchedule.ms_level) === '1' ? '2' : '1';
+
+    if (normalizedLevel !== requiredNextLevel) {
+      return res.status(409).json({
+        message: requiredNextLevel === '2'
+          ? `${levelPrefix(programCode)} 1 is already complete. Create ${levelPrefix(programCode)} 2 next before starting another ${levelPrefix(programCode)} 1 schedule.`
+          : `${levelPrefix(programCode)} 2 is complete. The next schedule must be ${levelPrefix(programCode)} 1.`,
+      });
+    }
+
+    if (
+      requiredNextLevel === '2'
+      && String(latestSchedule?.year || '').trim() !== normalizedYear
+    ) {
+      return res.status(409).json({
+        message: `${levelPrefix(programCode)} 2 must use the same school year as the completed ${levelPrefix(programCode)} 1 schedule (${latestSchedule.year}).`,
+      });
+    }
+
+    if (requiredNextLevel === '1' && latestSchedule) {
+      const requiredNextYear = nextSchoolYear(latestSchedule.year);
+      if (!requiredNextYear || normalizedYear !== requiredNextYear) {
+        return res.status(409).json({
+          message: `After completing ${levelPrefix(programCode)} 2 for SY ${latestSchedule.year}, the next ${levelPrefix(programCode)} 1 schedule must use SY ${requiredNextYear || 'for the following academic year'}.`,
+        });
+      }
+    }
 
     if (normalizedLevel === '2') {
       const levelOneSchedule = existing.find((schedule) => (
@@ -806,15 +881,27 @@ exports.updateEnrollment = async (req, res) => {
     }
 
     const [[record]] = await db.execute(
-      `SELECT smr.*,s.has_medical_condition,s.medical_condition,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit
+      `SELECT smr.*,es.platoons_assigned_at,
+              s.has_medical_condition,s.medical_condition,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
+       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
        WHERE smr.id=? AND smr.program=?`,
       [recordId, programCode]
     );
 
     if (!record) {
       return res.status(404).json({ message: 'Enrollment record not found.' });
+    }
+
+    if (
+      status === 'approved'
+      && String(record.ms_level) === '2'
+      && !(await hasPassedLevelOneGrade(record.student_id, programCode))
+    ) {
+      return res.status(409).json({
+        message: `Cannot approve ${levelPrefix(programCode)} 2 enrollment until the student's complete, passing ${levelPrefix(programCode)} 1 grades are encoded.`,
+      });
     }
 
     await db.execute(
@@ -826,12 +913,7 @@ exports.updateEnrollment = async (req, res) => {
       return res.json({ message: `Enrollment ${status}.` });
     }
 
-    if (
-      programCode === 'ROTC'
-      &&
-      String(record.ms_level) === '2'
-      && (record.company || record.battalion || record.rotc_company || record.special_unit)
-    ) {
+    if (record.platoons_assigned_at) {
       return res.json({ message: 'Enrollment approved. Existing assignment retained.' });
     }
 
@@ -875,9 +957,11 @@ exports.bulkApprove = async (req, res) => {
     for (const id of ids) {
       try {
         const [[record]] = await db.execute(
-          `SELECT smr.*,s.has_medical_condition,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit
+          `SELECT smr.*,es.platoons_assigned_at,
+                  s.has_medical_condition,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit
            FROM student_ms_records smr
            JOIN students s ON s.id=smr.student_id
+           LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
            WHERE smr.id=? AND smr.program=?`,
           [id, programCode]
         );
@@ -887,22 +971,33 @@ exports.bulkApprove = async (req, res) => {
           continue;
         }
 
+        if (
+          String(record.ms_level) === '2'
+          && !(await hasPassedLevelOneGrade(record.student_id, programCode))
+        ) {
+          skipped += 1;
+          messages.push(`Skipped record ${id}: complete, passing ${levelPrefix(programCode)} 1 grades are required.`);
+          continue;
+        }
+
         if (programCode === 'CWTS') {
           await db.execute(
             "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
             [id]
           );
-          await db.execute(
-            'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
-            [record.student_id]
-          );
+          if (!record.platoons_assigned_at) {
+            await db.execute(
+              'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
+              [record.student_id]
+            );
+          }
         } else {
           await db.execute(
             "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
             [id]
           );
 
-          if (String(record.ms_level) !== '2') {
+          if (!record.platoons_assigned_at) {
             await db.execute(
               'UPDATE students SET special_unit=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,platoon=NULL WHERE id=?',
               [record.student_id]
@@ -1027,10 +1122,18 @@ exports.roster = async (req, res) => {
     const selectedScheduleId = !includeAllCycles && selectedSchedule ? Number(selectedSchedule.id) : null;
     const levelFilter = selectedScheduleId == null ? requestedLevel : '';
     const yearFilter = selectedScheduleId == null ? requestedYear : '';
-    const params = [programCode, programCode, selectedScheduleId, selectedScheduleId, levelFilter, levelFilter, yearFilter, yearFilter, programCode];
+    const params = [programCode, programCode, selectedScheduleId, selectedScheduleId, levelFilter, levelFilter, yearFilter, yearFilter];
 
     const [rows] = await db.execute(
-      `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.has_medical_condition,s.medical_condition,s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
+      `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,s.sex,s.course,s.year_level,
+              smr.assignment_company AS company,
+              smr.assignment_battalion AS battalion,
+              smr.assignment_company AS rotc_company,
+              smr.assignment_platoon AS rotc_platoon,
+              smr.assignment_special_unit AS special_unit,
+              s.has_medical_condition,s.medical_condition,
+              COALESCE(smr.assignment_is_advance,0) AS willing_to_take_advance_course,
+              s.willing_to_be_medics,s.willing_to_be_military_police,smr.ms_level,COALESCE(es.year,'') school_year
        FROM students s
        LEFT JOIN (
          SELECT student_id,MAX(updated_at) AS approved_at
@@ -1047,7 +1150,6 @@ exports.roster = async (req, res) => {
          AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
          AND (?='' OR smr.ms_level=?)
          AND (?='' OR COALESCE(es.year,'')=?)
-         AND (? NOT IN ('ROTC','CWTS') OR (es.platoons_assigned_at IS NOT NULL AND smr.updated_at<=es.platoons_assigned_at))
          AND smr.id=(SELECT MAX(x.id) FROM student_ms_records x WHERE x.student_id=s.id AND x.program=smr.program AND x.ms_level=smr.ms_level)
        ORDER BY (withdrawal_order.approved_at IS NOT NULL),withdrawal_order.approved_at,
                 CASE WHEN withdrawal_order.approved_at IS NOT NULL THEN s.id END,
@@ -1163,6 +1265,8 @@ exports.autoAssign = async (req, res) => {
           [company, `${company} Company`, students[index].id]
         );
       }
+
+      await snapshotCycleAssignments(connection, selectedScheduleId, programCode);
 
       await connection.execute(
         'UPDATE enrollment_schedules SET platoons_assigned_at=CURRENT_TIMESTAMP WHERE id=?',
@@ -1306,6 +1410,7 @@ exports.autoAssign = async (req, res) => {
       countsFor(femaleCompanies)
     );
 
+    await snapshotCycleAssignments(connection, selectedScheduleId, programCode);
     await connection.execute('UPDATE enrollment_schedules SET platoons_assigned_at=CURRENT_TIMESTAMP WHERE id=?', [selectedScheduleId]);
     await connection.commit();
     transactionOpen = false;
@@ -1354,7 +1459,18 @@ exports.grades = async (req, res) => {
         [programCode]
       );
 
-      return res.json({ students, grades });
+      const courseByStudent = new Map(
+        students.map((student) => [Number(student.student_id), student.course])
+      );
+      const normalizedGrades = grades.map((grade) => ({
+        ...grade,
+        status: gradesService.statusFromGrade(
+          grade.grade,
+          courseByStudent.get(Number(grade.student_id))
+        ),
+      }));
+
+      return res.json({ students, grades: normalizedGrades });
     }
 
     const { student_id: rawStudentId, ms_level: msLevel, midterm, final_term: finalTerm } = req.body;
@@ -1389,7 +1505,11 @@ exports.grades = async (req, res) => {
     }
 
     const grade = gradesService.calculateGrade(mid, fin);
-    const status = gradesService.statusFromGrade(grade);
+    const [[student]] = await db.execute(
+      'SELECT course FROM students WHERE id=? LIMIT 1',
+      [studentId]
+    );
+    const status = gradesService.statusFromGrade(grade, student?.course);
 
     await db.execute(
       `INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program)
@@ -1504,11 +1624,11 @@ exports.serials = async (req, res) => {
         eligible: gradesService.isCertificateEligible([
           { ms_level: '1', grade: row.ms1_grade, status: row.ms1_status },
           { ms_level: '2', grade: row.ms2_grade, status: row.ms2_status },
-        ]),
+        ], row.course),
         eligibility_message: gradesService.certificateEligibilityMessage([
           { ms_level: '1', grade: row.ms1_grade, status: row.ms1_status },
           { ms_level: '2', grade: row.ms2_grade, status: row.ms2_status },
-        ]),
+        ], row.course),
       })));
     }
 
@@ -1531,6 +1651,10 @@ exports.serials = async (req, res) => {
       'SELECT ms_level,grade,status FROM student_grades WHERE student_id=? AND program=?',
       [studentId, programCode]
     );
+    const [[certificateStudent]] = await db.execute(
+      'SELECT course FROM students WHERE id=? AND nstp_component=? LIMIT 1',
+      [studentId, programCode]
+    );
 
     if (!gradesService.hasRequiredGradeLevels(gradeRows)) {
       return res.status(400).json({
@@ -1538,7 +1662,7 @@ exports.serials = async (req, res) => {
       });
     }
 
-    if (!gradesService.isCertificateEligible(gradeRows)) {
+    if (!gradesService.isCertificateEligible(gradeRows, certificateStudent?.course)) {
       return res.status(400).json({
         message: 'The student is not eligible. Both Level 1 and Level 2 grades must be passed.',
       });
@@ -1725,7 +1849,7 @@ exports.bulkImportSerials = async (req, res) => {
         continue;
       }
 
-      if (!gradesService.isCertificateEligible(gradeRows)) {
+      if (!gradesService.isCertificateEligible(gradeRows, student.course)) {
         results.push({
           ...summary,
           status: 'skipped',
