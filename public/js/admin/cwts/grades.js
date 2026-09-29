@@ -204,7 +204,7 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
   const url = URL.createObjectURL(blob);
 
   link.href = url;
-  link.download = `${program}${level ? `_CWTS${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Grades.xls`;
+  link.download = `${program}${level ? `_NSTP${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Grades.xls`;
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
@@ -218,7 +218,7 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
 async function renderAdminGrades(_program, content) {
   const program = 'CWTS';
   const apiProgram = 'cwts';
-  const prefix = 'CWTS';
+  const prefix = 'NSTP';
 
   const data = await API.get(`/api/admin/${apiProgram}/grades`);
   const students = data.students || [];
