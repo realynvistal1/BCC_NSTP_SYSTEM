@@ -1,21 +1,21 @@
 function recordAssignment(row, program) {
   if (program === 'CWTS') {
-    return row.company || '-';
+    return row.company ? `${row.company} Company` : '-';
+  }
+
+  if (row.special_unit) {
+    return `Special Unit - ${row.special_unit}`;
   }
 
   if (Number(row.willing_to_take_advance_course)) {
     return 'Advance Course';
   }
 
-  if (row.special_unit) {
-    return row.special_unit;
-  }
-
   return [
     row.battalion ? `Battalion ${row.battalion}` : '',
-    row.rotc_company,
+    row.rotc_company ? `${row.rotc_company} Company` : '',
     row.rotc_platoon ? `Platoon ${row.rotc_platoon}` : '',
-  ].filter(Boolean).join(' ') || '-';
+  ].filter(Boolean).join(' - ') || '-';
 }
 
 function formatRecordDate(value) {
@@ -630,9 +630,7 @@ async function openRotcStudentRecord(id, level) {
             ${infoItem(`${prefix} Level`, `${prefix} ${level}`)}
             ${infoItem('School Year', cycle.school_year ? `SY ${cycle.school_year}` : '-')}
             ${infoItem('Enrollment Status', cycle.status)}
-            ${program === 'ROTC'
-              ? `${infoItem('Battalion', student.battalion ? `Battalion ${student.battalion}` : '-')}${infoItem('Company', student.rotc_company || '-')}${infoItem('Platoon', student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '-')}${infoItem('Special Unit', student.special_unit || '-')}${infoItem('Advance Course', student.willing_to_take_advance_course ? 'Yes' : 'No')}`
-              : infoItem('CWTS Company', student.company || '-')}
+            ${infoItem('Assignment', recordAssignment(student, program))}
           </div>
         </section>
         <section class="record-section">
@@ -652,7 +650,7 @@ async function openRotcStudentRecord(id, level) {
             <div class="absent"><strong>${absent}</strong><span>Absent</span></div>
           </div>
           ${attendance.length
-            ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th><th>Distance</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td><td>${item.distance_meters != null ? `${Number(item.distance_meters).toFixed(1)} m` : '-'}</td></tr>`).join('')}</tbody></table></div>`
+            ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td></tr>`).join('')}</tbody></table></div>`
             : '<div class="empty compact">No attendance records for this cycle.</div>'}
         </section>
         <section class="record-section">
@@ -663,7 +661,7 @@ async function openRotcStudentRecord(id, level) {
           </div>
         </section>
         ${program === 'ROTC' && (data.withdrawals || []).length
-          ? `<section class="record-section"><h3>Advance Course Withdrawal History</h3>${(data.withdrawals || []).map((withdrawal) => `<div class="withdrawal-history"><div>${badge(withdrawal.status)} <small>${formatRecordDate(withdrawal.created_at)}</small></div><p><strong>Reason:</strong> ${esc(withdrawal.reason)}</p>${withdrawal.admin_remarks ? `<p><strong>Admin Remarks:</strong> ${esc(withdrawal.admin_remarks)}</p>` : ''}</div>`).join('')}</section>`
+          ? `<section class="record-section withdrawal-record-section"><h3>Advance Course Withdrawal History</h3>${(data.withdrawals || []).map((withdrawal) => `<article class="withdrawal-history"><header><div><small>Request Status</small>${badge(withdrawal.status)}</div><time><small>Submitted</small><strong>${formatRecordDate(withdrawal.created_at)}</strong></time></header><div class="withdrawal-history-detail"><small>Student Reason</small><p>${esc(withdrawal.reason)}</p></div>${withdrawal.admin_remarks ? `<div class="withdrawal-history-detail admin"><small>Administrator Remarks</small><p>${esc(withdrawal.admin_remarks)}</p></div>` : `<div class="withdrawal-history-detail muted-detail"><small>Administrator Remarks</small><p>No administrator remarks recorded.</p></div>`}</article>`).join('')}</section>`
           : ''}
       </div>
       <div class="app-dialog-actions">
