@@ -1,19 +1,19 @@
 function recordAssignment(row, program) {
   if (program === 'CWTS') {
-    return row.company || '-';
+    return row.company ? `${row.company} Company` : '-';
+  }
+
+  if (row.special_unit) {
+    return `Special Unit - ${row.special_unit}`;
   }
 
   if (Number(row.willing_to_take_advance_course)) {
     return 'Advance Course';
   }
 
-  if (row.special_unit) {
-    return row.special_unit;
-  }
-
   return [
     row.battalion ? `Battalion ${row.battalion}` : '',
-    row.rotc_company,
+    row.rotc_company ? `${row.rotc_company} Company` : '',
     row.rotc_platoon ? `Platoon ${row.rotc_platoon}` : '',
   ].filter(Boolean).join(' - ') || '-';
 }
@@ -408,9 +408,7 @@ async function renderAdminRecords(_program, content) {
               ${infoItem(`${prefix} Level`, `${prefix} ${level}`)}
               ${infoItem('School Year', cycle.school_year ? `SY ${cycle.school_year}` : '-')}
               ${infoItem('Enrollment Status', cycle.status)}
-              ${program === 'ROTC'
-                ? `${infoItem('Battalion', student.battalion ? `Battalion ${student.battalion}` : '-')}${infoItem('Company', student.rotc_company || '-')}${infoItem('Platoon', student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '-')}${infoItem('Special Unit', student.special_unit || '-')}${infoItem('Advance Course', student.willing_to_take_advance_course ? 'Yes' : 'No')}`
-                : infoItem('CWTS Company', student.company || '-')}
+              ${infoItem('Assignment', recordAssignment(student, program))}
             </div>
           </section>
           <section class="record-section">
@@ -430,7 +428,7 @@ async function renderAdminRecords(_program, content) {
               <div class="absent"><strong>${absent}</strong><span>Absent</span></div>
             </div>
             ${attendance.length
-              ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th><th>Distance</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td><td>${item.distance_meters != null ? `${Number(item.distance_meters).toFixed(1)} m` : '-'}</td></tr>`).join('')}</tbody></table></div>`
+              ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>${program === 'CWTS' ? 'CS' : 'MI'}</th><th>Type</th><th>Status</th><th>Time</th></tr></thead><tbody>${attendance.map((item) => `<tr><td>${item.mi_number || '-'}</td><td>${esc((item.mi_type || '-').toUpperCase())}</td><td>${badge(item.status)}</td><td>${formatRecordDate(item.created_at)}</td></tr>`).join('')}</tbody></table></div>`
               : '<div class="empty compact">No attendance records for this cycle.</div>'}
           </section>
           <section class="record-section">
