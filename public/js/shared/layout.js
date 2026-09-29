@@ -79,15 +79,7 @@ function roleEmblem(role) {
 function shell(role, title, subtitle, auth) {
   document.getElementById('pageTitle').textContent = title;
   document.getElementById('pageSubtitle').textContent = subtitle;
-  decorateSidebar(role);
-
-  const emblem = document.getElementById('portalEmblem');
-  if (emblem) emblem.src = roleEmblem(role);
-
-  const current = window.location.pathname;
-  document.querySelectorAll('.nav-link').forEach((link) => {
-    link.classList.toggle('active', link.getAttribute('href') === current);
-  });
+  preparePortalShell(role);
 
   document.getElementById('mobileMenuButton')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('open');
@@ -99,6 +91,18 @@ function shell(role, title, subtitle, auth) {
       .then(() => window.StudentAttendanceAlerts.start(auth.user))
       .catch((error) => console.warn('Attendance alerts unavailable:', error.message));
   }
+}
+
+function preparePortalShell(role) {
+  decorateSidebar(role);
+
+  const emblem = document.getElementById('portalEmblem');
+  if (emblem) emblem.src = roleEmblem(role);
+
+  const current = window.location.pathname;
+  document.querySelectorAll('.nav-link').forEach((link) => {
+    link.classList.toggle('active', link.getAttribute('href') === current);
+  });
 }
 
 function portalLogin(expected) {
@@ -522,6 +526,8 @@ function showPageLoading(message = 'Loading page...') {
   const content = document.getElementById('content');
   if (!content) return;
 
+  content.classList.remove('content-ready');
+
   content.innerHTML = `
     <div class="page-loading" role="status" aria-live="polite">
       <span class="page-spinner" aria-hidden="true"></span>
@@ -538,10 +544,11 @@ function showRouteLoading(message = 'Opening page...') {
     overlay.id = 'routeLoadingOverlay';
     overlay.className = 'route-loading-overlay';
     overlay.innerHTML = `
-      <div class="route-loading-card" role="status" aria-live="polite">
-        <span class="route-loading-spinner" aria-hidden="true"></span>
-        <strong id="routeLoadingMessage">${esc(message)}</strong>
-      </div>
+      <span class="route-loading-bar" aria-hidden="true"></span>
+      <span class="route-loading-status" role="status" aria-live="polite">
+        <span class="route-loading-dot" aria-hidden="true"></span>
+        <span id="routeLoadingMessage">${esc(message)}</span>
+      </span>
     `;
     document.body.appendChild(overlay);
   } else {
@@ -550,6 +557,7 @@ function showRouteLoading(message = 'Opening page...') {
   }
 
   overlay.classList.add('visible');
+  document.body.classList.add('route-leaving');
 }
 
 function showPageError(error) {
@@ -592,6 +600,9 @@ function loadScriptOnce(src) {
 }
 
 async function bootstrapPortalPage({ expectedPortal, shellRole, moduleSrc, render }) {
+  // Build the final shell before the auth request so the sidebar does not restyle
+  // or resize after the first paint.
+  preparePortalShell(shellRole);
   showPageLoading();
 
   try {
@@ -611,11 +622,30 @@ async function bootstrapPortalPage({ expectedPortal, shellRole, moduleSrc, rende
     if (!content) throw new Error('Page content container was not found.');
 
     await render(content, auth);
+    window.requestAnimationFrame(() => content.classList.add('content-ready'));
   } catch (error) {
     console.error('Page bootstrap error:', error);
     showPageError(error);
   }
 }
+
+// Warm likely destinations so normal multi-page navigation feels immediate.
+document.addEventListener('pointerover', (event) => {
+  const link = event.target.closest('.nav-link');
+  if (!link || link.dataset.prefetched === 'true') return;
+
+  const href = link.getAttribute('href');
+  if (!href) return;
+
+  const nextUrl = new URL(href, window.location.origin);
+  if (nextUrl.origin !== window.location.origin || nextUrl.href === window.location.href) return;
+
+  const prefetch = document.createElement('link');
+  prefetch.rel = 'prefetch';
+  prefetch.href = nextUrl.href;
+  document.head.appendChild(prefetch);
+  link.dataset.prefetched = 'true';
+}, { passive: true });
 
 // Always close the mobile sidebar after a navigation item is selected.
 document.addEventListener('click', (event) => {
@@ -635,10 +665,17 @@ document.addEventListener('click', (event) => {
   const nextUrl = new URL(href, window.location.origin);
   if (nextUrl.origin !== window.location.origin) return;
   if (nextUrl.href === window.location.href) return;
+  if (document.body.classList.contains('route-leaving')) return;
 
   event.preventDefault();
   showRouteLoading('Opening page...');
   window.setTimeout(() => {
-    window.location.href = nextUrl.href;
+    window.location.assign(nextUrl.href);
   }, 1000);
+});
+
+// A page restored from the browser's back-forward cache must not remain dimmed.
+window.addEventListener('pageshow', () => {
+  document.body.classList.remove('route-leaving');
+  document.getElementById('routeLoadingOverlay')?.classList.remove('visible');
 });
