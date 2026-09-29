@@ -21,11 +21,24 @@
     if(intro){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>Welcome back, ${esc(welcome)}</h1><p>${esc([s.student_id,s.course,s.year_level,s.nstp_component].filter(Boolean).join(' - '))}</p>`;
     }
-    const eligibleReEnroll=String(r.ms_level||'')==='1'&&String(rawStatus).toLowerCase()==='approved';
-    c.innerHTML=`<div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
+    const reEnrollment=d.re_enrollment||{};
+    const isApprovedLevelOne=String(r.ms_level||'')==='1'&&String(rawStatus).toLowerCase()==='approved';
+    const eligibilityBlocked=['failed-grade','grades-incomplete'].includes(reEnrollment.reason);
+    const levelPrefix=String(s.nstp_component||'').toUpperCase()==='CWTS'?'CWTS':'MS';
+    const targetLabel=`${levelPrefix} ${reEnrollment.target_level||'2'}`;
+    const eligibilityMessage=reEnrollment.message||`Only students who passed ${levelPrefix} 1 can enroll in ${targetLabel}.`;
+    const eligibilityNotice=eligibilityBlocked
+      ?`<div class="notice error" style="margin-bottom:18px"><strong>Not Qualified for ${esc(targetLabel)}</strong><br>${esc(eligibilityMessage)}</div>`
+      :'';
+    const enrollmentCard=reEnrollment.eligible
+      ?dashCard('Enroll',`${targetLabel} Enrollment`,`You passed ${levelPrefix} 1. Tap to enroll while the schedule is open.`,'/student/re-enrollment','refresh','indigo')
+      :eligibilityBlocked
+        ?dashCard('Enrollment Eligibility','Not Qualified',eligibilityMessage,'/student/grades','grades','red')
+        :'';
+    c.innerHTML=`${eligibilityNotice}<div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
       att.present||0
     }
-    Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${eligibleReEnroll?dashCard('Enroll','MS 2 Enrollment','Tap to enroll for MS 2 when enrollment is open.','/student/re-enrollment','refresh','indigo'):''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
+    Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${isApprovedLevelOne||eligibilityBlocked?enrollmentCard:''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
     return
   }
   if(page==='enrollment-status'){
