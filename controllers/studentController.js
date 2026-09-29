@@ -6,6 +6,7 @@ const authService = require('../services/authService');
 const attendanceService = require('../services/attendanceService');
 const certificateService = require('../services/certificateService');
 const enrollmentService = require('../services/enrollmentService');
+const gradesService = require('../services/gradesService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const captchaService = require('../services/captchaService');
@@ -80,8 +81,38 @@ async function resolveReEnrollContext(studentId) {
     return { status: 404, message: 'Student record not found.' };
   }
 
+  const [ms1Grades] = await db.execute(
+    "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? ORDER BY id DESC LIMIT 1",
+    [studentId, student.nstp_component]
+  );
+  const levelOneGrade = ms1Grades[0];
+  const hasCompleteLevelOneGrades = levelOneGrade
+    && levelOneGrade.midterm !== null
+    && levelOneGrade.final_term !== null;
+  const passedLevelOne = hasCompleteLevelOneGrades
+    && gradesService.statusFromGrade(levelOneGrade.grade, student.course) === 'Passed';
+
   if (latest && latest.status === 'rejected') {
     const retryLevel = String(latest.ms_level || '1');
+
+    if (retryLevel === '2' && !hasCompleteLevelOneGrades) {
+      return {
+        status: 403,
+        reason: 'grades-incomplete',
+        targetLevel: '2',
+        message: `Not qualified for ${levelLabelFor(student.nstp_component, '2')}: your complete level 1 grades have not been encoded.`,
+      };
+    }
+
+    if (retryLevel === '2' && !passedLevelOne) {
+      return {
+        status: 403,
+        reason: 'failed-grade',
+        targetLevel: '2',
+        message: `Not qualified for ${levelLabelFor(student.nstp_component, '2')}: your level 1 grade is Failed. Only students who passed level 1 can enroll.`,
+      };
+    }
+
     const [pendingRetry] = await db.execute(
       "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level=? AND status='pending' LIMIT 1",
       [studentId, retryLevel]
@@ -129,11 +160,6 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
-  const [ms1Grades] = await db.execute(
-    "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? LIMIT 1",
-    [studentId, student.nstp_component]
-  );
-
   if (latest && latest.status === 'pending') {
     return {
       status: 400,
@@ -148,10 +174,21 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
-  if (ms1Grades[0] && ms1Grades[0].status === 'Failed') {
+  if (!hasCompleteLevelOneGrades) {
     return {
-      status: 400,
-      message: 'You cannot proceed to level 2 because your level 1 grade is Failed.',
+      status: 403,
+      reason: 'grades-incomplete',
+      targetLevel: '2',
+      message: `Not qualified for ${levelLabelFor(student.nstp_component, '2')}: your complete level 1 grades have not been encoded.`,
+    };
+  }
+
+  if (!passedLevelOne) {
+    return {
+      status: 403,
+      reason: 'failed-grade',
+      targetLevel: '2',
+      message: `Not qualified for ${levelLabelFor(student.nstp_component, '2')}: your level 1 grade is Failed. Only students who passed level 1 can enroll.`,
     };
   }
 
@@ -491,6 +528,7 @@ exports.dashboard = async (req, res) => {
       "SELECT COUNT(*) total,SUM(status='present') present,SUM(status='late') late,SUM(status='absent') absent FROM attendance_records WHERE student_id=?",
       [req.user.id]
     );
+    const reEnrollmentContext = await resolveReEnrollContext(req.user.id);
 
     return res.json({
       student: safeStudent,
@@ -499,6 +537,12 @@ exports.dashboard = async (req, res) => {
       grade: gradeRows[0] || null,
       serial: serialRows[0] || null,
       attendance: attendanceRows[0],
+      re_enrollment: {
+        eligible: reEnrollmentContext.status === 200,
+        reason: reEnrollmentContext.reason || null,
+        message: reEnrollmentContext.message || '',
+        target_level: reEnrollmentContext.targetLevel || null,
+      },
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -607,7 +651,11 @@ exports.attendance = async (req, res) => {
        FROM attendance_records ar
        JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id
        WHERE ar.student_id=?
-       ORDER BY ses.mi_number DESC,FIELD(ses.mi_type,'out','in'),ar.created_at DESC`,
+       ORDER BY COALESCE(ses.ms_level,99) ASC,
+                ses.school_year ASC,
+                ses.mi_number ASC,
+                FIELD(LOWER(ses.mi_type),'in','out') ASC,
+                ar.created_at ASC`,
       [req.user.id]
     );
 
