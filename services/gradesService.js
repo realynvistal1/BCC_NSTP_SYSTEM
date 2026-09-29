@@ -2,8 +2,15 @@ function calculateGrade(midterm, finalTerm) {
   return Math.round(((Number(midterm) + Number(finalTerm)) / 2) * 100) / 100;
 }
 
-function statusFromGrade(grade) {
-  return grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
+function passingGradeLimit(course = '') {
+  return /criminology/i.test(String(course)) ? 2.5 : 3.0;
+}
+
+function statusFromGrade(grade, course = '') {
+  const numericGrade = Number(grade);
+  return numericGrade >= 1.0 && numericGrade <= passingGradeLimit(course)
+    ? "Passed"
+    : "Failed";
 }
 
 function hasRequiredGradeLevels(rows) {
@@ -12,31 +19,31 @@ function hasRequiredGradeLevels(rows) {
   return has1 && has2;
 }
 
-function rowPassed(row) {
+function rowPassed(row, course = '') {
   if (!row) {
     return false;
   }
 
-  if (String(row.status || '').toLowerCase() === 'passed') {
-    return true;
+  const grade = Number(row.grade);
+  if (Number.isFinite(grade) && grade >= 1.0) {
+    return statusFromGrade(grade, course) === 'Passed';
   }
 
-  const grade = Number(row.grade);
-  return Number.isFinite(grade) && grade >= 1.0 && grade <= 3.0;
+  return String(row.status || '').trim().toLowerCase() === 'passed';
 }
 
-function isCertificateEligible(rows) {
+function isCertificateEligible(rows, course = '') {
   const ms1 = rows.find((row) => String(row.ms_level) === "1");
   const ms2 = rows.find((row) => String(row.ms_level) === "2");
-  return rowPassed(ms1) && rowPassed(ms2);
+  return rowPassed(ms1, course) && rowPassed(ms2, course);
 }
 
-function certificateEligibilityMessage(rows) {
+function certificateEligibilityMessage(rows, course = '') {
   if (!hasRequiredGradeLevels(rows)) {
     return 'Grades Incomplete';
   }
 
-  return isCertificateEligible(rows) ? 'Eligible' : 'Not Eligible';
+  return isCertificateEligible(rows, course) ? 'Eligible' : 'Not Eligible';
 }
 
 module.exports = {
@@ -44,5 +51,6 @@ module.exports = {
   calculateGrade,
   hasRequiredGradeLevels,
   isCertificateEligible,
+  passingGradeLimit,
   statusFromGrade,
 };
