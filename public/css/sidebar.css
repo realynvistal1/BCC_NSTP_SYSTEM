@@ -78,6 +78,7 @@
 .nav a,
 .nav .nav-link {
   padding: 10px 11px;
+  min-height: 59px;
   border-radius: 18px;
   color: #fff;
   font-size: 13.5px;
@@ -99,6 +100,25 @@
     transform .18s ease
 }
 
+/* Prevent the plain link text from flashing before layout.js adds icons. */
+.nav .nav-link:not([data-enhanced="true"]) {
+  opacity: 0;
+  animation: nav-raw-fallback 0s .6s forwards
+}
+
+.nav .nav-link[data-enhanced="true"] {
+  animation: nav-finished-in .14s ease-out both
+}
+
+@keyframes nav-raw-fallback {
+  to { opacity: 1; }
+}
+
+@keyframes nav-finished-in {
+  from { opacity: .72; }
+  to { opacity: 1; }
+}
+
 .nav a::before,
 .nav .nav-link::before {
   content: "";
@@ -111,13 +131,12 @@
 
 .nav a:hover,
 .nav .nav-link:hover {
-  background: rgba(255, 255, 255, .11);
-  transform: translateX(2px)
+  background: rgba(255, 255, 255, .11)
 }
 
 .nav a:active,
 .nav .nav-link:active {
-  transform: scale(.985)
+  transform: none
 }
 
 .nav a:hover::before,
@@ -156,7 +175,7 @@
 
 .nav a:hover .nav-icon,
 .nav .nav-link:hover .nav-icon {
-  transform: translateY(-1px)
+  transform: none
 }
 
 .nav-icon svg {
@@ -173,7 +192,7 @@
 
 .nav a:hover .nav-copy,
 .nav .nav-link:hover .nav-copy {
-  transform: translateX(1px)
+  transform: none
 }
 
 .nav-label {
@@ -370,65 +389,78 @@
   box-shadow: 0 16px 32px rgba(15, 23, 42, .16), inset 0 1px 0 rgba(255, 255, 255, .9)
 }
 
-body[data-portal-theme="student"] .sidebar {
+body[data-portal-theme="student"] .sidebar,
+body[data-role="student"] .sidebar {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, .18), transparent 28%),
     linear-gradient(180deg, #4c97db 0%, #3f82c9 54%, #2e69ad 100%)
 }
 
-body[data-portal-theme="rotc"] .sidebar {
+body[data-portal-theme="rotc"] .sidebar,
+body[data-role="rotc"] .sidebar {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, .12), transparent 30%),
     linear-gradient(180deg, #335c83 0%, #27476b 52%, #1c314b 100%)
 }
 
-body[data-portal-theme="cwts"] .sidebar {
+body[data-portal-theme="cwts"] .sidebar,
+body[data-role="cwts"] .sidebar {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, .18), transparent 26%),
     linear-gradient(180deg, #379b83 0%, #2d866f 45%, #1f6b59 100%)
 }
 
-body[data-portal-theme="officer"] .sidebar {
+body[data-portal-theme="officer"] .sidebar,
+body[data-role="officer"] .sidebar {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, .13), transparent 30%),
     linear-gradient(180deg, #6b7280 0%, #4b5563 50%, #1f2937 100%)
 }
 
-body[data-portal-theme="rotc"] .nav a.active {
+body[data-portal-theme="rotc"] .nav a.active,
+body[data-role="rotc"] .nav a.active {
   color: #1f4a74
 }
 
-body[data-portal-theme="cwts"] .nav a.active {
+body[data-portal-theme="cwts"] .nav a.active,
+body[data-role="cwts"] .nav a.active {
   color: #17604e;
   background: linear-gradient(180deg, #ffffff, #f6faf8)
 }
 
-body[data-portal-theme="cwts"] .nav a:not(.active) {
+body[data-portal-theme="cwts"] .nav a:not(.active),
+body[data-role="cwts"] .nav a:not(.active) {
   background: rgba(255, 255, 255, .06)
 }
 
-body[data-portal-theme="cwts"] .nav a:hover {
+body[data-portal-theme="cwts"] .nav a:hover,
+body[data-role="cwts"] .nav a:hover {
   background: rgba(255, 255, 255, .12)
 }
 
-body[data-portal-theme="cwts"] .nav-icon {
+body[data-portal-theme="cwts"] .nav-icon,
+body[data-role="cwts"] .nav-icon {
   background: rgba(255, 255, 255, .08)
 }
 
-body[data-portal-theme="cwts"] .nav a.active .nav-icon {
+body[data-portal-theme="cwts"] .nav a.active .nav-icon,
+body[data-role="cwts"] .nav a.active .nav-icon {
   background: #e7f5ef;
   color: #25866b
 }
 
-body[data-portal-theme="cwts"] .brand-logo {
+body[data-portal-theme="cwts"] .brand-logo,
+body[data-role="cwts"] .brand-logo {
   border-radius: 24px;
   box-shadow: 0 14px 28px rgba(17, 59, 49, .22)
 }
 
-body[data-portal-theme="cwts"] .nav-wrap {
+body[data-portal-theme="cwts"] .nav-wrap,
+body[data-role="cwts"] .nav-wrap {
   border-radius: 30px
 }
 
-body[data-portal-theme="officer"] .nav a.active {
+body[data-portal-theme="officer"] .nav a.active,
+body[data-role="officer"] .nav a.active {
   color: #374151
 }
