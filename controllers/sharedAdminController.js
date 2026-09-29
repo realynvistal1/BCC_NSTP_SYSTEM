@@ -425,10 +425,24 @@ exports.dashboard = async (req, res) => {
       [programCode, programCode, programCode, scheduleId, scheduleId, scheduleId, scheduleId]
     );
 
+    let withdrawalSummary = { total: 0, pending: 0 };
+    if (programCode === 'ROTC') {
+      const [[withdrawalCounts]] = await db.execute(
+        `SELECT COUNT(*) total,
+                SUM(status='pending') pending
+         FROM advance_course_withdrawals`
+      );
+      withdrawalSummary = {
+        total: Number(withdrawalCounts.total || 0),
+        pending: Number(withdrawalCounts.pending || 0),
+      };
+    }
+
     return res.json({
       program: programCode,
       ...counts,
       assigned: assignmentPublished ? Number(assigned.assigned || 0) : 0,
+      withdrawals: withdrawalSummary,
       ...(programCode === 'ROTC' ? {
         distribution: {
           battalion_1: assignmentPublished ? Number(assigned.battalion_1 || 0) : 0,
