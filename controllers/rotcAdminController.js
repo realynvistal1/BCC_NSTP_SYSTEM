@@ -26,6 +26,7 @@ module.exports = {
   serials: withProgram(shared.serials),
   bulkImportSerials: withProgram(shared.bulkImportSerials),
   certificateSettings: withProgram(shared.certificateSettings),
+  downloadCertificates: withProgram(shared.downloadCertificates),
   certificate: withProgram(shared.certificate),
   records: withProgram(shared.records),
   downloadRecordProfiles: withProgram(shared.downloadRecordProfiles),
