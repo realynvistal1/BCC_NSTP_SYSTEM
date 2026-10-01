@@ -91,7 +91,7 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
     'SUFFIX',
     'COURSE',
     'COMPANY',
-    'PLATOON',
+    ...(program === 'ROTC' ? ['PLATOON'] : []),
     'ID NUMBER',
     'BIRTHDATE',
     'SEX',
@@ -114,6 +114,7 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
   const columnWidths = [
     34, 92, 92, 92, 54, 86, 86, 64, 92, 78, 58, 150, 74, 62, 62, 66,
   ];
+  if (program === 'CWTS') columnWidths.splice(7, 1);
   const columnsXml = columnWidths
     .map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`)
     .join('');
@@ -188,7 +189,7 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
             ? 'Advance Course'
             : row.special_unit || row.rotc_company || '-')
           : row.company || '-',
-        program === 'ROTC' ? (row.rotc_platoon || '-') : '-',
+        ...(program === 'ROTC' ? [row.rotc_platoon || '-'] : []),
         row.student_id,
         row.birthdate || '-',
         row.sex || '-',
