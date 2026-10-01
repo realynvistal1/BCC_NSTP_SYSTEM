@@ -210,7 +210,7 @@
       }
       if(step===1){
         const chk=await API.get(`/api/student/check-student-id?student_id=${encodeURIComponent(f.student_id.value)}`);
-        if(chk.exists)throw new Error('This Student ID is already registered. Please use Student Login or contact your administrator.');
+        if(chk.exists)throw new Error(chk.message||'This Student ID is already registered. Please use Student Login or contact your administrator.');
       }
       if(step<sections.length-1){
         step++;
