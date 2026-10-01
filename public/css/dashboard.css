@@ -1468,6 +1468,12 @@ body[data-portal-theme="officer"] .progress-meta span {
 .roster-stat.amber .roster-stat-value {
   color: #d97706
 }
+.roster-stat.purple .roster-stat-value {
+  color: #7c3aed
+}
+.roster-stat.cyan .roster-stat-value {
+  color: #0891b2
+}
 .assignment-box {
   background: #fff;
   border: 1px solid #e5e7eb;
