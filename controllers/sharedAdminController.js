@@ -374,7 +374,10 @@ async function approvedRecordRows(programCode, filters = {}) {
             s.permanent_barangay,s.permanent_municipality,s.permanent_province,
             s.father_name,s.father_occupation,s.mother_name,s.mother_occupation,
             s.emergency_contact_name,s.emergency_contact_address,s.emergency_contact_relationship,s.emergency_contact_contact_number,
-            s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
+            smr.assignment_company AS company,smr.assignment_battalion AS battalion,
+            smr.assignment_company AS rotc_company,smr.assignment_platoon AS rotc_platoon,
+            smr.assignment_special_unit AS special_unit,
+            COALESCE(smr.assignment_is_advance,0) AS willing_to_take_advance_course,
             s.serial_number,
             g.midterm,g.final_term,g.grade,g.status grade_status
      FROM student_ms_records smr
