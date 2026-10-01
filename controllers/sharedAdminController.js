@@ -6,6 +6,7 @@ const gradesService = require('../services/gradesService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const attendanceService = require('../services/attendanceService');
+const serialNumberService = require('../services/serialNumberService');
 const {
   parsePositiveInt,
   parseIdList,
@@ -1511,22 +1512,65 @@ exports.grades = async (req, res) => {
     );
     const status = gradesService.statusFromGrade(grade, student?.course);
 
-    await db.execute(
-      `INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program)
-       VALUES(?,?,?,?,?,?,?)
-       ON DUPLICATE KEY UPDATE
-         midterm=VALUES(midterm),
-         final_term=VALUES(final_term),
-         grade=VALUES(grade),
-         status=VALUES(status),
-         updated_at=CURRENT_TIMESTAMP`,
-      [studentId, level, mid, fin, grade, status, programCode]
-    );
+    const connection = await db.getConnection();
+    let reopenedEnrollments = 0;
+
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        `INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program)
+         VALUES(?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+           midterm=VALUES(midterm),
+           final_term=VALUES(final_term),
+           grade=VALUES(grade),
+           status=VALUES(status),
+           updated_at=CURRENT_TIMESTAMP`,
+        [studentId, level, mid, fin, grade, status, programCode]
+      );
+
+      // A corrected passing level 1 grade satisfies the prerequisite that caused
+      // this specific rejection. Put the enrollment back into the admin queue,
+      // while preserving rejections made for any other reason.
+      if (level === '1' && status === 'Passed') {
+        const [rejectedRecords] = await connection.execute(
+          `SELECT id,rejection_reason
+           FROM student_ms_records
+           WHERE student_id=? AND program=? AND ms_level='2' AND status='rejected'
+           FOR UPDATE`,
+          [studentId, programCode]
+        );
+        const gradeRejectedIds = rejectedRecords
+          .filter((record) => gradesService.isGradeFailureRejection(record.rejection_reason))
+          .map((record) => Number(record.id));
+
+        if (gradeRejectedIds.length) {
+          const placeholders = gradeRejectedIds.map(() => '?').join(',');
+          const [result] = await connection.execute(
+            `UPDATE student_ms_records
+             SET status='pending',rejection_reason=NULL
+             WHERE id IN (${placeholders})`,
+            gradeRejectedIds
+          );
+          reopenedEnrollments = Number(result.affectedRows || 0);
+        }
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     return res.json({
-      message: 'Grades saved successfully.',
+      message: reopenedEnrollments
+        ? 'Grades saved successfully. The grade-related enrollment rejection was returned to pending review.'
+        : 'Grades saved successfully.',
       grade,
       status,
+      reopened_enrollments: reopenedEnrollments,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -1633,11 +1677,21 @@ exports.serials = async (req, res) => {
     }
 
     const studentId = parsePositiveInt(req.body.student_id);
-    const serialNumber = String(req.body.serial_number || '').trim();
+    const rawSerialNumber = String(req.body.serial_number || '').trim();
 
-    if (!studentId || !serialNumber) {
+    if (!studentId || !rawSerialNumber) {
       return res.status(400).json({
         message: 'Student and serial number are required.',
+      });
+    }
+
+    const serialNumber = serialNumberService.normalizeSerialNumber(rawSerialNumber, programCode);
+
+    if (!serialNumber) {
+      return res.status(400).json({
+        message: programCode === 'ROTC'
+          ? 'Enter the ROTC serial portion in the format R23-005118.'
+          : 'Enter the CWTS serial portion in the format 07-039395-24.',
       });
     }
 
@@ -1680,7 +1734,7 @@ exports.serials = async (req, res) => {
       });
     }
 
-    const serial = serialNumber.toUpperCase();
+    const serial = serialNumber;
     const [duplicate] = await db.execute(
       'SELECT student_id FROM serial_numbers WHERE serial_number=? AND student_id<>?',
       [serial, studentId]
@@ -1782,11 +1836,15 @@ exports.bulkImportSerials = async (req, res) => {
     } = serialSignatories(settings, programCode);
 
     for (const row of importRows) {
+      const normalizedSerialNumber = serialNumberService.normalizeSerialNumber(
+        row.serial_number,
+        programCode
+      );
       const summary = {
         excel_row: row.excel_row,
         student_id: row.student_id,
         student_name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ').trim(),
-        serial_number: row.serial_number,
+        serial_number: normalizedSerialNumber || row.serial_number,
       };
 
       if (!row.student_id || !row.serial_number) {
@@ -1797,6 +1855,19 @@ exports.bulkImportSerials = async (req, res) => {
         });
         continue;
       }
+
+      if (!normalizedSerialNumber) {
+        results.push({
+          ...summary,
+          status: 'skipped',
+          message: programCode === 'ROTC'
+            ? 'Invalid ROTC serial number. Use R23-005118 or BO-R23-005118 PA (Res).'
+            : 'Invalid CWTS serial number. Use 07-039395-24 or C-07-039395-24.',
+        });
+        continue;
+      }
+
+      row.serial_number = normalizedSerialNumber;
 
       if (seenSerials.has(row.serial_number)) {
         results.push({
@@ -2076,9 +2147,80 @@ exports.certificate = async (req, res) => {
       return res.status(400).json({ message: 'Certificate settings are not configured.' });
     }
 
-    return certificateService.certificatePdf(res, {
+    return await certificateService.certificatePdf(res, {
       student: students[0],
       serial: serials[0],
+      settings: settings[0],
+      program: programCode,
+      assets: path.join(__dirname, '../public/images'),
+    });
+  } catch (error) {
+    if (!res.headersSent) {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+};
+
+exports.downloadCertificates = async (req, res) => {
+  try {
+    const programCode = program(req);
+    const studentIds = parseIdList(req.body.student_ids);
+
+    if (!studentIds.length) {
+      return res.status(400).json({ message: 'No assigned certificates match the current filters.' });
+    }
+
+    if (studentIds.length > 500) {
+      return res.status(400).json({ message: 'Download up to 500 certificates at a time.' });
+    }
+
+    const placeholders = studentIds.map(() => '?').join(',');
+    const [students] = await db.execute(
+      `SELECT s.*,sn.id AS certificate_serial_id,sn.serial_number AS certificate_serial_number,
+              sn.program AS certificate_program,sn.created_at AS certificate_created_at,
+              sn.signatory_1_name,sn.signatory_1_position,sn.signatory_2_name,sn.signatory_2_position,
+              sn.signatory_3_name,sn.signatory_3_position
+       FROM students s
+       JOIN serial_numbers sn ON sn.student_id=s.id AND sn.program=?
+       WHERE s.id IN (${placeholders}) AND s.nstp_component=? AND s.role='student'`,
+      [programCode, ...studentIds, programCode]
+    );
+    const [settings] = await db.execute(
+      'SELECT * FROM serial_number_settings WHERE program=?',
+      [programCode]
+    );
+
+    if (!settings[0]) {
+      return res.status(400).json({ message: 'Certificate settings are not configured.' });
+    }
+
+    const byId = new Map(students.map((student) => [Number(student.id), student]));
+    const records = studentIds
+      .map((studentId) => byId.get(studentId))
+      .filter(Boolean)
+      .map((student) => ({
+        student,
+        serial: {
+          id: student.certificate_serial_id,
+          student_id: student.id,
+          serial_number: student.certificate_serial_number,
+          program: student.certificate_program,
+          created_at: student.certificate_created_at,
+          signatory_1_name: student.signatory_1_name,
+          signatory_1_position: student.signatory_1_position,
+          signatory_2_name: student.signatory_2_name,
+          signatory_2_position: student.signatory_2_position,
+          signatory_3_name: student.signatory_3_name,
+          signatory_3_position: student.signatory_3_position,
+        },
+      }));
+
+    if (!records.length) {
+      return res.status(404).json({ message: 'No assigned certificates match the current filters.' });
+    }
+
+    return await certificateService.certificatesPdf(res, {
+      records,
       settings: settings[0],
       program: programCode,
       assets: path.join(__dirname, '../public/images'),
@@ -2320,12 +2462,12 @@ exports.withdrawals = async (req, res) => {
       );
 
       await connection.execute(
-        'UPDATE students SET willing_to_take_advance_course=0,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,platoon=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?',
+        'UPDATE students SET willing_to_take_advance_course=0,special_unit=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,platoon=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?',
         [request.student_id]
       );
 
       const [[record]] = await connection.execute(
-        "SELECT ms_level FROM student_ms_records WHERE student_id=? AND program='ROTC' AND status='approved' ORDER BY created_at DESC LIMIT 1",
+        "SELECT id,ms_level FROM student_ms_records WHERE student_id=? AND program='ROTC' AND status='approved' ORDER BY created_at DESC,id DESC LIMIT 1",
         [request.student_id]
       );
 
@@ -2366,6 +2508,22 @@ exports.withdrawals = async (req, res) => {
             choice.platoon,
             `${choice.company} - Platoon ${choice.platoon}`,
             request.student_id,
+          ]
+        );
+      }
+
+      if (record) {
+        await connection.execute(
+          `UPDATE student_ms_records
+           SET assignment_battalion=?,assignment_company=?,assignment_platoon=?,
+               assignment_special_unit=NULL,assignment_is_advance=0,assignment_label=?
+           WHERE id=?`,
+          [
+            choice ? battalion : null,
+            choice?.company || null,
+            choice?.platoon || null,
+            choice ? `${choice.company} - Platoon ${choice.platoon}` : null,
+            record.id,
           ]
         );
       }
