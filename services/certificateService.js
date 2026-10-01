@@ -27,6 +27,51 @@ function putImage(doc, source, x, y, width, height) {
   }
 }
 
+async function removeSignatureBackground(source) {
+  if (!source) return null;
+
+  try {
+    const input = dataUrlBuffer(source) || source;
+    const { data, info } = await sharp(input)
+      .rotate()
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    for (let index = 0; index < data.length; index += 4) {
+      const lightestInkChannel = Math.min(data[index], data[index + 1], data[index + 2]);
+      const inkStrength = Math.max(0, Math.min(1, (248 - lightestInkChannel) / 48));
+      data[index + 3] = Math.round(data[index + 3] * inkStrength);
+    }
+
+    return await sharp(data, {
+      raw: {
+        width: info.width,
+        height: info.height,
+        channels: 4,
+      },
+    })
+      .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer();
+  } catch {
+    return source;
+  }
+}
+
+async function prepareCertificateSettings(settings, program) {
+  const prepared = { ...settings };
+  const fields = program === 'ROTC'
+    ? ['commandant_signature', 'school_registrar_signature']
+    : ['nstp_coordinator_signature', 'municipal_mayor_signature', 'bcc_president_signature'];
+
+  await Promise.all(fields.map(async (field) => {
+    prepared[field] = await removeSignatureBackground(settings?.[field]);
+  }));
+
+  return prepared;
+}
+
 function ordinal(number) {
   const value = number % 100;
   const suffixes = ['th', 'st', 'nd', 'rd'];
@@ -116,7 +161,7 @@ function drawRotcBody(doc, { student, serial, settings }, width) {
   const componentY = 380;
   const ofTheY = 412;
   const nstpY = 444;
-  const givenY = 490;
+  const givenY = 472;
 
   doc.font('Helvetica-Oblique')
     .fillColor('#111827')
@@ -179,7 +224,7 @@ function drawRotcSigners(doc, settings, width) {
 
   signers.forEach(([name, label, signature], index) => {
     const x = 70 + index * spacing;
-    putImage(doc, signature, x + spacing / 2 - 44, y - 8, 88, 28);
+    putImage(doc, signature, x + spacing / 2 - 75, y - 14, 150, 38);
 
     doc.font('Helvetica-Bold')
       .fillColor('#111827')
@@ -278,7 +323,7 @@ function drawCwtsBody(doc, { student, serial, settings }, width) {
   doc.font('Times-Italic')
     .fillColor('#374151')
     .fontSize(8.5)
-    .text(formatCeremonyDate(settings, serial), 136, 424, {
+    .text(formatCeremonyDate(settings, serial), 136, 410, {
       width: width - 272,
       align: 'center',
     });
@@ -291,7 +336,7 @@ function drawCwtsSigners(doc, settings, width) {
       label: 'NSTP - Coordinator',
       signature: settings.nstp_coordinator_signature,
       x: 96,
-      y: 456,
+      y: 460,
       width: 220,
     },
     {
@@ -299,7 +344,7 @@ function drawCwtsSigners(doc, settings, width) {
       label: 'BCC President',
       signature: settings.bcc_president_signature,
       x: width - 316,
-      y: 456,
+      y: 460,
       width: 220,
     },
     {
@@ -307,13 +352,13 @@ function drawCwtsSigners(doc, settings, width) {
       label: 'Municipal Mayor/Chairman, BCC-BOT',
       signature: settings.municipal_mayor_signature,
       x: width / 2 - 150,
-      y: 500,
+      y: 510,
       width: 300,
     },
   ];
 
   signers.forEach((signer) => {
-    putImage(doc, signer.signature, signer.x + signer.width / 2 - 38, signer.y - 28, 76, 26);
+    putImage(doc, signer.signature, signer.x + signer.width / 2 - 70, signer.y - 34, 140, 40);
 
     doc.font('Helvetica-Bold')
       .fillColor('#111827')
@@ -708,7 +753,8 @@ async function registrationFormsPdf(res, { records, program, assets, filters }) 
   doc.end();
 }
 
-function certificatePdf(res, { student, serial, settings, program, assets }) {
+async function certificatePdf(res, { student, serial, settings, program, assets }) {
+  const preparedSettings = await prepareCertificateSettings(settings, program);
   const doc = new PDFDocument({
     size: program === 'ROTC' ? 'LEGAL' : 'A4',
     layout: 'landscape',
@@ -721,11 +767,50 @@ function certificatePdf(res, { student, serial, settings, program, assets }) {
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   doc.pipe(res);
 
-  drawCertificateByProgram(doc, { student, serial, settings, program, assets });
+  drawCertificateByProgram(doc, {
+    student,
+    serial,
+    settings: preparedSettings,
+    program,
+    assets,
+  });
+  doc.end();
+}
+
+async function certificatesPdf(res, { records, settings, program, assets }) {
+  const preparedSettings = await prepareCertificateSettings(settings, program);
+  const pageOptions = {
+    size: program === 'ROTC' ? 'LEGAL' : 'A4',
+    layout: 'landscape',
+    margin: 24,
+  };
+  const doc = new PDFDocument(pageOptions);
+  const filename = `${String(program || 'nstp').toLowerCase()}-filtered-certificates.pdf`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  doc.pipe(res);
+
+  records.forEach((record, index) => {
+    if (index > 0) {
+      doc.addPage(pageOptions);
+    }
+
+    drawCertificateByProgram(doc, {
+      student: record.student,
+      serial: record.serial,
+      settings: preparedSettings,
+      program,
+      assets,
+    });
+  });
+
   doc.end();
 }
 
 module.exports = {
   certificatePdf,
+  certificatesPdf,
+  removeSignatureBackground,
   registrationFormsPdf,
 };
