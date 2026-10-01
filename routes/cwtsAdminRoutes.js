@@ -47,6 +47,7 @@ router.post('/serial-numbers', controller.serials);
 router.post('/serial-numbers/import', excelUpload.single('file'), controller.bulkImportSerials);
 router.get('/certificate-settings', controller.certificateSettings);
 router.post('/certificate-settings', controller.certificateSettings);
+router.post('/certificates/download-all', controller.downloadCertificates);
 router.get('/certificates/:studentId', controller.certificate);
 router.get('/records', controller.records);
 router.get('/records/download/profiles', controller.downloadRecordProfiles);
