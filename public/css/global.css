@@ -864,7 +864,9 @@ body {
   color: #64748b;
 }
 #content.content-ready {
-  animation: nstp-content-in .16s ease-out both
+  /* Keep the entrance animation's initial state, but release its stacking
+     context when it finishes so fixed dialogs can layer above the page intro. */
+  animation: nstp-content-in .16s ease-out backwards
 }
 @keyframes nstp-content-in {
   from {
