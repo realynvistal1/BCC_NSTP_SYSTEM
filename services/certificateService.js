@@ -628,7 +628,8 @@ function drawCwtsRegistrationPage(doc, record, assets, pageIndex, total) {
     .stroke('#9ca3af');
 
   putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 130, 28, 58, 58);
-  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 189, 28, 58, 58);
+  // Match the visible BCC emblem size; its source image includes extra padding.
+  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 184, 33, 48, 48);
 
   doc.font('Helvetica-Bold')
     .fillColor('#111827')
