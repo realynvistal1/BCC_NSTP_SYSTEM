@@ -13,6 +13,12 @@ function statusFromGrade(grade, course = '') {
     : "Failed";
 }
 
+function isGradeFailureRejection(reason = '') {
+  const normalizedReason = String(reason).trim().toLowerCase();
+  return normalizedReason.includes('grade is failed')
+    && normalizedReason.includes('only students who passed');
+}
+
 function hasRequiredGradeLevels(rows) {
   const has1 = rows.some((row) => String(row.ms_level) === "1");
   const has2 = rows.some((row) => String(row.ms_level) === "2");
@@ -50,6 +56,7 @@ module.exports = {
   certificateEligibilityMessage,
   calculateGrade,
   hasRequiredGradeLevels,
+  isGradeFailureRejection,
   isCertificateEligible,
   passingGradeLimit,
   statusFromGrade,
