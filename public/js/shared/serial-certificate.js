@@ -409,7 +409,8 @@ async function renderAdminSerial(content, program) {
   function draw() {
     const options = syncFilterState();
     const list = filtered();
-    const assigned = list.filter((row) => row.serial_number).length;
+    const assignedRows = list.filter((row) => row.serial_number);
+    const assigned = assignedRows.length;
     const eligible = list.filter((row) => row.eligible && !row.serial_number).length;
     const notEligible = list.filter((row) => !row.eligible).length;
 
@@ -421,6 +422,7 @@ async function renderAdminSerial(content, program) {
           <p>Assign serial numbers to students who completed NSTP 1 and NSTP 2 grades, then make their certificate available for download.</p>
         </div>
         <div class="serial-banner-actions">
+          <button class="btn" id="downloadFilteredCertificatesBtn" type="button" ${assigned ? '' : 'disabled'}>Download All Certificates (${assigned})</button>
           <button class="btn" id="serialImportBtn" type="button" onclick="window.__openSerialBulkImport()">Upload Excel</button>
           <button class="btn primary" id="certSettingsBtn" type="button" onclick="window.__openSerialCertificateSettings()">Certificate Settings</button>
         </div>
@@ -617,6 +619,47 @@ async function renderAdminSerial(content, program) {
       };
     }
 
+    $('#downloadFilteredCertificatesBtn').onclick = async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+
+      try {
+        button.disabled = true;
+        button.textContent = 'Preparing Certificates...';
+
+        const response = await fetch(`/api/admin/${program}/certificates/download-all`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_ids: assignedRows.map((row) => row.student_id) }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.message || 'Unable to download the certificates.');
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('content-disposition') || '';
+        const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+        const filename = filenameMatch?.[1] || `${program}-filtered-certificates.pdf`;
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        toast(`${assignedRows.length} filtered certificate${assignedRows.length === 1 ? '' : 's'} downloaded.`);
+      } catch (error) {
+        toast(error.message, true);
+      } finally {
+        button.disabled = assignedRows.length === 0;
+        button.textContent = originalText;
+      }
+    };
+
     $$('.assignSerialBtn').forEach((button) => {
       button.onclick = () => openAssign(button.dataset.id, button.dataset.name);
     });
@@ -634,6 +677,9 @@ async function renderAdminSerial(content, program) {
       return toast('Complete Certificate Settings first.', true);
     }
 
+    const isRotc = program === 'rotc';
+    const isCwts = program === 'cwts';
+
     modalHost.innerHTML = `
       <div class="app-dialog">
         <div class="app-dialog-backdrop" data-close></div>
@@ -648,7 +694,20 @@ async function renderAdminSerial(content, program) {
           <div class="record-modal-scroll">
             <div class="field">
               <label>Official Serial Number</label>
-              <input id="serialInput" placeholder="NSTP-2026-0001" autocomplete="off">
+              ${isRotc
+                ? `<div class="serial-number-composer">
+                    <span class="serial-number-affix">BO-</span>
+                    <input id="serialInput" placeholder="R23-005118" maxlength="10" autocomplete="off" aria-label="Editable ROTC serial number portion">
+                    <span class="serial-number-affix suffix">PA (Res)</span>
+                  </div>
+                  <small class="serial-format-help">Type R followed by eight digits. The hyphen is inserted automatically.</small>`
+                : isCwts
+                  ? `<div class="serial-number-composer">
+                      <span class="serial-number-affix">C-</span>
+                      <input id="serialInput" placeholder="07-039395-24" maxlength="12" inputmode="numeric" autocomplete="off" aria-label="Editable CWTS serial number portion">
+                    </div>
+                    <small class="serial-format-help">Type ten digits. Both hyphens are inserted automatically.</small>`
+                  : '<input id="serialInput" placeholder="NSTP-2026-0001" autocomplete="off">'}
             </div>
             <div class="certificate-settings-summary">
               <strong>Certificate Settings</strong>
@@ -669,6 +728,26 @@ async function renderAdminSerial(content, program) {
       };
     });
 
+    if (isRotc || isCwts) {
+      $('#serialInput').oninput = (event) => {
+        if (isRotc) {
+          const rawValue = event.target.value.toUpperCase();
+          const hasPrefix = rawValue.startsWith('R');
+          const digits = rawValue.replace(/\D/g, '').slice(0, 8);
+          const firstGroup = digits.slice(0, 2);
+          const lastGroup = digits.slice(2);
+          event.target.value = `${hasPrefix ? 'R' : ''}${firstGroup}${lastGroup ? `-${lastGroup}` : ''}`;
+          return;
+        }
+
+        const digits = event.target.value.replace(/\D/g, '').slice(0, 10);
+        const firstGroup = digits.slice(0, 2);
+        const middleGroup = digits.slice(2, 8);
+        const lastGroup = digits.slice(8);
+        event.target.value = `${firstGroup}${middleGroup ? `-${middleGroup}` : ''}${lastGroup ? `-${lastGroup}` : ''}`;
+      };
+    }
+
     $('#saveSerialBtn').onclick = async () => {
       const value = $('#serialInput').value.trim();
 
@@ -676,10 +755,22 @@ async function renderAdminSerial(content, program) {
         return toast('Enter the serial number.', true);
       }
 
+      if (isRotc && !/^R\d{2}-\d{6}$/.test(value)) {
+        return toast('Use the format R23-005118. BO- and PA (Res) are added automatically.', true);
+      }
+
+      if (isCwts && !/^\d{2}-\d{6}-\d{2}$/.test(value)) {
+        return toast('Use the format 07-039395-24. C- is added automatically.', true);
+      }
+
       try {
         const result = await API.post(`/api/admin/${program}/serial-numbers`, {
           student_id: Number(id),
-          serial_number: value,
+          serial_number: isRotc
+            ? `BO-${value} PA (Res)`
+            : isCwts
+              ? `C-${value}`
+              : value,
         });
 
         toast(result.message);
