@@ -1625,6 +1625,23 @@ async function renderCWTSCompanyRoster(c) {
 
     c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
 
+    const companyTones = ["blue", "green", "amber", "purple", "rose", "cyan"];
+    const companyTotalsMarkup = `
+      <div class="roster-section-title">
+        <h3>Assigned per Company</h3>
+        <small>${total} students total</small>
+      </div>
+      <div class="roster-summary-grid six">
+        ${companies.map((company, index) => rosterSummary(
+          company,
+          shown[company].length,
+          `of ${limit} assigned`,
+          companyTones[index]
+        )).join("")}
+      </div>
+    `;
+    c.querySelector(".assignment-box")?.insertAdjacentHTML("beforebegin", companyTotalsMarkup);
+
     $("#cwtsRosterLevel").onchange = (event) => {
       selectedLevel = event.target.value;
       const matching = schedules.find((item) => String(item.ms_level || "") === selectedLevel);
