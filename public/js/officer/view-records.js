@@ -81,7 +81,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
   const prefix = program === 'CWTS' ? 'CWTS' : 'MS';
   const headers = [
     '#', 'SURNAME', 'FIRST NAME', 'MIDDLE NAME', 'SUFFIX', 'COURSE', 'COMPANY',
-    'PLATOON', 'ID NUMBER', 'BIRTHDATE', 'SEX', 'ADDRESS', `${prefix} LEVEL`,
+    ...(program === 'ROTC' ? ['PLATOON'] : []), 'ID NUMBER', 'BIRTHDATE', 'SEX', 'ADDRESS', `${prefix} LEVEL`,
     'MIDTERM', 'FINAL', 'AVERAGE',
   ];
   const makeCell = (value, options = {}) => {
@@ -90,6 +90,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
     return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="String">${officerXmlSafe(value)}</Data></Cell>`;
   };
   const widths = [34, 92, 92, 92, 54, 86, 86, 64, 92, 78, 58, 150, 74, 62, 62, 66];
+  if (program === 'CWTS') widths.splice(7, 1);
   const columns = widths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
   const styles = `
     <Styles>
@@ -113,7 +114,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
       program === 'ROTC'
         ? (Number(row.willing_to_take_advance_course) ? 'Advance Course' : row.special_unit || row.rotc_company || '-')
         : row.company || '-',
-      program === 'ROTC' ? (row.rotc_platoon || '-') : '-',
+      ...(program === 'ROTC' ? [row.rotc_platoon || '-'] : []),
       row.student_id,
       row.birthdate || '-',
       row.sex || '-',
@@ -124,8 +125,8 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
       row.grade ?? '-',
     ]);
     const headerRows = [
-      `<Row ss:Height="20">${makeCell('Region: VII', { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`School Year: SY ${schoolYear || 'All'}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
-      `<Row ss:Height="18">${makeCell(`NSTP Component: ${program}`, { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: 5 })}${new Array(2).fill('<Cell/>').join('')}${makeCell(`${prefix} Level: ${prefix} ${currentLevel}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      `<Row ss:Height="20">${makeCell('Region: VII', { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: 5 })}${new Array(program === 'CWTS' ? 0 : 1).fill('<Cell/>').join('')}${makeCell(`School Year: SY ${schoolYear || 'All'}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
+      `<Row ss:Height="18">${makeCell(`NSTP Component: ${program}`, { style: 'MetaLabel', mergeAcross: 2 })}${new Array(3).fill('<Cell/>').join('')}${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: 5 })}${new Array(program === 'CWTS' ? 0 : 1).fill('<Cell/>').join('')}${makeCell(`${prefix} Level: ${prefix} ${currentLevel}`, { style: 'MetaLabel', mergeAcross: 2 })}</Row>`,
       '<Row ss:Height="10"></Row>',
       `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
     ].join('');
