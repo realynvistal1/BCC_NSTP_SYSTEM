@@ -81,6 +81,18 @@ async function resolveReEnrollContext(studentId) {
     return { status: 404, message: 'Student record not found.' };
   }
 
+  const [serialRows] = await db.execute(
+    "SELECT id FROM serial_numbers WHERE student_id=? AND TRIM(serial_number)<>'' LIMIT 1",
+    [studentId]
+  );
+  if (String(student.serial_number || '').trim() || serialRows.length) {
+    return {
+      status: 403,
+      reason: 'nstp-completed',
+      message: 'You have already completed NSTP and have an assigned serial number. You cannot enroll again.',
+    };
+  }
+
   const [ms1Grades] = await db.execute(
     "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? ORDER BY id DESC LIMIT 1",
     [studentId, student.nstp_component]
@@ -277,11 +289,18 @@ exports.checkStudentId = async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      'SELECT 1 FROM students WHERE student_id=? LIMIT 1',
+      `SELECT s.id, CASE WHEN TRIM(COALESCE(s.serial_number,''))<>''
+         OR EXISTS (SELECT 1 FROM serial_numbers sn WHERE sn.student_id=s.id AND TRIM(sn.serial_number)<>'')
+         THEN 1 ELSE 0 END AS completed
+       FROM students s WHERE s.student_id=? LIMIT 1`,
       [studentId]
     );
 
-    return res.json({ exists: rows.length > 0 });
+    return res.json({
+      exists: rows.length > 0,
+      completed: Boolean(Number(rows[0]?.completed)),
+      message: Number(rows[0]?.completed) ? 'You have already completed NSTP and have an assigned serial number. You cannot enroll again.' : undefined,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
