@@ -1116,7 +1116,7 @@ exports.certificate = async (req, res) => {
       [student.nstp_component]
     );
 
-    return certificateService.certificatePdf(res, {
+    return await certificateService.certificatePdf(res, {
       student,
       serial: serialRows[0],
       settings: settingsRows[0] || {},
