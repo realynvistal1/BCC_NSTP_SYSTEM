@@ -454,7 +454,9 @@ async function renderAdminRecords(_program, content) {
       `).join('')
       : `<tr><td colspan="${program === 'ROTC' ? 8 : 7}"><div class="empty">No students found.</div></td></tr>`;
 
-    $('#recordFooter').textContent = `Showing ${data.length} of ${rows.length} record(s)`;
+    $('#recordFooter').textContent = data.length === rows.length
+      ? `Showing ${data.length} record${data.length === 1 ? '' : 's'}`
+      : `Showing ${data.length} of ${rows.length} records`;
 
     $$('[data-detail]').forEach((button) => {
       button.onclick = () => openRotcStudentRecord(Number(button.dataset.detail), button.dataset.level);
