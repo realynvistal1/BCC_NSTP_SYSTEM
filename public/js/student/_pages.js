@@ -39,6 +39,15 @@
       att.present||0
     }
     Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${isApprovedLevelOne||eligibilityBlocked?enrollmentCard:''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
+    if(String(s.nstp_component||'').toUpperCase()==='ROTC' && (Number(s.willing_to_take_advance_course)===1 || Number(r.assignment_is_advance)===1 || assignment==='Advance Course')){
+      const grid=c.querySelector('.student-dashboard-grid');
+      grid.insertAdjacentHTML('beforeend',dashCard('My Assigned Attendance','Review Attendance','Check your assigned group and update attendance.','/student/verify-attendance','attendance','green'));
+    }
+    window.addEventListener('student-attendance-updated', event => {
+      const card=c.querySelector('a[href="/student/attendance"]');
+      const value=card?.querySelector('.dash-value');
+      if(value) value.textContent=`${event.detail.history.filter(row=>row.status==='present').length} Present`;
+    });
     return
   }
   if(page==='enrollment-status'){
