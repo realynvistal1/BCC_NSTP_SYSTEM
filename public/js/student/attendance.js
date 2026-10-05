@@ -180,7 +180,6 @@ async function loadStudentAttendance() {
 
   const state = $('#studentAttendanceState');
   const active = $('#studentAttendanceActive');
-  const historyNode = $('#studentAttendanceHistory');
   const latest = profile.records?.[0];
   const student = profile.student || {};
   const studentProgram = String(student.nstp_component || '').toUpperCase();
@@ -268,6 +267,12 @@ async function loadStudentAttendance() {
     updateStudentLocationPreview(session);
   }
 
+  renderStudentAttendanceHistory(history, studentProgram);
+}
+
+function renderStudentAttendanceHistory(history, studentProgram) {
+  const historyNode = $('#studentAttendanceHistory');
+  if (!historyNode) return;
   const rows = history.map((row) => {
     const rowProgram = String(row.program || studentProgram).toUpperCase();
     const isCwts = rowProgram === 'CWTS';
@@ -281,6 +286,7 @@ async function loadStudentAttendance() {
         <td>${fmtA(row.open_date)}</td>
         <td>${fmtT(row.created_at)}</td>
         <td>${badge(row.status)}</td>
+        <td>${attendanceUpdateDetails(row) || '—'}</td>
       </tr>
     `;
   });
@@ -294,6 +300,7 @@ async function loadStudentAttendance() {
       'Date',
       'Marked At',
       'Status',
+      'Attendance Update',
     ],
     rows
   );
@@ -363,6 +370,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
 
     await loadStudentAttendance();
+    window.addEventListener('student-attendance-updated', event => {
+      renderStudentAttendanceHistory(event.detail.history, String(auth.user.program || '').toUpperCase());
+    });
     $('#refreshAttendanceHistory').onclick = () => (
       loadStudentAttendance().catch((error) => toast(error.message, true))
     );
