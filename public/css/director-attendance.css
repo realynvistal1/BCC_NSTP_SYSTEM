@@ -258,6 +258,21 @@
   display: none !important;
 }
 
+.director-attendance .director-attendance-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.director-attendance .director-attendance-status > .attendance-status-badge {
+  flex-shrink: 0;
+}
+
+.director-attendance .director-attendance-status > .attendance-update-meta {
+  margin-top: 0;
+}
+
 @media (max-width: 1100px) {
   .director-attendance .officer-session-table-card .attendance-record-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
