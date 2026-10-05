@@ -91,4 +91,15 @@ module.exports = {
   sendPasswordResetCode,
   sendPasswordChangeCode,
   sendEmailChangeCode,
+  async sendInstructorInvitation({to,name,url}) {
+    await transporter().sendMail({
+      from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,to,
+      subject:'NSTP CWTS Attendance Invitation',
+      text:[`Hello ${name},`,'The NSTP Director has invited you to use CWTS attendance.',
+        'Set your own password using this link:',url,
+        'This link expires in 24 hours and works only once. Do not forward it.',
+        'After setting your password, sign in using the existing CWTS login. Your account can access only assigned company attendance sessions.',
+        'If you did not expect this invitation, contact the NSTP Director.'].join('\n\n'),
+    });
+  },
 };
