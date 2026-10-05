@@ -1,5 +1,6 @@
 const path = require('path');
 const db = require('../config/database');
+const { decorateAttendanceUpdates } = require('../services/attendanceUpdateService');
 const attendance = require('../services/attendanceService');
 const certificateService = require('../services/certificateService');
 const offenseService = require('../services/offenseService');
@@ -148,44 +149,30 @@ async function approvedStudentsForSession(session, { includeCompleted = false } 
 
 async function markMissingAbsent(session) {
   const students = await approvedStudentsForSession(session);
-  if (!students.length) return;
-
-  const [records] = await db.execute(
-    'SELECT student_id FROM attendance_records WHERE attendance_session_id=?',
-    [session.id]
-  );
-  const marked = new Set(records.map((row) => Number(row.student_id)));
-
-  for (const student of students) {
-    if (marked.has(Number(student.id))) continue;
-
-    await db.execute(
-      `INSERT IGNORE INTO attendance_records
-       (student_id,attendance_session_id,status,mi_number,mi_type)
-       VALUES(?,?,'absent',?,?)`,
-      [student.id, session.id, session.mi_number, session.mi_type]
-    );
-  }
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    students.sort((a,b) => Number(a.id)-Number(b.id));
+    for (const student of students) {
+      await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE', [student.id]);
+      await connection.execute("INSERT IGNORE INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type) VALUES(?,?,'absent',?,?)", [student.id,session.id,session.mi_number,session.mi_type]);
+    }
+    await connection.execute("UPDATE attendance_sessions SET status='closed',attendance_finalized_at=NOW() WHERE id=?", [session.id]);
+    await connection.commit();
+  } catch(error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
 }
 
 async function refreshSessionStatuses() {
-  const [rows] = await db.execute("SELECT * FROM attendance_sessions WHERE status!='closed'");
+  // Retry closed sessions too, repairing incomplete closures from older versions.
+  const [rows] = await db.execute("SELECT * FROM attendance_sessions WHERE status<>'closed' OR attendance_finalized_at IS NULL");
   const now = new Date();
-
   for (const session of rows) {
     const effective = attendance.getEffectiveStatus(session, now);
-    const dbStatus = effective === 'scheduled'
-      ? 'scheduled'
-      : effective === 'closed'
-        ? 'closed'
-        : 'open';
-
-    if (dbStatus !== session.status) {
-      await db.execute('UPDATE attendance_sessions SET status=? WHERE id=?', [dbStatus, session.id]);
-    }
-
-    if (effective === 'closed') {
-      await markMissingAbsent(session);
+    if (effective === 'closed') await markMissingAbsent(session);
+    else {
+      const status = effective === 'scheduled' ? 'scheduled' : 'open';
+      if (status !== session.status) await db.execute('UPDATE attendance_sessions SET status=? WHERE id=?', [status,session.id]);
     }
   }
 }
@@ -652,7 +639,7 @@ exports.sessionRecords = async (req, res) => {
     const effectiveStatus = attendance.getEffectiveStatus(session);
     const graceOver = effectiveStatus === 'closed';
 
-    const output = students.map((student) => {
+    const output = await decorateAttendanceUpdates(students.map((student) => {
       const record = recordByStudent.get(Number(student.id));
       return {
         ...student,
@@ -665,7 +652,7 @@ exports.sessionRecords = async (req, res) => {
         verified_by: record?.verified_by ?? null,
         verified_at: record?.verified_at ?? null,
       };
-    });
+    }));
 
     const counts = { present: 0, late: 0, absent: 0, unmarked: 0 };
     output.forEach((student) => {
@@ -708,23 +695,7 @@ exports.setAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Attendance session not found.' });
     }
 
-    const [beforeRows] = await db.execute(
-      'SELECT id,status FROM attendance_records WHERE student_id=? AND attendance_session_id=? LIMIT 1',
-      [studentId, session.id]
-    );
-    const previousStatus = beforeRows[0]?.status || null;
-
-    await db.execute(
-      `INSERT INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type,verified_by,verified_at)
-       VALUES(?,?,?,?,?,?,NOW())
-       ON DUPLICATE KEY UPDATE status=VALUES(status),verified_by=VALUES(verified_by),verified_at=NOW(),updated_at=NOW()`,
-      [studentId, session.id, status, session.mi_number, session.mi_type, req.user.email]
-    );
-
-    let offense = null;
-    if (status === 'absent' && previousStatus !== 'absent') {
-      offense = await offenseService.record(studentId);
-    }
+    const offense = await offenseService.saveAttendance(studentId, session, status, req.user.email);
 
     return res.json({
       message: offense
@@ -759,15 +730,8 @@ exports.updateAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Attendance record not found.' });
     }
 
-    await db.execute(
-      'UPDATE attendance_records SET status=?,verified_by=?,verified_at=NOW(),updated_at=NOW() WHERE id=?',
-      [status, req.user.email, recordId]
-    );
-
-    let offense = null;
-    if (status === 'absent' && before.status !== 'absent') {
-      offense = await offenseService.record(before.student_id);
-    }
+    const [[session]] = await db.execute('SELECT ses.* FROM attendance_sessions ses JOIN attendance_records ar ON ar.attendance_session_id=ses.id WHERE ar.id=?', [recordId]);
+    const offense = await offenseService.saveAttendance(before.student_id, session, status, req.user.email);
 
     return res.json({
       message: offense
@@ -788,66 +752,33 @@ exports.roster = async (req, res) => {
   try {
     const scope = rosterScope(String(req.params.group || '').toLowerCase());
 
-    const [rows] = await db.execute(
-      `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
-              latest.ms_level, COALESCE(latest.school_year,'') school_year
-         FROM students s
-       LEFT JOIN (
-         SELECT student_id,MAX(updated_at) AS approved_at
-         FROM advance_course_withdrawals
-         WHERE status='approved'
-         GROUP BY student_id
-       ) withdrawal_order ON withdrawal_order.student_id=s.id
-         AND s.nstp_component='ROTC'
-         AND COALESCE(s.willing_to_take_advance_course,0)=0
-         AND s.special_unit IS NULL
-         LEFT JOIN (
-           SELECT smr.student_id,
-                  smr.program,
-                  smr.ms_level,
-                  COALESCE(es.year,'') school_year,
-                  smr.id
-           FROM student_ms_records smr
-           LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
-         ) latest ON latest.id=(
-           SELECT x.id
-           FROM student_ms_records x
-           WHERE x.student_id=s.id
-             AND x.program=?
-             AND x.status='approved'
-           ORDER BY x.created_at DESC,x.id DESC
-           LIMIT 1
+    const [records] = await db.execute(
+      `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,
+              smr.id record_id,smr.ms_level,COALESCE(es.year,'') school_year,
+              smr.assignment_company company,smr.assignment_battalion battalion,
+              smr.assignment_company rotc_company,smr.assignment_platoon rotc_platoon,
+              smr.assignment_special_unit special_unit,
+              COALESCE(smr.assignment_is_advance,0) willing_to_take_advance_course
+       FROM student_ms_records smr
+       JOIN students s ON s.id=smr.student_id
+       LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
+       WHERE s.role='student' AND smr.program=? AND smr.status='approved'
+         AND (
+           ? IN ('cwts','rotc')
+           OR (?='advance-course' AND smr.assignment_is_advance=1 AND smr.assignment_special_unit IS NULL)
+           OR (?='special-platoon' AND smr.assignment_special_unit IN ('Medics','HQ','MP'))
+           OR (?='battalion-1' AND smr.assignment_battalion=1 AND COALESCE(smr.assignment_is_advance,0)=0 AND smr.assignment_special_unit IS NULL)
+           OR (?='battalion-2' AND smr.assignment_battalion=2 AND COALESCE(smr.assignment_is_advance,0)=0 AND smr.assignment_special_unit IS NULL)
          )
-         WHERE s.role='student'
-           AND (
-             (?='cwts' AND s.nstp_component='CWTS')
-             OR (?='advance-course' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1 AND s.special_unit IS NULL AND COALESCE(s.has_medical_condition,0)=0)
-             OR (?='special-platoon' AND s.nstp_component='ROTC' AND s.special_unit IN ('Medics','HQ','MP'))
-             OR (?='battalion-1' AND s.nstp_component='ROTC' AND s.battalion=1 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL)
-             OR (?='battalion-2' AND s.nstp_component='ROTC' AND s.battalion=2 AND s.willing_to_take_advance_course=0 AND s.special_unit IS NULL)
-             OR (?='rotc' AND s.nstp_component='ROTC')
-           )
-           AND EXISTS(
-             SELECT 1
-             FROM student_ms_records smr
-             WHERE smr.student_id=s.id
-               AND smr.program=?
-               AND smr.status='approved'
-           )
-         ORDER BY (withdrawal_order.approved_at IS NOT NULL),withdrawal_order.approved_at,
-                CASE WHEN withdrawal_order.approved_at IS NOT NULL THEN s.id END,
-                s.last_name,s.first_name,s.id`,
-      [
-        scope.recordProgram,
-        scope.group,
-        scope.group,
-        scope.group,
-        scope.group,
-        scope.group,
-        scope.group,
-        scope.recordProgram,
-      ]
+       ORDER BY s.last_name,s.first_name,s.id,smr.created_at DESC,smr.id DESC`,
+      [scope.recordProgram,scope.group,scope.group,scope.group,scope.group,scope.group]
     );
+    const students = new Map();
+    for (const record of records) {
+      if (!students.has(record.id)) students.set(record.id, { ...record, enrollments: [] });
+      students.get(record.id).enrollments.push(record);
+    }
+    const rows = [...students.values()];
 
     return res.json(rows);
   } catch (error) {
