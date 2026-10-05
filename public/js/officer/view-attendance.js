@@ -1,6 +1,10 @@
 let officerSessions = [];
+window.addEventListener('director-attendance-updated', () => {
+  if (document.getElementById('officerSessionList')) renderOfficerSessions(true).catch(error => toast(error.message, true));
+});
 const officerRecordStore = new Map();
 let officerAttendanceRows = [];
+let officerAttendanceRequest = 0;
 const CWTS_COMPANY_OPTIONS = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
 function attendanceDisplayName(value) {
   return String(value || '').trim().replace(/(^|[\s'\-])\p{L}/gu, letter => letter.toLocaleUpperCase());
@@ -16,6 +20,10 @@ function attendanceRecordBadge(status) {
   const states = { present: ['Present', 'success'], late: ['Late', 'warning'], absent: ['Absent', 'danger'], unmarked: ['Not Marked', 'info'] };
   const [label, tone] = states[String(status || '').toLowerCase()] || states.unmarked;
   return `<span class="attendance-status-badge ${tone}">${label}</span>`;
+}
+function attendanceVerificationNote(student) {
+  if (!student.record_id) return '';
+  return attendanceUpdateDetails(student);
 }
 let officerAttendanceFilterState = {
   group: 'all',
@@ -433,7 +441,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
             <td>${esc(`${student.session_program === 'CWTS' ? 'CS' : 'MI'} ${student.mi_number || '-'} ${(student.mi_type || '').toUpperCase()}`)}</td>
             <td><span class="director-assignment-chip ${esc(officerStudentGroup(student))}">${esc(officerAssignment(student))}</span></td>
             <td>${student.attendance_time ? attFmtTime(student.attendance_time) : '-'}</td>
-            <td>${attendanceRecordBadge(student.attendance_status)}</td>
+            <td><div class="director-attendance-status">${attendanceRecordBadge(student.attendance_status)}${attendanceVerificationNote(student)}</div></td>
             <td><button class="btn small primary officer-inline-status" data-session="${student.session_id}" data-student="${student.id}" type="button">Update Status</button></td>
           </tr>
         `)
@@ -502,7 +510,8 @@ function renderOfficerAttendanceTable(container, sessions, program) {
   });
 }
 
-async function renderOfficerSessions() {
+async function renderOfficerSessions(background = false) {
+  const request = ++officerAttendanceRequest;
   const list = $('#officerSessionList');
   const sessions = filteredOfficerSessions();
   const program = $('#viewProgram').value;
@@ -519,7 +528,7 @@ async function renderOfficerSessions() {
     return;
   }
 
-  list.innerHTML = '<div class="page-loading"><span class="page-spinner"></span><strong>Loading attendance records...</strong></div>';
+  if (background !== true) list.innerHTML = '<div class="page-loading"><span class="page-spinner"></span><strong>Loading attendance records...</strong></div>';
 
   const responses = await Promise.all(
     sessions.map(async (session) => {
@@ -529,6 +538,7 @@ async function renderOfficerSessions() {
     })
   );
 
+  if (request !== officerAttendanceRequest) return;
   officerAttendanceRows = responses.flatMap(({ session, students }) => students.map((student) => ({
     ...student,
     session_id: session.id,
@@ -702,7 +712,7 @@ async function openOfficerRecords(id) {
         <td>${attendanceStudentIdentity(student)}</td>
         <td><span class="director-assignment-chip ${esc(officerStudentGroup(student))}">${esc(officerAssignment(student))}</span></td>
         <td>${student.attendance_time ? attFmtTime(student.attendance_time) : '-'}</td>
-        <td>${attendanceRecordBadge(student.attendance_status)}</td>
+        <td><div class="director-attendance-status">${attendanceRecordBadge(student.attendance_status)}${attendanceVerificationNote(student)}</div></td>
         <td><button class="btn small primary officer-update-status" type="button" onclick="window.__officerPromptStatus(${Number(id)}, ${Number(student.id)})">Update Status</button></td>
       </tr>
     `);
@@ -869,6 +879,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     populateOfficerFilters();
+    startAttendanceRefresh(auth.user, () => renderOfficerSessions(true));
 
     ['viewProgram', 'viewCycle', 'viewMI', 'viewType'].forEach((id) => {
       $(`#${id}`).addEventListener(
