@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const controller = require('../controllers/studentController');
+const verifiers = require('../controllers/rotcVerifierController');
 const { requireAuth, requireRole, requirePortal } = require('../middleware/authMiddleware');
 
 router.get('/enrollment-schedule', controller.checkSchedule);
@@ -9,6 +10,9 @@ router.post('/register', controller.register);
 router.use(requireAuth, requireRole('student'), requirePortal('student'));
 
 router.get('/dashboard', controller.dashboard);
+router.get('/rotc-verifier/assignments', verifiers.mine);
+router.get('/rotc-verifier/assignments/:id/records', verifiers.records);
+router.patch('/rotc-verifier/records/:id', verifiers.verify);
 router.get('/profile', controller.profile);
 router.get('/grades', controller.grades);
 router.get('/serial-number', controller.serial);
