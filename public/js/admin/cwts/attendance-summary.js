@@ -214,7 +214,7 @@ function makeAttendanceSummary(_programKey) {
         <td>${esc(assignment(student))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         <td>
           <select class="admin-attendance-status" data-student="${student.id}">
             <option value="present" ${student.attendance_status === 'present' ? 'selected' : ''}>Present</option>
