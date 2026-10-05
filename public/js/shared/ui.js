@@ -1,4 +1,4 @@
-﻿function summaryTile(label,value,helper,tone='blue'){
+function summaryTile(label,value,helper,tone='blue'){
   return `<div class="summary-tile ${tone}"><div class="summary-accent"></div><div class="dash-label">${esc(label)}</div><div class="summary-number">${esc(value)}</div><div class="summary-helper">${esc(helper)}</div></div>`
 }
 function progressRow(label, value, total, tone) {
@@ -1544,7 +1544,7 @@ async function renderROTCRoster(c, specialOnly = false) {
           $("#assignResult").innerHTML = `<div class="assignment-result success">${esc(result.message)}</div>`;
           setTimeout(() => location.reload(), 700);
         } catch (error) {
-          $("#assignResult").innerHTML = `<div class="assignment-result error">${esc(error.message === "Access denied." ? "Your current session does not have ROTC administrator access. Sign in to the ROTC Admin portal and try again." : error.message)}</div>`;
+          $("#assignResult").innerHTML = `<div class="assignment-result error">${esc(error.message === "Access denied." ? "Your current session does not have ROTC administrator access. Log in to the ROTC Admin portal and try again." : error.message)}</div>`;
           assign.disabled = false;
           assign.textContent = "Assign Platoons";
         }
