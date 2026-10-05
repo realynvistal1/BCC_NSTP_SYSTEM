@@ -77,6 +77,11 @@ function roleEmblem(role) {
 }
 
 function shell(role, title, subtitle, auth) {
+  if (!document.querySelector('link[data-attendance-design]')) {
+    const style = document.createElement('link');
+    style.rel = 'stylesheet'; style.href = '/assets/css/rotc-verifiers.css';
+    style.dataset.attendanceDesign = 'true'; document.head.appendChild(style);
+  }
   document.getElementById('pageTitle').textContent = title;
   document.getElementById('pageSubtitle').textContent = subtitle;
   preparePortalShell(role);
@@ -86,18 +91,112 @@ function shell(role, title, subtitle, auth) {
   });
 
   document.getElementById('logoutButton')?.addEventListener('click', logout);
+  if (role === 'officer') {
+    loadScriptOnce('/assets/js/officer/attendance-updates.js')
+      .then(() => window.DirectorAttendanceUpdates.start(auth.user))
+      .catch((error) => console.warn('Attendance updates unavailable:', error.message));
+    loadScriptOnce('/assets/js/officer/cwts-attendance-updates.js')
+      .then(()=>window.DirectorCWTSAttendanceUpdates.start(auth.user))
+      .catch(error=>console.warn('CWTS attendance updates unavailable:',error.message));
+  }
   if (role === 'student') {
+    if (String(auth.user?.program || auth.user?.nstp_component || '').toUpperCase() === 'ROTC') {
+      if (!document.querySelector('a[href="/student/verify-attendance"]')) {
+      const nav=document.querySelector('.sidebar .nav');
+      if (nav) {
+      const link=document.createElement('a');link.className='nav-link';
+      link.href='/student/verify-attendance';link.textContent='My Assigned Attendance';
+      const attendanceLink=nav.querySelector('a[href="/student/attendance"]');
+      if (attendanceLink) attendanceLink.after(link); else nav.appendChild(link);
+      preparePortalShell(role);
+      }
+      }
+    }
     loadScriptOnce('/assets/js/student/attendance-alerts.js')
       .then(() => window.StudentAttendanceAlerts.start(auth.user))
       .catch((error) => console.warn('Attendance alerts unavailable:', error.message));
   }
 }
 
+function attendanceUpdateDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function attendanceUpdateDetails(row) {
+  if (!row.verified_at) return '';
+  return `<div class="attendance-update-meta"><span>Updated by <strong>${esc(row.verified_by_name || 'Attendance staff')}</strong></span>
+    <time>${esc(attendanceUpdateDate(row.verified_at))}</time>${row.update_reason ? `<span class="attendance-meta-reason">Reason: ${esc(row.update_reason)}</span>` : ''}</div>`;
+}
+
+function attendanceAssignmentCard(a) {
+  const group = a.special_unit ? 'Special Platoon / '+a.special_unit : 'Battalion '+a.battalion+' / '+a.company+' / Platoon '+a.platoon;
+  return '<article class="attendance-assignment-card"><div class="attendance-eyebrow">Assigned group</div><h3>'+esc(group)+'</h3><dl class="attendance-assignment-details"><div><dt>Level</dt><dd>MS '+esc(a.ms_level)+'</dd></div><div><dt>School year</dt><dd>'+esc(a.school_year)+'</dd></div><div><dt>Attendance session</dt><dd>'+(Number(a.mi_number) ? 'MI '+esc(a.mi_number) : 'All MIs')+' / '+esc(String(a.mi_type || 'All types').toUpperCase())+'</dd></div></dl></article>';
+}
+
+function attendanceChangeCard(row) {
+  const cwts=row.program==='CWTS';
+  const status = value => ['present', 'late', 'absent'].includes(value) ? value : 'unmarked';
+  const initials = [row.first_name, row.last_name].filter(Boolean).map(name => String(name).charAt(0)).join('');
+  return `<article class="attendance-change-card" data-status="${status(row.status)}">
+    <div class="attendance-change-top"><div class="attendance-person"><span class="attendance-avatar" aria-hidden="true">${esc(initials)}</span><div><h3>${esc(row.first_name + ' ' + row.last_name)}</h3><span>Student ID · ${esc(row.student_id)}</span></div></div>
+      <time>${icon('schedule')}<span>${esc(attendanceUpdateDate(row.verified_at))}</span></time></div>
+    <div class="attendance-change-session"><strong>${icon('attendance')} ${cwts?'CS':'MI'} ${esc(row.mi_number)} ${esc(String(row.mi_type || '').toUpperCase())}</strong>
+      <span>${esc(cwts?`Company ${row.company}`:row.special_unit || `Battalion ${row.battalion} · ${row.company} · Platoon ${row.platoon}`)}</span>
+      <span>${cwts?'CWTS':'MS'} ${esc(row.ms_level)} · ${esc(row.school_year)}</span></div>
+    <div class="attendance-change-status"><div><span class="attendance-status-label">Previous status</span><span class="update-status ${status(row.previous_status)}">${esc(row.previous_status || 'Unmarked')}</span></div>
+      <span class="attendance-change-arrow" aria-label="changed to">→</span><div><span class="attendance-status-label">Updated status</span><span class="update-status ${status(row.status)}">${esc(row.status || 'Unmarked')}</span></div></div>
+    <div class="attendance-change-reason"><span>Reason for update</span><p>${esc(row.reason || 'No reason recorded.')}</p></div>
+    <div class="attendance-change-actor"><span class="attendance-actor-icon" aria-hidden="true">${icon('platoon')}</span><div><span class="attendance-meta-label">Updated by</span><strong>${esc(row.verifier_first_name + ' ' + row.verifier_last_name)}</strong></div><span class="attendance-role-chip">${cwts?'CWTS Instructor':'Advance Course'}</span></div>
+  </article>`;
+}
+
+// Keep attendance views current across portals without interrupting open forms.
+function startAttendanceRefresh(user, refresh) {
+  let busy = false;
+  let stopped = false;
+  async function check() {
+    if (busy || stopped || document.hidden || document.querySelector('dialog[open], .modal:not(.hidden), .app-dialog:not(.hidden)')) return;
+    busy = true;
+    try {
+      const auth = await API.get('/api/auth/me');
+      if (auth.user?.portal !== user.portal || String(auth.user.id) !== String(user.id)) {
+        stopped = true;
+        return;
+      }
+      await refresh();
+    } catch (error) {
+      console.warn('Attendance refresh will retry:', error.message);
+    } finally { busy = false; }
+  }
+  const timer = window.setInterval(check, 20000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('pagehide', () => { stopped = true; });
+  window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; check(); } });
+  return () => { stopped = true; window.clearInterval(timer); };
+}
+
 function preparePortalShell(role) {
+  if(role==='officer'&&!document.querySelector('a[href="/officer/cwts-instructors"]')){
+    const nav=document.querySelector('.sidebar .nav');
+    if(nav){const link=document.createElement('a');link.className='nav-link';link.href='/officer/cwts-instructors';link.textContent='CWTS Instructors';nav.appendChild(link);}
+  }
+  if (role === 'officer' && !document.querySelector('a[href="/officer/rotc-verifiers"]')) {
+    const nav=document.querySelector('.sidebar .nav');
+    if (nav) {
+      const link=document.createElement('a');link.className='nav-link';
+      link.href='/officer/rotc-verifiers';link.textContent='ROTC Verifiers';nav.appendChild(link);
+    }
+  }
   decorateSidebar(role);
 
   const emblem = document.getElementById('portalEmblem');
-  if (emblem) emblem.src = roleEmblem(role);
+  if (emblem) emblem.src = document.body.dataset.page === 'cwts-instructor-attendance'
+    ? '/assets/images/bcclogo-removebg-preview.png'
+    : roleEmblem(role);
 
   const current = window.location.pathname;
   document.querySelectorAll('.nav-link').forEach((link) => {
@@ -381,7 +480,7 @@ function showForgotMessage() {
   if (portal !== 'student') {
     body.innerHTML = `
       <div class="forgot-header">
-        <h3>Reset Admin Password</h3>
+        <h3>${portal === 'cwts-admin' ? 'Reset CWTS Password' : 'Reset Admin Password'}</h3>
         <p>Request a verification code through Gmail, then enter the code to create a new password.</p>
       </div>
       <div class="notice hidden" id="forgotPasswordMsg"></div>
@@ -483,7 +582,9 @@ function initPasswordToggles() {
 
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
-      button.textContent = show ? 'Hide' : 'Show';
+      button.innerHTML = passwordEyeIcon(show);
+      button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      button.setAttribute('aria-pressed', String(show));
     });
   });
 }
