@@ -978,3 +978,10 @@ body {
   .attendance-live-alert { flex-wrap: wrap; }
   .attendance-live-alert > div { flex-basis: 100%; }
 }
+/* Shared password visibility control, including dynamically opened reset forms. */
+.password-eye-wrap { position:relative; display:flex; flex:1; min-width:0; width:100%; align-items:center; }
+.password-eye-wrap > input { width:100%; min-width:0; padding-right:48px !important; }
+.password-eye-wrap > .password-eye-button { position:absolute; right:5px; top:50%; transform:translateY(-50%); display:grid; place-items:center; width:36px; height:36px; padding:0; margin:0; border:0; border-radius:8px; background:transparent; color:#4b738c; cursor:pointer; }
+.password-eye-wrap > .password-eye-button:hover { background:#dcebf3; color:#245b78; }
+.password-eye-wrap > .password-eye-button:focus-visible { outline:2px solid #4c92bb; outline-offset:1px; }
+.password-toggle svg,.settings-password-toggle svg,.enrollment-password-toggle svg { display:block; margin:auto; pointer-events:none; }
