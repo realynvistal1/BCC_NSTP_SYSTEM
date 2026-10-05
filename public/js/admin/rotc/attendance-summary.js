@@ -9,6 +9,7 @@ function makeAttendanceSummary(_programKey) {
   let currentSessions = [];
   let allStudents = [];
   let currentSummary = null;
+  let summaryRequest = 0;
   const cwtsCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
   const rotcCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
 
@@ -173,6 +174,7 @@ function makeAttendanceSummary(_programKey) {
   }
 
   async function loadSelected() {
+    const request = ++summaryRequest;
     const matches = filteredSessions();
     const selectedMI = $('#summaryMI').value;
     const group = $('#summaryGroup').value || 'overall';
@@ -189,6 +191,7 @@ function makeAttendanceSummary(_programKey) {
 
     if (!selectedMI || matches.length > 1) {
       const summaries = await Promise.all(matches.map((session) => fetchSummary(session, group)));
+      if (request !== summaryRequest) return;
       const aggregate = buildAggregateSummary(summaries);
       currentSummary = aggregate;
       allStudents = aggregate.students || [];
@@ -197,6 +200,7 @@ function makeAttendanceSummary(_programKey) {
     }
 
     const data = await fetchSummary(current, group);
+    if (request !== summaryRequest) return;
 
     currentSummary = data;
     allStudents = data.students || [];
@@ -519,7 +523,7 @@ function makeAttendanceSummary(_programKey) {
         <td>${esc(assignment(student))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         <td>
           <select class="admin-attendance-status" data-student="${student.id}">
             <option value="present" ${student.attendance_status === 'present' ? 'selected' : ''}>Present</option>
@@ -652,7 +656,7 @@ function makeAttendanceSummary(_programKey) {
         <td>${esc(assignment(student))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         ${aggregateMode
     ? '<td><small>Single-session verify only</small></td>'
     : `
@@ -1710,6 +1714,7 @@ function makeAttendanceSummary(_programKey) {
     const excelButton = $('#downloadAttendanceExcel');
     if (pdfButton) pdfButton.onclick = exportWord;
     if (excelButton) excelButton.onclick = exportExcel;
+    startAttendanceRefresh(auth.user, loadSelected);
   }
 
   return { init };
