@@ -181,8 +181,9 @@ function bindSettingsPasswordToggles(form) {
   const setPasswordVisibility = (button, visible) => {
     const input = form.querySelector(`#${button.getAttribute('aria-controls')}`);
     input.type = visible ? 'text' : 'password';
-    button.textContent = visible ? 'Hide' : 'Show';
-    button.setAttribute('aria-label', button.getAttribute('aria-label').replace(/^(Show|Hide)/, button.textContent));
+    button.innerHTML = passwordEyeIcon(visible);
+    button.setAttribute('aria-label', button.getAttribute('aria-label').replace(/^(Show|Hide)/, visible ? 'Hide' : 'Show'));
+    button.setAttribute('aria-pressed', String(visible));
   };
   passwordToggles.forEach((button) => {
     button.onclick = () => {
@@ -273,7 +274,7 @@ function emailChangeCard() {
     <section class="settings-card email-wizard">
       <div class="email-wizard-header">
         <span class="email-wizard-icon" aria-hidden="true">@</span>
-        <div><h2>Change email</h2><p>Update where you receive sign-in and verification emails.</p></div>
+        <div><h2>Change email</h2><p>Update where you receive login and verification emails.</p></div>
       </div>
       <ol class="email-wizard-progress" aria-label="Email change progress">
         <li data-email-step="start" aria-current="step"><span>1</span><strong>New details</strong></li>
@@ -308,7 +309,7 @@ function emailChangeCard() {
         <div id="emailSuccessStep" class="email-wizard-success" hidden>
           <span class="email-success-icon" aria-hidden="true">?</span><h3>Email updated</h3>
           <p>Your new email is</p><strong id="emailSavedAddress"></strong>
-          <p>Use it to sign in and receive verification codes.</p>
+          <p>Use it to log in and receive verification codes.</p>
           <button type="reset" class="btn">Done</button>
         </div>
       </form>
