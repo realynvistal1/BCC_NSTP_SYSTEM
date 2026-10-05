@@ -62,6 +62,7 @@ app.use("/api/auth", authRateLimit);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/admin/rotc", require("./routes/rotcAdminRoutes"));
+app.use('/api/admin/cwts/instructor',require('./routes/cwtsInstructorRoutes'));
 app.use("/api/admin/cwts", require("./routes/cwtsAdminRoutes"));
 app.use("/api/officer", require("./routes/officerRoutes"));
 
@@ -110,6 +111,7 @@ const publicPages = {
   "/student/login": "views/auth/student-login.html",
   "/admin/rotc/login": "views/auth/rotc-login.html",
   "/admin/cwts/login": "views/auth/cwts-login.html",
+  '/admin/cwts/accept-invitation':'views/auth/cwts-instructor-invitation.html',
   "/officer/login": "views/auth/officer-login.html",
 }
 ;
@@ -125,6 +127,7 @@ function mountPages(prefix, files, guard) {
   }
 }
 mountPages("/student", [
+"verify-attendance",
 "dashboard",
 "enrollment-status",
 "re-enrollment",
@@ -164,6 +167,8 @@ mountPages("/admin/cwts", [
 "settings",
 ], requirePagePortal("cwts-admin"));
 mountPages("/officer", [
+"cwts-instructors",
+"rotc-verifiers",
 "dashboard",
 "create-attendance",
 "view-attendance",
@@ -171,6 +176,11 @@ mountPages("/officer", [
 "cwts",
 "settings",
 ], requirePagePortal("officer"));
+const instructorAuth=require('./middleware/authMiddleware');
+app.get('/admin/cwts/my-attendance',
+  (req,res,next)=>readSession(req)?.role==='instructor'?next():res.redirect('/admin/cwts/login'),
+  instructorAuth.requireAuth,instructorAuth.requireRole('instructor'),instructorAuth.requirePortal('cwts-admin'),
+  (req,res)=>res.sendFile(path.join(__dirname,'views/admin/cwts/my-attendance.html')));
 for (const page of ["rotc", "cwts", "advance-course", "special-platoon"]) {
   app.get(`/officer/attendance/${page}`, requirePagePortal("officer"), (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
   app.get(`/officer/view-attendance/${page}`, requirePagePortal("officer"), (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
