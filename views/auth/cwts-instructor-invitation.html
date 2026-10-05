@@ -1,0 +1,33 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>CWTS Invitation | Buenavista Community College</title>
+<link rel="stylesheet" href="/assets/css/global.css"><link rel="stylesheet" href="/assets/css/forms.css"><link rel="stylesheet" href="/assets/css/cwts-instructors.css">
+</head>
+<body class="cwts-invitation-page">
+<main class="cwts-invitation-card">
+<header class="cwts-school-header">
+<div class="cwts-school-seal"><img src="/assets/images/bcclogo-removebg-preview.png" alt="Buenavista Community College logo" width="88" height="88"></div>
+<p class="cwts-school-name">Buenavista Community College</p>
+<address>Cangawa, Buenavista, Bohol</address>
+<span class="cwts-school-program">National Service Training Program</span>
+</header>
+<section class="cwts-invitation-content" aria-labelledby="invitationTitle">
+<span class="cwts-eyebrow">CWTS attendance &middot; Instructor invitation</span>
+<h1 id="invitationTitle">You're invited!</h1>
+<p>Welcome to your CWTS attendance account. Create your password to get started with your assigned companies and sessions.</p>
+<div class="cwts-invitation-steps" aria-label="Account setup steps"><span><b>1</b> Set your password</span><span><b>2</b> Sign in to CWTS</span></div>
+<div id="invitationMessage" class="cwts-note" role="status">Your invitation is valid for 24 hours and can be used once.</div>
+<form id="instructorPasswordForm">
+<label class="field">New password<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" required><small>Use at least 8 characters. Choose a unique password.</small></label>
+<label class="field">Confirm password<input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+<label class="cwts-show-password"><input type="checkbox" id="showInvitationPassword"> Show passwords</label>
+<button class="btn primary" type="submit">Set password</button>
+</form>
+<a class="cwts-login-link" href="/admin/cwts/login">Go to CWTS login <span aria-hidden="true">&rarr;</span></a>
+</section>
+<footer class="cwts-invitation-footer"><strong>Need a new invitation?</strong><p>Contact the NSTP Director if your link has expired.</p></footer>
+</main>
+<script src="/assets/js/shared/api.js"></script><script src="/assets/js/auth/cwts-invitation.js"></script>
+</body></html>
