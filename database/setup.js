@@ -151,6 +151,8 @@ async function ensureAttendanceColumns(db) {
 
   const db = await mysql.createConnection({ ...config, database: DB_NAME, multipleStatements: false });
   await ensureAttendanceColumns(db);
+  await require('./migrate-rotc-verifiers').ensureRotcVerifierTables(db);
+  await require('./migrate-cwts-instructors').ensureCwtsInstructorTables(db);
   await require("./migrate-platoon-assignment").ensurePlatoonAssignmentColumn(db);
   await require("./migrate-cycle-assignments").ensureCycleAssignmentColumns(db);
   await require("./migrate-remove-student-username").removeStudentUsernameColumn(db);
