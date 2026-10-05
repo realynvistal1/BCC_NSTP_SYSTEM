@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('../config/database');
+const { decorateAttendanceUpdates } = require('../services/attendanceUpdateService');
 const { latestRecord, studentById, studentPublic } = require('../services/systemService');
 const authService = require('../services/authService');
 const attendanceService = require('../services/attendanceService');
@@ -678,7 +679,7 @@ exports.attendance = async (req, res) => {
       [req.user.id]
     );
 
-    res.json(rows);
+    res.json(await decorateAttendanceUpdates(rows));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -827,8 +828,8 @@ exports.markAttendance = async (req, res) => {
 
     await db.execute(
       `INSERT INTO attendance_records
-       (student_id,attendance_session_id,status,mi_number,mi_type,latitude,longitude,distance_meters)
-       VALUES(?,?,?,?,?,?,?,?)`,
+       (student_id,attendance_session_id,status,mi_number,mi_type,latitude,longitude,distance_meters,claimed_present)
+       VALUES(?,?,?,?,?,?,?,?,?)`,
       [
         req.user.id,
         sessionId,
@@ -838,6 +839,7 @@ exports.markAttendance = async (req, res) => {
         lat,
         lng,
         Math.round(meters * 100) / 100,
+        Number(markStatus === 'present'),
       ]
     );
 
