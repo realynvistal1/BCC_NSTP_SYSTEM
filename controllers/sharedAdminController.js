@@ -6,6 +6,7 @@ const gradesService = require('../services/gradesService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const attendanceService = require('../services/attendanceService');
+const { decorateAttendanceUpdates } = require('../services/attendanceUpdateService');
 const serialNumberService = require('../services/serialNumberService');
 const {
   parsePositiveInt,
@@ -2643,10 +2644,10 @@ exports.attendanceSummary = async (req, res) => {
     );
 
     const graceOver = attendanceService.getEffectiveStatus(session) === 'closed';
-    const normalized = students.map((student) => ({
+    const normalized = await decorateAttendanceUpdates(students.map((student) => ({
       ...student,
       attendance_status: student.attendance_status || (graceOver ? 'absent' : 'unmarked'),
-    }));
+    })));
 
     const counts = { present: 0, late: 0, absent: 0, unmarked: 0 };
     normalized.forEach((student) => {
@@ -2692,23 +2693,7 @@ exports.verifyAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Attendance session not found.' });
     }
 
-    const [beforeRows] = await db.execute(
-      'SELECT id,status FROM attendance_records WHERE student_id=? AND attendance_session_id=? LIMIT 1',
-      [studentId, sessionId]
-    );
-    const previousStatus = beforeRows[0]?.status || null;
-
-    await db.execute(
-      `INSERT INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type,verified_by,verified_at)
-       VALUES(?,?,?,?,?,?,NOW())
-       ON DUPLICATE KEY UPDATE status=VALUES(status),verified_by=VALUES(verified_by),verified_at=NOW(),updated_at=NOW()`,
-      [studentId, sessionId, status, session.mi_number, session.mi_type, req.user.email]
-    );
-
-    let offense = null;
-    if (status === 'absent' && previousStatus !== 'absent') {
-      offense = await offenseService.record(studentId);
-    }
+    const offense = await offenseService.saveAttendance(studentId, session, status, req.user.email);
 
     return res.json({
       message: offense
