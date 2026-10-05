@@ -165,6 +165,8 @@
     const showing=input.type==='text';
     input.type=showing?'password':'text';
     button.classList.toggle('active',!showing);
+    button.innerHTML=passwordEyeIcon(!showing);
+    button.setAttribute('aria-pressed',String(!showing));
     button.setAttribute('aria-label',`${showing?'Show':'Hide'} ${button.dataset.passwordTarget==='confirm_password'?'confirm password':'password'}`);
   }));
   $('#heightFeet').addEventListener('change',()=>f.height.value=`${$('#heightFeet').value}'${$('#heightInches').value||0}"`);
