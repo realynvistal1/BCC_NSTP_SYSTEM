@@ -1,0 +1,120 @@
+.cwts-workspace { display:grid; gap:22px; }
+body[data-page="cwts-instructor-attendance"] .sidebar { display:flex; flex-direction:column; }
+body[data-page="cwts-instructor-attendance"] .sidebar > .brand,
+body[data-page="cwts-instructor-attendance"] .sidebar > .nav-wrap { flex-shrink:0; }
+body[data-page="cwts-instructor-attendance"] .sidebar > .sidebar-footer { margin-top:auto; flex-shrink:0; padding-top:20px; }
+.cwts-workspace .panel { border:1px solid #dbe7ec; border-radius:20px; background:#fff; padding:24px; box-shadow:0 7px 24px #32586a08; min-width:0; }
+.cwts-workspace .cwts-mint { border-top:4px solid #52ac97; background:linear-gradient(120deg,#eefaf6,#fff 65%); }
+.cwts-workspace .cwts-violet { border-top:4px solid #9681cd; background:linear-gradient(120deg,#f5effe,#fff 65%); }
+.cwts-workspace .cwts-blue { border-top:4px solid #76a8d8; }
+.cwts-two-column { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.cwts-heading { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.cwts-heading > div { flex:1; min-width:0; }
+.cwts-heading h2 { margin:0; font-size:20px; color:#24485c; }
+.cwts-heading p,.cwts-help { font-size:12px; line-height:1.7; color:#617a89; margin:7px 0 0; }
+.cwts-step { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; background:#d7f2e7; color:#24745d; border-radius:13px; font-size:17px; font-weight:800; }
+.cwts-violet .cwts-step { color:#74539f; background:#e9ddfa; }
+.cwts-eyebrow { display:block; color:#568176; font-size:10px; text-transform:uppercase; letter-spacing:.1em; font-weight:800; margin:10px 0; }
+.cwts-form { display:grid; gap:14px; }
+.cwts-form .field,.cwts-invitation-card .field { display:grid; gap:7px; margin:0; font-size:12px; font-weight:700; color:#365766; }
+.cwts-form :is(input,select),.cwts-toolbar :is(input,select),.cwts-invitation-card input:not([type=checkbox]) { width:100%; min-height:44px; border:1px solid #cadeda; border-radius:10px; padding:10px 12px; color:#29495d; background:#fff; font:inherit; }
+.cwts-form .btn.primary,.cwts-invitation-card .btn.primary { background:linear-gradient(110deg,#348e79,#577ebc); color:#fff; border:0; min-height:44px; border-radius:11px; }
+.cwts-note { padding:13px 15px; border-radius:12px; background:#edf5ff; border:1px solid #d6e5f3; color:#365e7c; font-size:12px; line-height:1.7; margin-bottom:16px; }
+.cwts-note.warning { color:#865b27; background:#fff5e7; border-color:#efdabb; }
+.cwts-note.success { color:#246d51; background:#edf9f1; border-color:#c7e7d4; }
+.cwts-toolbar { display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:16px; }
+.cwts-toolbar label { flex:1; min-width:180px; display:grid; gap:6px; font-size:12px; color:#537283; }
+.cwts-toolbar .btn { min-height:44px; }
+.cwts-badge { display:inline-block; border-radius:20px; padding:5px 10px; background:#edf2f8; color:#627587; font-size:11px; font-weight:750; white-space:nowrap; }
+.cwts-badge.active,.cwts-badge.accepted { color:#236d52; background:#e0f4e9; }
+.cwts-badge.pending,.cwts-badge.not_sent { color:#926724; background:#fff1d7; }
+.cwts-badge.disabled,.cwts-badge.failed { color:#a24e66; background:#fbe7ee; }
+.cwts-badge.sent { color:#6f519d; background:#eee4fa; }
+.cwts-workspace .table-wrap { border-radius:13px; border:1px solid #dce6ee; overflow-x:auto; }
+.cwts-workspace th { background:#eff6f8; color:#537387; }
+.cwts-workspace td { vertical-align:middle; padding:14px; }
+.cwts-workspace td small { display:block; color:#718194; margin-top:5px; font-size:11px; }
+.cwts-actions { display:flex; flex-wrap:wrap; gap:7px; }
+.cwts-actions .btn { background:#f0ebfa; color:#735695; border-color:#ddd0ed; }
+.cwts-actions .danger { background:#fceef2; color:#a54d65; border-color:#edcfd9; }
+.cwts-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-top:15px; font-size:12px; color:#627b87; }
+.cwts-pagination > div { display:flex; gap:8px; align-items:center; }
+.cwts-workspace button:disabled { opacity:.5; cursor:default; }
+.cwts-workspace details>summary { cursor:pointer; list-style:none; }
+.cwts-workspace details>summary::-webkit-details-marker { display:none; }
+.cwts-workspace details>summary::after { content:'⌄'; font-size:23px; color:#7991a4; }
+.cwts-workspace details[open]>summary::after { content:'⌃'; }
+.cwts-workspace :is(input,select,button,summary):focus-visible,.cwts-invitation-card :is(input,button,a):focus-visible { outline:3px solid #97b9df; outline-offset:3px; }
+.cwts-invitation-page { min-height:100dvh; margin:0; display:grid; place-items:center; padding:24px; background:radial-gradient(at 15% 15%,#cfeee3,transparent 55%),radial-gradient(at 90% 85%,#e1d6f5,transparent 55%),#eff5fb; }
+.cwts-invitation-card { width:min(100%,480px); padding:32px; border-radius:24px; border:1px solid #dce8eb; background:#fffffff5; box-shadow:0 16px 50px #52798a20; }
+.cwts-invitation-card h1 { color:#285561; margin:12px 0; }
+.cwts-invitation-card p { color:#607987; line-height:1.7; font-size:14px; }
+.cwts-invitation-card form { display:grid; gap:16px; }
+.cwts-invitation-card form[hidden] { display:none; }
+.cwts-invitation-card small { color:#728692; font-weight:400; line-height:1.5; }
+.cwts-show-password { display:flex; gap:8px; align-items:center; color:#607484; font-size:12px; }
+.cwts-login-link { display:block; text-align:center; margin-top:20px; color:#3e7397; }
+@media(max-width:900px){.cwts-two-column{grid-template-columns:1fr;}}
+@media(max-width:550px){.cwts-workspace .panel{padding:18px;}.cwts-heading{flex-wrap:wrap;}.cwts-invitation-card{padding:24px;}.cwts-pagination>div{flex-wrap:wrap;}}
+
+/* Public invitation school branding. */
+.cwts-assignment-cards { display:grid; gap:14px; }
+.cwts-verifier-workspace .cwts-duty-card { background:linear-gradient(115deg,#e7f5f0,#edf3ff 60%,#f2ebfc); border:1px solid #bfd9dc; border-left:5px solid #319783; padding:22px; }
+.cwts-duty-title { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.cwts-duty-title .attendance-eyebrow { color:#397767; }
+.cwts-verifier-workspace .cwts-duty-title h3 { margin-top:6px; color:#185f50; font-size:21px; font-weight:800; }
+.cwts-duty-card .attendance-assignment-details>div { border:1px solid #cbdff3; background:#e2efff; }
+.cwts-duty-card .attendance-assignment-details .cwts-duty-cycle { background:#eee5fb; border-color:#ded0f0; }
+.cwts-duty-card .attendance-assignment-details .cwts-duty-date { background:#fff3d9; border-color:#eedcb4; }
+.cwts-duty-card .attendance-assignment-details dt { color:#456488; font-weight:600; }
+.cwts-duty-card .attendance-assignment-details dd { color:#204f8a; font-size:15px; font-weight:800; line-height:1.6; }
+.cwts-duty-card .cwts-duty-cycle dt { color:#6c548a; }
+.cwts-duty-card .cwts-duty-cycle dd { color:#593b83; }
+.cwts-duty-card .cwts-duty-date dt { color:#816631; }
+.cwts-duty-card .cwts-duty-date dd { color:#795316; }
+.cwts-duty-type { display:inline-block; margin-left:6px; padding:1px 9px; border-radius:7px; background:#2c669f; color:#fff; font-size:12px; }
+.cwts-duty-title button[aria-pressed="true"] { background:#236e60; border-color:#236e60; color:#fff; }
+.cwts-verifier-workspace .verifier-section-heading { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+.cwts-verifier-workspace .verifier-section-heading>div { flex:1; min-width:0; }
+.cwts-verifier-workspace .verifier-section-heading h2 { margin:4px 0; font-size:19px; }
+.cwts-verifier-workspace .verifier-section-heading p { margin:0; color:#6c8099; font-size:12px; line-height:1.6; }
+.cwts-assignment-picker { display:flex; align-items:end; gap:14px; padding:15px; margin-bottom:18px; background:#f1f7fb; border:1px solid #dce7f0; border-radius:13px; }
+.cwts-assignment-picker .field { flex:1; min-width:0; display:grid; gap:8px; margin:0; font-size:12px; color:#537087; }
+.cwts-assignment-picker select { width:100%; min-height:44px; }
+.cwts-verifier-workspace .verifier-summary { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.cwts-verifier-workspace .verifier-stat.unmarked { background:#f1edf9; color:#7d65a1; border-color:#e2d8ef; }
+.cwts-attendance-guide { margin-bottom:18px; border:1px solid #dce7f0; border-radius:12px; background:#f6f9fe; padding:13px 16px; color:#526e8d; font-size:12px; line-height:1.8; }
+.cwts-verifier-workspace .cwts-attendance-guide>summary { list-style:disclosure-closed; font-weight:700; }
+.cwts-verifier-workspace .cwts-attendance-guide>summary::after { content:none; }
+.cwts-attendance-guide ul { margin:10px 0 0; padding-left:20px; }
+.cwts-verifier-workspace tbody tr:nth-child(even) { background:#fafbff; }
+.cwts-verifier-workspace tbody tr:hover { background:#f2f7fd; }
+@media(max-width:1000px){.cwts-verifier-workspace .verifier-summary{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:600px){.cwts-verifier-workspace .verifier-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.cwts-assignment-picker{align-items:stretch;flex-direction:column;}.cwts-assignment-picker .verifier-assignment-count{margin:0;align-self:start;}.cwts-verifier-workspace .verifier-section-heading{flex-wrap:wrap;}.cwts-verifier-workspace .verifier-stat{padding:14px;}}
+.cwts-invitation-page { padding:36px 20px; background:radial-gradient(ellipse at 8% 8%,#bde7d7,transparent 48%),radial-gradient(ellipse at 95% 85%,#d7c8f0,transparent 48%),linear-gradient(135deg,#edf8f2,#edf2fc 55%,#fbf3df); }
+.cwts-invitation-page .cwts-invitation-card { width:min(100%,530px); padding:0; overflow:hidden; border:1px solid #fff; border-radius:28px; box-shadow:0 24px 65px #344f7326; }
+.cwts-school-header { position:relative; text-align:center; padding:27px 24px 23px; background:linear-gradient(125deg,#e4f5eb,#edf3ff 65%,#f0e8fa); border-bottom:1px solid #dce7ec; }
+.cwts-school-header::before { content:''; position:absolute; inset:0 0 auto; height:5px; background:linear-gradient(90deg,#29866b,#74bba3 35%,#cfb663 65%,#8e77c4); }
+.cwts-school-seal { display:grid; place-items:center; width:104px; height:104px; margin:0 auto 13px; background:#fff; border:1px solid #d7e6dd; border-radius:50%; box-shadow:0 6px 18px #36665316; }
+.cwts-school-seal img { display:block; width:88px; height:88px; object-fit:contain; }
+.cwts-invitation-card .cwts-school-name { margin:0 0 5px; color:#244f48; font-size:21px; font-weight:800; line-height:1.3; }
+.cwts-school-header address { color:#536e76; font-size:12px; font-style:normal; line-height:1.6; }
+.cwts-school-program { display:inline-block; margin-top:12px; padding:6px 12px; border:1px solid #d7dff0; border-radius:20px; background:#ffffffb8; color:#586b91; font-size:10px; letter-spacing:.04em; }
+.cwts-invitation-content { padding:25px 32px 22px; }
+.cwts-invitation-content .cwts-eyebrow { color:#725c9e; font-size:10px; margin:0 0 10px; line-height:1.6; }
+.cwts-invitation-content h1 { font-size:30px; line-height:1.2; color:#245749; margin:0 0 10px; }
+.cwts-invitation-content > p { margin:0 0 18px; font-size:13px; }
+.cwts-invitation-steps { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; font-size:11px; color:#5c6e83; }
+.cwts-invitation-steps span { display:flex; align-items:center; gap:7px; }
+.cwts-invitation-steps b { display:grid; place-items:center; width:23px; height:23px; border-radius:8px; color:#327560; background:#e3f3ec; }
+.cwts-invitation-steps span+span b { color:#795f9e; background:#efe8f9; }
+.cwts-invitation-content .cwts-note { border-left:3px solid #89a9d6; }
+.cwts-invitation-content input:not([type=checkbox]) { background:#fafdff; min-height:46px; }
+.cwts-invitation-content input[type=checkbox] { accent-color:#32866f; width:16px; height:16px; }
+.cwts-invitation-content .btn.primary { background:linear-gradient(110deg,#2d846b,#447dae 75%,#6c77b6); box-shadow:0 6px 14px #417c9525; font-weight:700; min-height:46px; }
+.cwts-invitation-content .btn.primary:hover { filter:brightness(1.06); }
+.cwts-invitation-content .btn.primary:disabled { opacity:.6; cursor:wait; }
+.cwts-invitation-content .cwts-login-link { font-size:13px; font-weight:600; }
+.cwts-invitation-footer { text-align:center; padding:16px 24px; background:linear-gradient(110deg,#f5f2fc,#eef6fa); border-top:1px solid #e5e8f1; color:#6a6283; font-size:12px; }
+.cwts-invitation-card .cwts-invitation-footer p { margin:4px 0 0; font-size:11px; color:#748091; }
+@media(max-width:550px){.cwts-invitation-page{padding:20px 12px;}.cwts-invitation-content{padding:23px 22px;}.cwts-school-header{padding:24px 18px 20px;}.cwts-invitation-card .cwts-school-name{font-size:19px;}.cwts-invitation-content h1{font-size:27px;}}
