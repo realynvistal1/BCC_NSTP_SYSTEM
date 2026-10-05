@@ -480,7 +480,10 @@ async function renderOfficerRecords(content) {
       `).join('')
       : '<tr><td colspan="8"><div class="empty">No students found.</div></td></tr>';
 
-    $('#recordFooter').textContent = `Showing ${data.length} of ${rows.filter((row) => !selectedProgram || row.program === selectedProgram).length} record(s)`;
+    const totalRecords = rows.filter((row) => !selectedProgram || row.program === selectedProgram).length;
+    $('#recordFooter').textContent = data.length === totalRecords
+      ? `Showing ${data.length} record${data.length === 1 ? '' : 's'}`
+      : `Showing ${data.length} of ${totalRecords} records`;
 
     $$('[data-detail]').forEach((button) => {
       button.onclick = () => openRecord(
