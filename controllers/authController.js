@@ -41,6 +41,7 @@ async function ensureCaptcha(req, res, token, action) {
 }
 
 function adminPortal(program, storedRole) {
+  if(storedRole==='instructor'&&program==='CWTS')return 'cwts-admin';
   if (storedRole === 'director' || storedRole === 'officer') return 'officer';
   if (storedRole === 'admin' && program === 'CWTS') return 'cwts-admin';
   if (storedRole === 'admin' && program === 'ROTC') return 'rotc-admin';
@@ -318,7 +319,7 @@ async function findAdmin(identifier, portal) {
     [identifier, identifier]
   );
 
-  return rows[0] || null;
+  return rows[0] || (portal==='cwts-admin' ? await require('../services/cwtsInstructorService').findLogin(identifier) : null);
 }
 
 async function findStudent(identifier) {
@@ -408,7 +409,7 @@ exports.login = async (req, res) => {
     const accountPortal = source === 'student' ? 'student' : adminPortal(user.program, user.role);
     if (accountPortal !== requestedPortal) {
       await recordFailedLogin(loginKey);
-      return res.status(403).json({ message: 'This account cannot sign in to the selected portal.' });
+      return res.status(403).json({ message: 'This account cannot log in to the selected portal.' });
     }
     await clearFailedLogins(loginKey);
 
@@ -425,6 +426,7 @@ exports.login = async (req, res) => {
         email: user.email,
         program: user.program,
         account_role: user.role,
+        ...(user.role==='instructor'?{session_version:Number(user.session_version),name:[user.first_name,user.last_name].join(' ')}:{}),
       };
     } else {
       portal = 'student';
@@ -455,7 +457,7 @@ exports.login = async (req, res) => {
     return res.json({
       message: 'Login successful.',
       portal,
-      redirect: redirectForPortal(portal),
+      redirect: user.role==='instructor'?'/admin/cwts/my-attendance':redirectForPortal(portal),
       user: payload,
     });
   } catch (error) {
@@ -724,7 +726,7 @@ exports.resetStudentPassword = async (req, res) => {
     await clearSecurityEvent(resetKey);
 
     return res.json({
-      message: 'Password reset successful. You can now sign in with your new password.',
+      message: 'Password reset successful. You can now log in with your new password.',
     });
   } catch (error) {
     return serverError(res, error);
@@ -771,10 +773,14 @@ exports.requestAdminResetCode = async (req, res) => {
     const lookup = adminResetLookup(portal);
     const [rows] = await db.execute(lookup.selectByEmail, [email]);
 
+    if (!rows[0] && portal === 'cwts-admin') {
+      const result = await require('../services/cwtsInstructorResetService').handle(email);
+      if (result) return res.status(result.status).json({message:result.message});
+    }
     if (!rows[0]) {
       const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
-        message: 'No admin account matched that email for the selected portal.',
+        message: portal === 'cwts-admin' ? 'No active CWTS admin or instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
@@ -865,10 +871,18 @@ exports.resetAdminPassword = async (req, res) => {
     const [admins] = await db.execute(lookup.selectAccount, [email]);
 
     const admin = admins[0];
+    if (!admin && portal === 'cwts-admin') {
+      const result = await require('../services/cwtsInstructorResetService').handle(email,newPassword,code);
+      if (result) {
+        if (result.status !== 200) await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
+        else await clearSecurityEvent(resetKey);
+        return res.status(result.status).json({message:result.message});
+      }
+    }
     if (!admin) {
       const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
-        message: 'No admin account matched that email for the selected portal.',
+        message: portal === 'cwts-admin' ? 'No active CWTS admin or instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
@@ -915,7 +929,7 @@ exports.resetAdminPassword = async (req, res) => {
     await clearSecurityEvent(resetKey);
 
     return res.json({
-      message: 'Password reset successful. You can now sign in with your new password.',
+      message: 'Password reset successful. You can now log in with your new password.',
     });
   } catch (error) {
     return serverError(res, error);
