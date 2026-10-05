@@ -1,3 +1,27 @@
+function passwordEyeIcon(visible=false) {
+  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>${visible?'<path d="m3 3 18 18"/>':''}</svg>`;
+}
+function enhancePasswordFields() {
+  document.querySelectorAll('input[type="password"]').forEach(input=>{
+    if(input.dataset.eyeReady)return;
+    input.dataset.eyeReady='true';
+    const existing=input.parentElement.querySelector('.password-toggle,.enrollment-password-toggle,.settings-password-toggle');
+    if(existing){existing.innerHTML=passwordEyeIcon();return;}
+    const wrap=document.createElement('span');wrap.className='password-eye-wrap';
+    input.before(wrap);wrap.append(input);
+    const button=document.createElement('button');button.type='button';button.className='password-eye-button';
+    const sync=()=>{const visible=input.type==='text';button.innerHTML=passwordEyeIcon(visible);button.setAttribute('aria-label',visible?'Hide password':'Show password');button.setAttribute('aria-pressed',String(visible));};
+    button.onclick=()=>{input.type=input.type==='password'?'text':'password';sync();};
+    wrap.append(button);sync();
+    new MutationObserver(sync).observe(input,{attributes:true,attributeFilter:['type']});
+    input.form?.addEventListener('reset',()=>{input.type='password';sync();});
+  });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  enhancePasswordFields();
+  new MutationObserver(enhancePasswordFields).observe(document.body,{childList:true,subtree:true});
+});
+
 const API = {
   async req(url, options = {}) {
     const isForm = options.body instanceof FormData;
@@ -24,7 +48,9 @@ const API = {
     }
 
     if (!response.ok) {
-      throw new Error(data.message || 'Request failed');
+      const error = new Error(data.message || 'Request failed');
+      error.status = response.status;
+      throw error;
     }
 
     return data;
