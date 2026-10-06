@@ -272,7 +272,6 @@ async function officerPageBase(page,c){
         const maleRows=filtered.filter(x=>String(x.sex).toLowerCase()==='male');
         const femaleRows=filtered.filter(x=>String(x.sex).toLowerCase()==='female');
         c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Advance Course</h2><p>View approved ROTC students under the Advance Course.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Cadets',filtered.length,'approved advance-course students','slate')}${rosterSummary('Male',male,'male cadets','blue')}${rosterSummary('Female',female,'female cadets','rose')}${rosterSummary('Program','ROTC','advance course roster','green')}</div><div class="roster-stack">${officerExpander('advance-course-male','Male',maleRows,Infinity,'blue')}${officerExpander('advance-course-female','Female',femaleRows,Infinity,'rose')}</div>`;
-        c.querySelector('.page-intro-banner')?.insertAdjacentHTML('beforeend','<a class="btn primary" href="/officer/rotc-verifiers">Assign Platoon Verifiers</a>');
         bindOfficerRosterFilters(state, render);
         bindOfficerExpanders();
       };
@@ -288,7 +287,6 @@ async function officerPageBase(page,c){
       const hqRows=filtered.filter(x=>x.special_unit==='HQ');
       const mpRows=filtered.filter(x=>x.special_unit==='MP');
       c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Members',filtered.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,Infinity,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,Infinity,'green')}</div>`;
-      c.querySelector('.page-intro-banner')?.insertAdjacentHTML('beforeend','<a class="btn primary" href="/officer/rotc-verifiers">Assign Special Platoon Verifiers</a>');
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
