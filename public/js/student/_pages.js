@@ -26,10 +26,13 @@
     const eligibilityBlocked=['failed-grade','grades-incomplete'].includes(reEnrollment.reason);
     const levelPrefix=String(s.nstp_component||'').toUpperCase()==='CWTS'?'CWTS':'MS';
     const targetLabel=`${levelPrefix} ${reEnrollment.target_level||'2'}`;
+    const qualifiedForLevelTwo=reEnrollment.eligible===true&&String(reEnrollment.target_level)==='2';
     const eligibilityMessage=reEnrollment.message||`Only students who passed ${levelPrefix} 1 can enroll in ${targetLabel}.`;
     const eligibilityNotice=eligibilityBlocked
       ?`<div class="notice error" style="margin-bottom:18px"><strong>Not Qualified for ${esc(targetLabel)}</strong><br>${esc(eligibilityMessage)}</div>`
-      :'';
+      :qualifiedForLevelTwo
+        ?`<div class="notice success" style="margin-bottom:18px"><strong>Qualified for ${esc(targetLabel)} Enrollment</strong><br>You are qualified for ${esc(targetLabel)} enrollment because you passed ${esc(levelPrefix)} 1. Enrollment is now open. <a href="/student/re-enrollment">Enroll now</a>.</div>`
+        :'';
     const enrollmentCard=reEnrollment.eligible
       ?dashCard('Enroll',`${targetLabel} Enrollment`,`You passed ${levelPrefix} 1. Tap to enroll while the schedule is open.`,'/student/re-enrollment','refresh','indigo')
       :eligibilityBlocked
@@ -39,7 +42,7 @@
       att.present||0
     }
     Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${isApprovedLevelOne||eligibilityBlocked?enrollmentCard:''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
-    if(String(s.nstp_component||'').toUpperCase()==='ROTC' && (Number(s.willing_to_take_advance_course)===1 || Number(r.assignment_is_advance)===1 || assignment==='Advance Course')){
+    if(String(s.nstp_component||'').toUpperCase()==='ROTC' && Number(s.willing_to_take_advance_course)===1 && String(rawStatus).toLowerCase()==='approved' && Number(r.assignment_is_advance)===1 && !s.special_unit && !r.assignment_special_unit){
       const grid=c.querySelector('.student-dashboard-grid');
       grid.insertAdjacentHTML('beforeend',dashCard('My Assigned Attendance','Review Attendance','Check your assigned group and update attendance.','/student/verify-attendance','attendance','green'));
     }
