@@ -287,6 +287,10 @@ async function renderAdminRecords(_program, content) {
         <option value="">All SY</option>
         ${schoolYearsForLevel().map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
       </select>
+      <select id="recordCourse" aria-label="Course">
+        <option value="">All Courses</option>
+        ${courseOptionsForProgram('rotc').map(course => `<option value="${esc(course)}">${esc(course)}</option>`).join('')}
+      </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
       <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
       <select id="recordBattalion">
@@ -371,9 +375,11 @@ async function renderAdminRecords(_program, content) {
     const query = $('#recordSearch').value.trim().toLowerCase();
     const level = $('#recordLevel').value;
     const schoolYear = $('#recordSY').value;
+    const course = $('#recordCourse').value;
     return rows.filter((row) => (
       (!level || String(row.ms_level) === level)
       && (!schoolYear || row.school_year === schoolYear)
+      && (!course || String(row.course || '').trim() === course)
       && (!query || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`.toLowerCase().includes(query))
     ));
   }
@@ -466,6 +472,7 @@ async function renderAdminRecords(_program, content) {
   $('#recordSearch').oninput = draw;
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
+  $('#recordCourse').onchange = draw;
   $('#recordBattalion').onchange = () => {
     if ($('#recordBattalion').value) $('#recordSpecial').value = '';
     $('#recordCompany').value = '';
@@ -489,6 +496,7 @@ async function renderAdminRecords(_program, content) {
     $('#recordSearch').value = '';
     $('#recordLevel').value = '';
     $('#recordSY').value = '';
+    $('#recordCourse').value = '';
     $('#recordBattalion').value = '';
     $('#recordCompany').value = '';
     $('#recordPlatoon').value = '';
@@ -543,6 +551,7 @@ async function renderAdminRecords(_program, content) {
     }
 
     const params = new URLSearchParams();
+    if ($('#recordCourse').value) params.set('course', $('#recordCourse').value);
     if ($('#recordLevel').value) {
       params.set('ms_level', $('#recordLevel').value);
     }
