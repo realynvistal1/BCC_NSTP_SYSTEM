@@ -1,3 +1,25 @@
+function compactAttendanceCourse(course) {
+  const value = String(course || '').trim();
+  const major = value.match(/major\s+in\s+(.+)$/i);
+  if (major) return `BSED ${major[1].trim()}`;
+  if (/information technology/i.test(value)) return 'BSIT';
+  if (/criminology/i.test(value)) return 'BSCRIM';
+  if (/hospitality/i.test(value)) return 'BSHM';
+  if (/tourism/i.test(value)) return 'BSTM';
+  if (/elementary education/i.test(value) || /^BEED$/i.test(value)) return 'BEED Elementary';
+  return value.match(/^[A-Z]{2,}/)?.[0] || value || '—';
+}
+
+function compactAttendanceAssignment(value) {
+  return String(value || '').replace(/Battalion\s+(\d+)/gi, 'B$1')
+    .replace(/Platoon\s+(\d+)/gi, 'P$1').replace(/\s*[•/]\s*/g, ' ').trim();
+}
+
+function compactAttendanceUpdate(student) {
+  if (!student.verified_at) return '—';
+  return `<div class="summary-update-details"><span>Updated by <strong>${esc(student.verified_by_name || 'Attendance staff')}</strong></span><time>${esc(attendanceUpdateDate(student.verified_at))}</time></div>`;
+}
+
 function makeAttendanceSummary(_programKey) {
   const isCwts = String(_programKey || '').toUpperCase() === 'CWTS';
   const program = isCwts ? 'CWTS' : 'ROTC';
@@ -722,7 +744,7 @@ function makeAttendanceSummary(_programKey) {
         <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
       </tr>
     `);
 
@@ -751,7 +773,7 @@ function makeAttendanceSummary(_programKey) {
         <td>${esc(assignment(student))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : 'â€”'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         ${aggregateMode
     ? '<td><small>Single-session verify only</small></td>'
     : `
@@ -809,17 +831,17 @@ function makeAttendanceSummary(_programKey) {
           <strong>${esc(student.last_name)}, ${esc(student.first_name)}</strong>
           <small>${esc(student.student_id)}</small>
         </td>
-        <td>${esc(student.course || 'â€”')}<small>${esc(student.year_level || '')}</small></td>
-        <td>${esc(assignment(student))}</td>
+        <td>${esc(compactAttendanceCourse(student.course))}<small>${esc(student.year_level || '')}</small></td>
+        <td>${esc(compactAttendanceAssignment(assignment(student)))}</td>
         <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
-        <td>${badge(student.attendance_status)}</td>
+        <td>${badge(student.attendance_status)}</td><td class="summary-update-cell">${compactAttendanceUpdate(student)}</td>
       </tr>
     `);
 
     $('#attendanceSummaryContent').innerHTML = table(
       aggregateMode
-        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Status']
-        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Status'],
+        ? [`${unit} / Type`, 'Student', 'Course / Year', 'Assignment', 'Time', 'Status', 'Attendance Update']
+        : ['Student', 'Course / Year', 'Assignment', 'Time', 'Status', 'Attendance Update'],
       rows
     );
   }
