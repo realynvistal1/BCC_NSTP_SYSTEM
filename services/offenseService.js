@@ -5,6 +5,11 @@ async function get(studentId) {
   return rows[0] || null;
 }
 
+function isAttendanceClaim(record) {
+  return Number(record?.claimed_present) === 1
+    || ['present', 'late'].includes(String(record?.status || '').toLowerCase());
+}
+
 async function reconcile(studentId, connection = db, newFalseClaim = false) {
   // A locking read sees the latest committed corrections, including when closing
   // several students in a single transaction under MySQL's default isolation.
@@ -30,9 +35,9 @@ async function saveAttendance(studentId, session, status, actor) {
     await connection.execute(`INSERT INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type,verified_by,verified_at)
       VALUES(?,?,?,?,?,?,NOW()) ON DUPLICATE KEY UPDATE status=VALUES(status),verified_by=VALUES(verified_by),verified_at=NOW(),updated_at=NOW(),record_version=record_version+1`,
       [studentId,session.id,status,session.mi_number,session.mi_type,actor]);
-    const falseClaim=status==='absent' && Number(before?.claimed_present)===1;
+    const falseClaim=status==='absent' && (isAttendanceClaim(before) || Number(before?.false_present)===1);
     await connection.execute('UPDATE attendance_records SET false_present=? WHERE student_id=? AND attendance_session_id=?',[Number(falseClaim),studentId,session.id]);
-    const offense = before?.claimed_present || before?.false_present
+    const offense = isAttendanceClaim(before) || before?.false_present
       ? await reconcile(studentId,connection,falseClaim && !Number(before?.false_present)) : null;
     await connection.commit();
     return falseClaim ? offense : null;
@@ -57,6 +62,7 @@ async function acknowledge(studentId) {
 }
 
 module.exports = {
+  isAttendanceClaim,
   acknowledge,
   get,
   record,
