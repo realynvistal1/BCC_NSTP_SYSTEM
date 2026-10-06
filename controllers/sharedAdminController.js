@@ -343,10 +343,11 @@ async function approvedRecordRows(programCode, filters = {}) {
   const search = readSearchTerm(filters.search, { allowBlank: true });
   const battalion = readLimitedText(filters.battalion, 10);
   const company = readLimitedText(filters.company, 30);
+  const course = readLimitedText(filters.course, 150);
   const platoon = readLimitedText(filters.platoon, 10);
   const special = readLimitedText(filters.special, 50);
 
-  if ([msLevel, schoolYear, search, battalion, company, platoon, special].includes(null)) {
+  if ([msLevel, schoolYear, search, battalion, company, platoon, special, course].includes(null)) {
     return [];
   }
 
@@ -403,6 +404,8 @@ async function approvedRecordRows(programCode, filters = {}) {
   );
 
   return rows.filter((row) => (
+    (!course || String(row.course || '').trim() === course)
+    &&
     (programCode !== 'ROTC' || !battalion || String(row.battalion || '') === battalion)
     && (!company || String(programCode === 'ROTC' ? row.rotc_company : row.company || '') === company)
     && (programCode !== 'ROTC' || !platoon || String(row.rotc_platoon || '') === platoon)
@@ -2254,6 +2257,7 @@ exports.downloadRecordProfiles = async (req, res) => {
     const search = readSearchTerm(req.query.search, { allowBlank: true });
     const battalion = readLimitedText(req.query.battalion, 10);
     const company = readLimitedText(req.query.company, 30);
+    const course = readLimitedText(req.query.course, 150);
     const platoon = readLimitedText(req.query.platoon, 10);
     const special = readLimitedText(req.query.special, 50);
     const commandantNameInput = readLimitedText(req.query.commandant_name, 100);
@@ -2273,7 +2277,7 @@ exports.downloadRecordProfiles = async (req, res) => {
       return res.status(400).json({ message: 'Search text is too long.' });
     }
 
-    if ([battalion, company, platoon, special].includes(null)) {
+    if ([battalion, company, platoon, special, course].includes(null)) {
       return res.status(400).json({ message: 'Select valid ROTC assignment filters.' });
     }
 
@@ -2290,6 +2294,7 @@ exports.downloadRecordProfiles = async (req, res) => {
       platoon,
       special,
       commandantName,
+      course,
     };
 
     const rows = await approvedRecordRows(programCode, filters);
@@ -2297,6 +2302,7 @@ exports.downloadRecordProfiles = async (req, res) => {
       return res.status(404).json({ message: 'No approved student records matched the selected filters.' });
     }
 
+    res.set('X-Records-Course', encodeURIComponent(course || ''));
     return await certificateService.registrationFormsPdf(res, {
       records: rows,
       program: programCode,
