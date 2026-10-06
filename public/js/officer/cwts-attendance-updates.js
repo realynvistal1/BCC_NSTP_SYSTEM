@@ -36,6 +36,15 @@ window.DirectorCWTSAttendanceUpdates = (() => {
         <div class="attendance-dialog-body"><p class="director-notification-intro">These changes are already reflected in attendance records.</p>${unread.map(attendanceChangeCard).join('')}</div>
         <footer class="attendance-dialog-footer"><a class="btn director-notification-history" href="/officer/cwts-instructors#attendanceChanges">${icon('records')} View update history</a><button type="button" class="btn primary">Done</button></footer>`;
       dialog.querySelectorAll('button').forEach(button => button.onclick = () => dialog.close());
+      dialog.querySelector('.director-notification-history').onclick = event => {
+        const target = new URL(event.currentTarget.href);
+        dialog.close();
+        if (target.pathname === location.pathname) {
+          event.preventDefault();
+          location.hash = target.hash;
+          openAttendanceUpdateHistory();
+        }
+      };
       dialog.addEventListener('close', () => {
         seen = latest;
         try { localStorage.setItem(storageKey, String(seen)); } catch (_) { /* Keep working with in-memory tracking. */ }
