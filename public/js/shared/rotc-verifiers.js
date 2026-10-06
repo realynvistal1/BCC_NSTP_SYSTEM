@@ -1,3 +1,10 @@
+function verifierSearchMatches(record, query) {
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const tokens = normalize(query).split(/\s+/).filter(Boolean);
+  const text = normalize([record.first_name, record.last_name, record.student_id].join(' '));
+  const compactId = normalize(record.student_id).replace(/\s/g, '');
+  return tokens.every(token => text.includes(token) || (/^\d+$/.test(token) && compactId.includes(token)));
+}
 function verifierScope(a) {
   const mi=Number(a.mi_number)>0?`MI ${a.mi_number}`:'All MIs (existing assignment)';
   const type=a.mi_type?String(a.mi_type).toUpperCase():'All types';
@@ -42,18 +49,24 @@ function showAttendanceHistoryDetail(row, trigger) {
 async function renderVerifierManagement(content) {
   const [data,log]=await Promise.all([API.get('/api/officer/rotc-verifiers'),API.get('/api/officer/rotc-verification-log')]);
   const state = content.verifierManagementState ||= { access:'all', search:'', historySearch:'', assignmentPage:1, historyPage:1, assignmentsOpen:true, historyOpen:true };
-  content.innerHTML=`<section class="panel verifier-management-panel"><div class="section-heading verifier-section-heading"><span class="verifier-heading-icon" aria-hidden="true">${icon('platoon')}</span><div><span class="attendance-eyebrow">Attendance management</span><h2>Assign ROTC Verifiers</h2><p>Assign an Advance Course student to a group and attendance session.</p></div></div>
+  content.innerHTML=`<section class="panel verifier-management-panel"><div class="section-heading verifier-section-heading"><span class="verifier-heading-icon" aria-hidden="true">${icon('platoon')}</span><div><span class="attendance-eyebrow">Attendance management</span><h2>Assign ROTC Verifiers</h2></div></div>
     <form id="verifierAssignmentForm" class="form-grid">
-      <div class="field verifier-field-blue"><label for="verifierCandidate">Advance Course Student</label><select id="verifierCandidate" required><option value="">Select student</option>${data.candidates.map((s,i)=>`<option value="${i}">${esc(s.last_name+', '+s.first_name+' ('+s.student_id+')')}</option>`).join('')}</select></div>
-      <div class="field verifier-field-violet"><label for="verifierTargetCycle">Assigned Level &amp; School Year</label><select id="verifierTargetCycle" required><option value="">Select enrollment cycle</option>${data.cycles.map((cycle,i)=>`<option value="${i}">MS ${esc(cycle.ms_level)} / SY ${esc(cycle.school_year)}</option>`).join('')}</select></div>
-      <div class="field verifier-field-teal"><label for="verifierMiNumber">MI Number</label><select id="verifierMiNumber" required disabled><option value="">Select enrollment cycle first</option></select><small id="verifierMiHint">Only created ROTC attendance sessions (MI 1–15) are available.</small></div>
+      <fieldset class="verifier-form-step"><legend><span>1</span> Attendance</legend><div class="verifier-step-fields">
+      <div class="field full verifier-field-violet"><label for="verifierTargetCycle">Level &amp; School Year</label><select id="verifierTargetCycle" required><option value="">Select enrollment cycle</option>${data.cycles.map((cycle,i)=>`<option value="${i}">MS ${esc(cycle.ms_level)} / SY ${esc(cycle.school_year)}</option>`).join('')}</select></div>
+      <div class="field verifier-field-teal"><label for="verifierMiNumber">MI Number</label><select id="verifierMiNumber" required disabled><option value="">Select enrollment cycle first</option></select><small id="verifierMiHint" hidden>Only created ROTC attendance sessions (MI 1–15) are available.</small></div>
       <div class="field verifier-field-teal"><label for="verifierMiType">Attendance Type</label><select id="verifierMiType" required disabled><option value="">Select MI first</option></select></div>
+      </div></fieldset>
+      <fieldset class="verifier-form-step"><legend><span>2</span> Group</legend><div class="verifier-step-fields">
       <div class="field verifier-field-violet"><label for="verifierAssignmentType">Assignment Type</label><select id="verifierAssignmentType"><option value="regular">Regular Platoon</option><option value="special">Special Platoon</option></select></div>
       <div class="field verifier-field-blue hidden" id="verifierSpecialField"><label for="verifierSpecialUnit">Special Unit</label><select id="verifierSpecialUnit">${data.specialUnits.map(unit=>`<option>${esc(unit)}</option>`).join('')}</select></div>
-      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierBattalion">Assigned Battalion</label><select id="verifierBattalion"><option value="1">Battalion 1</option><option value="2">Battalion 2</option></select></div>
-      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierCompany">Assigned Company</label><select id="verifierCompany"></select></div>
-      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierPlatoon">Assigned Platoon</label><select id="verifierPlatoon">${[1,2,3,4].map(i=>`<option value="${i}">Platoon ${i}</option>`).join('')}</select></div>
-      <div class="field full verifier-submit"><span>Assignments appear in the student&#39;s portal.</span><button class="btn primary" type="submit" ${data.candidates.length?'':'disabled'}>Assign Verifier</button></div>
+      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierBattalion">Battalion</label><select id="verifierBattalion"><option value="1">Battalion 1</option><option value="2">Battalion 2</option></select></div>
+      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierCompany">Company</label><select id="verifierCompany"></select></div>
+      <div class="field verifier-field-blue" data-regular-assignment><label for="verifierPlatoon">Platoon</label><select id="verifierPlatoon">${[1,2,3,4].map(i=>`<option value="${i}">Platoon ${i}</option>`).join('')}</select></div>
+      </div><div id="verifierGroupWarning" class="notice error" role="status" hidden></div></fieldset>
+      <fieldset class="verifier-form-step"><legend><span>3</span> Verifier</legend><div class="verifier-step-fields">
+      <div class="field full verifier-field-blue"><label for="verifierCandidate">Advance Course Student</label><select id="verifierCandidate" required><option value="">Select verifier</option>${data.candidates.map((s,i)=>`<option value="${i}">${esc(s.last_name+', '+s.first_name+' ('+s.student_id+')')}</option>`).join('')}</select><small id="verifierAvailabilityHint" hidden>Already assigned. Revoke the current assignment to change its verifier.</small></div>
+      </div></fieldset>
+      <div class="field full verifier-submit"><button class="btn primary" type="submit" ${data.candidates.length?'':'disabled'}>Assign Verifier</button></div>
     </form>${data.candidates.length?'':'<p class="notice">No approved Advance Course students with saved cycle assignments are available.</p>'}</section>
     <section class="panel verifier-assignments-panel verifier-compact-panel"><details id="verifierAssignmentsDisclosure" ${state.assignmentsOpen?'open':''}><summary class="verifier-section-heading verifier-disclosure-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('users')}</span><div><span class="attendance-eyebrow">Assigned verifiers</span><h2>Verifier Assignments</h2><p>Search a verifier or filter access. Five assignments per page.</p></div><span class="verifier-assignment-count">${data.assignments.filter(a => verifierAssignmentAccess(a) === 'active').length} active</span><span class="verifier-collapse-chevron" aria-hidden="true">&#8964;</span></summary><div class="verifier-section-body"><div class="verifier-list-toolbar"><label class="field"><span>Find a verifier</span><input id="verifierAssignmentSearch" type="search" placeholder="Name, student ID, or group" value="${esc(state.search)}"></label><label class="field"><span>Access</span><select id="verifierAccessFilter"><option value="all">All assignments</option><option value="active">Active</option><option value="revoked">Revoked</option><option value="ineligible">Access blocked</option></select></label></div><div id="verifierAssignmentResults"></div><div id="verifierAssignmentPagination" class="verifier-pagination"></div></div></details></section>
     <section class="panel verifier-compact-panel verifier-history-panel" id="attendanceChanges"><details id="verifierHistoryDisclosure" ${state.historyOpen?'open':''}><summary class="verifier-section-heading verifier-disclosure-heading"><span class="verifier-heading-icon violet" aria-hidden="true">${icon('records')}</span><div><span class="attendance-eyebrow">Activity log</span><h2>Attendance Update History</h2><p>Five updates per page. Open an update for the reason and verifier.</p></div><span class="verifier-history-count">${log.length} updates</span><span class="verifier-collapse-chevron" aria-hidden="true">&#8964;</span></summary><div class="verifier-section-body"><div class="verifier-list-toolbar history"><label class="field"><span>Find an update</span><input id="verifierHistorySearch" type="search" placeholder="Student name or ID" value="${esc(state.historySearch)}"></label><button class="btn small verifier-history-refresh" id="refreshAttendanceChanges" type="button">${icon('refresh')} Refresh</button></div><div id="verifierHistoryResults" class="attendance-history-list" role="region" aria-label="Attendance updates" tabindex="0"></div><div id="verifierHistoryPagination" class="verifier-pagination"></div></div></details></section>`;
@@ -63,10 +76,26 @@ async function renderVerifierManagement(content) {
     const selected=$('#verifierCandidate').value;
     const special=$('#verifierAssignmentType').value==='special';
     const sex=$('#verifierBattalion').value==='1'?'Male':'Female';
+    const cycle=data.cycles[$('#verifierTargetCycle').value];
+    const assigned=data.assignments.find(a=>Number(a.active)===1&&cycle
+      &&String(a.ms_level)===String(cycle.ms_level)&&a.school_year===cycle.school_year
+      &&(Number(a.mi_number)===0||String(a.mi_number)===$('#verifierMiNumber').value)
+      &&(!a.mi_type||String(a.mi_type).toLowerCase()===$('#verifierMiType').value)
+      &&(special?a.special_unit===$('#verifierSpecialUnit').value:!a.special_unit
+        &&String(a.battalion)===$('#verifierBattalion').value&&a.company===$('#verifierCompany').value
+        &&String(a.platoon)===$('#verifierPlatoon').value));
     const candidates=data.candidates.map((student,index)=>({student,index})).filter(({student})=>special||student.sex===sex);
-    $('#verifierCandidate').innerHTML='<option value="">Select student</option>'+candidates.map(({student:s,index})=>`<option value="${index}">${esc(s.last_name+', '+s.first_name+' ('+s.student_id+') — '+s.sex)}</option>`).join('');
-    if(candidates.some(candidate=>String(candidate.index)===selected)) $('#verifierCandidate').value=selected;
-    $('#verifierAssignmentForm button[type="submit"]').disabled=!candidates.length;
+    const activeVerifiers=new Set(data.assignments.filter(a=>Number(a.active)===1).map(a=>String(a.verifier_id)));
+    const available=candidates.filter(({student})=>!activeVerifiers.has(String(student.id)));
+    $('#verifierCandidate').innerHTML='<option value="">Select verifier</option>'+candidates.map(({student:s,index})=>`<option value="${index}" ${activeVerifiers.has(String(s.id))?'disabled':''}>${esc(s.last_name+', '+s.first_name+' ('+s.student_id+') — '+s.sex)}${activeVerifiers.has(String(s.id))?' (Already assigned)':''}</option>`).join('');
+    if(!assigned&&available.some(candidate=>String(candidate.index)===selected)) $('#verifierCandidate').value=selected;
+    $('#verifierCandidate').disabled=Boolean(assigned);
+    const warning=$('#verifierGroupWarning');
+    warning.hidden=!assigned;
+    warning.textContent=assigned?`${special?$('#verifierSpecialUnit').value:'Battalion '+$('#verifierBattalion').value+' / '+$('#verifierCompany').value+' / Platoon '+$('#verifierPlatoon').value} already has a verifier: ${[assigned.first_name,assigned.last_name].filter(Boolean).join(' ')}. Choose another group.`:'';
+    $('#verifierAvailabilityHint').hidden=Boolean(assigned)||available.length>0;
+    $('#verifierAvailabilityHint').textContent='No available verifiers. Revoke an active assignment to make its student available.';
+    $('#verifierAssignmentForm button[type="submit"]').disabled=!available.length||Boolean(assigned);
   };
   updateCompanies(); $('#verifierBattalion').onchange=()=>{updateCompanies();updateCandidates();};
   const cycleSessions=()=>{
@@ -78,15 +107,21 @@ async function renderVerifierManagement(content) {
     const types=['in','out'].filter(type=>cycleSessions().some(s=>String(s.mi_number)===mi&&s.mi_type===type));
     $('#verifierMiType').innerHTML='<option value="">Select attendance type</option>'+types.map(type=>`<option value="${type}">${type.toUpperCase()}</option>`).join('');
     $('#verifierMiType').disabled=!types.length;
+    updateCandidates();
   };
   $('#verifierTargetCycle').onchange=()=>{
     const numbers=[...new Set(cycleSessions().map(s=>Number(s.mi_number)))].sort((a,b)=>a-b);
     $('#verifierMiNumber').innerHTML='<option value="">Select created MI</option>'+numbers.map(mi=>`<option value="${mi}">MI ${mi}</option>`).join('');
     $('#verifierMiNumber').disabled=!numbers.length;
-    $('#verifierMiHint').textContent=numbers.length?'Only created ROTC attendance sessions (MI 1–15) are available.':'No matching sessions. Create ROTC attendance for this level and school year first.';
+    $('#verifierMiHint').hidden=Boolean(numbers.length);
+    $('#verifierMiHint').textContent=numbers.length?'':'No attendance sessions for this level and school year.';
     updateMiTypes();
   };
   $('#verifierMiNumber').onchange=updateMiTypes;
+  $('#verifierMiType').onchange=updateCandidates;
+  $('#verifierCompany').onchange=updateCandidates;
+  $('#verifierPlatoon').onchange=updateCandidates;
+  $('#verifierSpecialUnit').onchange=updateCandidates;
   $('#verifierAssignmentType').onchange=()=>{
     const special=$('#verifierAssignmentType').value==='special';
     $('#verifierSpecialField').classList.toggle('hidden',!special);
@@ -109,6 +144,7 @@ async function renderVerifierManagement(content) {
     } catch(error) {toast(error.message,true);button.disabled=false;}
   };
   renderVerifierManagementLists(content,data.assignments,log,state);
+  openAttendanceUpdateHistory();
 }
 
 function verifierListPage(rows, page, size=5) {
@@ -184,12 +220,22 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
     if (token !== request || content.verifierGeneration !== generation) return;
     const node = $('#verifierRecords');
     node.innerHTML = `<div class="section-heading verifier-section-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('attendance')}</span><div><h2>Attendance records</h2><p>Check physical attendance. Update the status and enter a reason for each correction.</p></div></div><div class="verifier-summary"><span class="verifier-stat total"><span class="verifier-stat-icon" aria-hidden="true">${icon('platoon')}</span><span><strong>${records.length}</strong><small>Records</small></span></span>${['present','late','absent','unmarked'].map(status => `<span class="verifier-stat ${status}"><span class="verifier-stat-dot" aria-hidden="true"></span><span><strong>${records.filter(r => r.status === status).length}</strong><small>${status[0].toUpperCase()+status.slice(1)}</small></span></span>`).join('')}</div><div class="verifier-toolbar"><div class="field"><label for="verifierSearch">Find a student</label><input id="verifierSearch" type="search" placeholder="Name or student ID"></div></div>${records.length ? verifierTable(['Student','Session','Attendance','Last update','Action'], records.map(r => `<tr data-record="${r.row_key}"><td><strong>${esc(r.first_name+' '+r.last_name)}</strong><br><small>${esc(r.student_id)}</small></td><td>MI ${esc(r.mi_number)} ${esc(String(r.mi_type).toUpperCase())}<br><small>${esc(attendanceUpdateDate(r.open_date))}</small></td><td>${badge(r.status)}</td><td>${attendanceUpdateDetails(r) || '—'}</td><td><button class="btn small primary" type="button" data-update="${r.row_key}">Update Attendance</button></td></tr>`)) : '<div class="verifier-empty"><span class="verifier-empty-symbol" aria-hidden="true">&#10003;</span><h3>No students for this assignment</h3><p>No approved students match this assigned group and session. Use Refresh to check for new records.</p></div>'}`;
+    const emptySearch = document.createElement('div');
+    emptySearch.className = 'notice verifier-search-empty';
+    emptySearch.setAttribute('role', 'status');
+    emptySearch.textContent = 'No students match your search.';
+    emptySearch.hidden = true;
+    node.append(emptySearch);
+    const recordsByKey = new Map(records.map(record => [String(record.row_key), record]));
     $('#verifierSearch').oninput = event => {
-      const query = event.target.value.trim().toLowerCase();
+      let matches = 0;
       node.querySelectorAll('[data-record]').forEach(row => {
-        const record = records.find(r => String(r.row_key) === row.dataset.record);
-        row.hidden = !(record.first_name+' '+record.last_name+' '+record.student_id).toLowerCase().includes(query);
+        const record = recordsByKey.get(row.dataset.record);
+        const matched = Boolean(record && verifierSearchMatches(record, event.target.value));
+        row.hidden = !matched;
+        if (matched) matches++;
       });
+      emptySearch.hidden = !records.length || matches > 0;
     };
     node.querySelectorAll('[data-update]').forEach(button => button.onclick = () => {
       const record = records.find(r => String(r.row_key) === button.dataset.update);
