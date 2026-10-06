@@ -22,10 +22,11 @@ function attendanceRecordBadge(status) {
   return `<span class="attendance-status-badge ${tone}">${label}</span>`;
 }
 function attendanceVerificationNote(student) {
-  if (!student.record_id) return '';
-  return attendanceUpdateDetails(student);
+  if (!student.record_id || !student.verified_at) return '';
+  return `<div class="director-update-details"><span>Updated by <strong>${esc(student.verified_by_name || 'Attendance staff')}</strong></span><time>${esc(attendanceUpdateDate(student.verified_at))}</time></div>`;
 }
 let officerAttendanceFilterState = {
+  status: 'all',
   group: 'all',
   company: 'all',
   platoon: 'all',
@@ -315,6 +316,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
   const showPlatoonFilter = program === 'ROTC';
   const rosterStudents = officerAttendanceRows;
   const state = {
+    status: officerAttendanceFilterState.status || 'all',
     group: program === 'CWTS' ? 'all' : officerAttendanceFilterState.group || 'all',
     company: officerAttendanceFilterState.company || 'all',
     platoon: officerAttendanceFilterState.platoon || 'all',
@@ -346,7 +348,10 @@ function renderOfficerAttendanceTable(container, sessions, program) {
       const companyOk = !showCompanyFilter || state.company === 'all' || officerStudentFilterValue(student, state.group, program) === state.company;
       const platoonOk = !showPlatoonFilter || state.platoon === 'all' || officerStudentPlatoon(student) === state.platoon;
       const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${officerAssignment(student) || ''} ${student.session_school_year || ''} ${student.session_ms_level || ''} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase();
-      return groupOk && companyOk && platoonOk && (!query || text.includes(query));
+      const rawStatus = String(student.attendance_status || '').toLowerCase();
+      const status = ['present', 'late', 'absent'].includes(rawStatus) ? rawStatus : 'unmarked';
+      const statusOk = state.status === 'all' || status === state.status;
+      return groupOk && companyOk && platoonOk && statusOk && (!query || text.includes(query));
     }).sort((left, right) => {
       const byName = `${left.last_name || ''}`.localeCompare(`${right.last_name || ''}`)
         || `${left.first_name || ''}`.localeCompare(`${right.first_name || ''}`);
@@ -472,6 +477,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
           ${showPlatoonFilter
             ? `<label class="attendance-record-filter" id="officerInlinePlatoonField"><span id="officerInlinePlatoonLabel">Platoon</span><select id="officerInlinePlatoon"><option value="all">All</option></select></label>`
             : ''}
+          <label class="attendance-record-filter"><span>Status</span><select id="officerInlineStatus"><option value="all">All</option><option value="present">Present</option><option value="late">Late</option><option value="absent">Absent</option><option value="unmarked">Not Yet Marked</option></select></label>
           <div class="attendance-record-search">
             <input id="officerInlineSearch" type="search" placeholder="Search name or student ID...">
           </div>
@@ -488,6 +494,12 @@ function renderOfficerAttendanceTable(container, sessions, program) {
     $('#officerInlineSearch').value = state.search;
   }
   draw();
+
+  $('#officerInlineStatus').value = state.status;
+  $('#officerInlineStatus').addEventListener('change', () => {
+    state.status = $('#officerInlineStatus').value || 'all';
+    draw();
+  });
 
   $('#officerInlineGroup')?.addEventListener('change', () => {
     state.group = $('#officerInlineGroup').value || 'all';
