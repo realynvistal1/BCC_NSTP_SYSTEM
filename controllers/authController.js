@@ -31,6 +31,7 @@ function serverError(res, error) {
 async function ensureCaptcha(req, res, token, action) {
   const verification = await captchaService.verifyToken(token, action, {
     hostname: req.hostname,
+    portal: req.body?.portal,
   });
   if (!verification.ok) {
     res.status(400).json({ message: verification.message });
@@ -475,7 +476,13 @@ exports.logout = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  res.json({ user: req.user });
+  try {
+    const user = { ...req.user };
+    if (user.portal === 'student') {
+      user.approved_advance_course = await require('../services/advanceCourseService').isApprovedAdvanceStudent(user.id);
+    }
+    res.json({ user });
+  } catch (error) { return serverError(res, error); }
 };
 
 async function handlePasswordChange(req, res, sending) {
