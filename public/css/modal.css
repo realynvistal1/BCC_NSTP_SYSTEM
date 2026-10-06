@@ -312,10 +312,12 @@ button.document-thumb {
 }
 .offense-card {
   width: min(430px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
   background: #fff;
   border-radius: 22px;
   box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
-  overflow: hidden
+  overflow-x: hidden
 }
 .offense-accent {
   height: 6px;
@@ -368,6 +370,8 @@ button.document-thumb {
   color: #b91c1c;
   border-color: #fecaca
 }
+.offense-update-reason { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ead9b5; overflow-wrap: anywhere; }
+.offense-update-reason p { margin: 6px 0; white-space: pre-wrap; }
 .offense-message {
   padding: 15px;
   border-radius: 14px;
