@@ -397,6 +397,11 @@ async function renderEnrollmentSchedule(p,c){
   };
 }
 const COURSE_OPTIONS=['BS Criminology','BS Hospitality Management','BS Information Technology','BS Tourism Management','BEED - Bachelor of Elementary Education','BSED - Major in English','BSED - Major in Mathematics'];
+function courseOptionsForProgram(program) {
+  return String(program || '').toLowerCase() === 'cwts'
+    ? COURSE_OPTIONS.filter(course => !/criminology/i.test(course))
+    : COURSE_OPTIONS;
+}
 function displayNamePart(value='') {
   return String(value || '').trim().replace(
     /(^|[\s'-])(\p{L})/gu,
@@ -760,7 +765,7 @@ async function renderEnrollmentList(p,c){
   </option>`).join('')}</select><select id="filterYear"><option value="">All Year Levels</option>${['1st Year','2nd Year','3rd Year','4th Year'].map(y=>`<option>${
     y
   }
-  </option>`).join('')}</select><select id="filterCourse"><option value="">All Courses</option>${COURSE_OPTIONS.map(y=>`<option>${
+  </option>`).join('')}</select><select id="filterCourse"><option value="">All Courses</option>${courseOptionsForProgram(p).map(y=>`<option>${
     esc(y)
   }
   </option>`).join('')}</select><select id="filterMedical"><option value="">Medical: All</option><option value="yes">With Medical Condition</option><option value="no">No Medical Condition</option></select>${p==='rotc'?`<select id="filterPreference"><option value="">All Preferences</option><option value="medics">Medics</option><option value="mp">MP</option><option value="advance">Advance Course</option></select>`:''}<button class="clear-filter-btn" id="clearFilters">Clear Filters</button></div></section><div class="bulk-action-row"><div id="filterResultText">Showing ${rows.length} enrollment${rows.length===1?'':'s'}</div><div class="actions"><button class="btn danger" id="rejectAllPending">Reject All Pending (<span id="bulkRejectCount">${counts.pending}</span>)</button><button class="btn success" id="approveAllPending">Approve All Pending (<span id="bulkCount">${counts.pending}</span>)</button></div></div><section class="enrollment-table-card"><div class="table-scroll"><table class="data-table enrollment-data-table"><thead><tr><th>Student</th><th>Student ID</th><th>Course & Year</th><th>${p==='cwts'?'CWTS Level':'MS Level'}</th><th>SY</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody id="enrollmentRows"></tbody></table></div><div id="enrollmentEmpty" class="empty-state-card hidden">${icon('enrollment')}<strong>No enrollments found</strong><span>Try adjusting your search or filters.</span></div></section><div id="modalMount"></div>`;
