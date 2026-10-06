@@ -243,7 +243,7 @@ async function renderAdminRecords(_program, content) {
   }
 
   content.innerHTML = `
-    <section class="records-tools">
+    <section class="records-tools cwts-record-tools">
       <div class="record-search">
         <span>${icon('records')}</span>
         <input id="recordSearch" placeholder="Search by name, student ID, or course...">
@@ -260,6 +260,10 @@ async function renderAdminRecords(_program, content) {
       <select id="recordCompany">
         <option value="">All Companies</option>
         ${companyOptions.map((company) => `<option value="${company}">${company} Company</option>`).join('')}
+      </select>
+      <select id="recordCourse" aria-label="Course">
+        <option value="">All Courses</option>
+        ${courseOptionsForProgram('cwts').map(course => `<option value="${esc(course)}">${esc(course)}</option>`).join('')}
       </select>
       <button class="btn success" id="downloadRecords">${icon('records')} Download Excel</button>
       <button class="btn primary" id="downloadProfiles">${icon('users')} Download Profile Forms PDF</button>
@@ -297,11 +301,13 @@ async function renderAdminRecords(_program, content) {
     const level = $('#recordLevel').value;
     const schoolYear = $('#recordSY').value;
     const company = $('#recordCompany').value;
+    const course = $('#recordCourse').value;
 
     return rows.filter((row) => (
       (!level || String(row.ms_level) === level)
       && (!schoolYear || row.school_year === schoolYear)
       && (!company || String(row.company || '') === company)
+      && (!course || String(row.course || '').trim() === course)
       && (
         !query
         || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
@@ -470,6 +476,7 @@ async function renderAdminRecords(_program, content) {
   $('#recordLevel').onchange = draw;
   $('#recordSY').onchange = draw;
   $('#recordCompany').onchange = draw;
+  $('#recordCourse').onchange = draw;
   $('#downloadRecords').onclick = () => {
     const data = filtered();
 
@@ -485,7 +492,7 @@ async function renderAdminRecords(_program, content) {
     );
   };
 
-  $('#downloadProfiles').onclick = () => {
+  $('#downloadProfiles').onclick = async () => {
     const data = filtered();
 
     if (!data.length) {
@@ -493,6 +500,7 @@ async function renderAdminRecords(_program, content) {
     }
 
     const params = new URLSearchParams();
+    if ($('#recordCourse').value) params.set('course', $('#recordCourse').value);
     if ($('#recordLevel').value) {
       params.set('ms_level', $('#recordLevel').value);
     }
@@ -507,7 +515,25 @@ async function renderAdminRecords(_program, content) {
       params.set('search', search);
     }
 
-    window.open(`/api/admin/${apiProgram}/records/download/profiles?${params.toString()}`, '_blank');
+    const button = $('#downloadProfiles');
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/admin/${apiProgram}/records/download/profiles?${params.toString()}`, { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Unable to download profiles.');
+      }
+      if (params.get('course') && response.headers.get('X-Records-Course') !== encodeURIComponent(params.get('course'))) {
+        throw new Error('The server is running an older version. Restart the server before downloading filtered profiles.');
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `CWTS-${(params.get('course') || 'all').replace(/[^a-z0-9]+/gi, '-')}-profile-forms.pdf`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (error) { toast(error.message, true); }
+    finally { button.disabled = false; }
   };
 
   draw();
