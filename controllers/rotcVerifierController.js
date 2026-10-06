@@ -79,9 +79,35 @@ exports.assign = endpoint(async (req,res) => {
     AND COALESCE(is_advance_course,0)=0 AND ms_level=? AND school_year=? AND mi_number=? AND mi_type=? LIMIT 1`,
     [level,year,values[7],values[8]]);
   if(!sessions.length) return res.status(400).json({message:'Create the matching ROTC attendance session before assigning its verifier.'});
-  await db.execute(`INSERT INTO rotc_verifier_assignments
+  const connection=await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    // Lock the student across cycles so one verifier cannot receive concurrent active assignments.
+    await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE',[id]);
+    const [activeAssignments]=await connection.execute('SELECT id FROM rotc_verifier_assignments WHERE verifier_id=? AND active=1 FOR UPDATE',[id]);
+    if(activeAssignments.length) {
+      await connection.rollback();
+      return res.status(409).json({message:'This student already has an active verifier assignment. Revoke all active assignments before assigning this student again.'});
+    }
+    // Serialize assignments for this cycle so concurrent requests cannot replace active access.
+    await connection.execute('SELECT id FROM enrollment_schedules WHERE id=? FOR UPDATE',[cycles[0].id]);
+    const [existing]=await connection.execute(`SELECT id FROM rotc_verifier_assignments
+      WHERE battalion=? AND company=? AND platoon=? AND ms_level=? AND school_year=?
+        AND special_unit=? AND (mi_number=? OR mi_number=0) AND (mi_type=? OR mi_type='') AND active=1 FOR UPDATE`,values.slice(1));
+    if(existing.length) {
+      await connection.rollback();
+      return res.status(409).json({message:'This group already has a verifier for this attendance session. Choose another group or revoke the current assignment first.'});
+    }
+    await connection.execute(`INSERT INTO rotc_verifier_assignments
     (verifier_id,battalion,company,platoon,ms_level,school_year,special_unit,mi_number,mi_type,assigned_by) VALUES(?,?,?,?,?,?,?,?,?,?)
     ON DUPLICATE KEY UPDATE verifier_id=VALUES(verifier_id),active=1,assigned_by=VALUES(assigned_by)`,[...values,req.user.email]);
+    await connection.commit();
+  } catch(error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   res.json({message:'ROTC verifier assigned.'});
 });
 exports.revoke = endpoint(async (req,res) => {
@@ -159,11 +185,11 @@ exports.verify = endpoint(async (req,res) => {
     await connection.execute(`INSERT INTO rotc_attendance_verification_log
       (record_id,assignment_id,verifier_id,previous_status,status,reason,verified_at)
       SELECT ?,?,?,?,?,?,verified_at FROM attendance_records WHERE id=?`,[targetRecordId,assignmentId,req.user.id,previous.status,status,reason,targetRecordId]);
-    const falseClaim=status==='absent' && Number(previous.claimed_present)===1;
+    const falseClaim=status==='absent' && (offenseService.isAttendanceClaim(previous) || Number(previous.false_present)===1);
     const newFalseClaim=falseClaim && !Number(previous.false_present);
     let offense=null;
     await connection.execute('UPDATE attendance_records SET false_present=? WHERE id=?',[Number(falseClaim),targetRecordId]);
-    if (previous.claimed_present || previous.false_present) {
+    if (offenseService.isAttendanceClaim(previous) || previous.false_present) {
       offense=await offenseService.reconcile(previous.student_id,connection,newFalseClaim);
     }
     await connection.commit();
