@@ -35,6 +35,10 @@ function publicConfig() {
     provider: 'google-recaptcha-v3',
     siteKey: siteKey(),
     localhostBypass: readEnabledFlag(process.env.GOOGLE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS),
+    loginCheckbox: {
+      enabled: readEnabledFlag(process.env.GOOGLE_RECAPTCHA_ROTC_V2_ENABLED),
+      siteKey: String(process.env.GOOGLE_RECAPTCHA_ROTC_V2_SITE_KEY || '').trim(),
+    },
   };
 }
 
@@ -73,14 +77,20 @@ async function requestVerification(body) {
 }
 
 async function verifyToken(token, action, context = {}) {
-  if (!isEnabled()) {
+  const checkbox = ['login', 'student_enrollment'].includes(action)
+    && readEnabledFlag(process.env.GOOGLE_RECAPTCHA_ROTC_V2_ENABLED);
+  if (checkbox && (!String(process.env.GOOGLE_RECAPTCHA_ROTC_V2_SITE_KEY || '').trim()
+    || !String(process.env.GOOGLE_RECAPTCHA_ROTC_V2_SECRET_KEY || '').trim())) {
+    return { ok: false, reason: 'configuration-error', message: 'Security check is not configured correctly. Please contact the administrator.' };
+  }
+  if (!checkbox && !isEnabled()) {
     return { ok: true, skipped: true };
   }
 
   const allowLocalhostBypass = readEnabledFlag(process.env.GOOGLE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS);
   const requestHost = String(context.hostname || '').trim().toLowerCase();
 
-  if (allowLocalhostBypass && (!requestHost || isLocalHost(requestHost))) {
+  if (!checkbox && allowLocalhostBypass && (!requestHost || isLocalHost(requestHost))) {
     return {
       ok: true,
       skipped: true,
@@ -99,7 +109,7 @@ async function verifyToken(token, action, context = {}) {
   }
 
   const body = new URLSearchParams({
-    secret: String(process.env.GOOGLE_RECAPTCHA_SECRET_KEY || '').trim(),
+    secret: String(checkbox ? process.env.GOOGLE_RECAPTCHA_ROTC_V2_SECRET_KEY : process.env.GOOGLE_RECAPTCHA_SECRET_KEY || '').trim(),
     response: normalizedToken,
   });
 
@@ -124,7 +134,7 @@ async function verifyToken(token, action, context = {}) {
     };
   }
 
-  if (payload.action && payload.action !== action) {
+  if (!checkbox && payload.action && payload.action !== action) {
     return {
       ok: false,
       reason: 'action-mismatch',
@@ -134,7 +144,7 @@ async function verifyToken(token, action, context = {}) {
   }
 
   const score = Number(payload.score);
-  if (Number.isFinite(score) && score < minScore()) {
+  if (!checkbox && Number.isFinite(score) && score < minScore()) {
     return {
       ok: false,
       reason: 'low-score',
