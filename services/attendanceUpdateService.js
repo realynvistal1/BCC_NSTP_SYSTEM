@@ -9,7 +9,11 @@ async function decorateAttendanceUpdates(records) {
   const [admins] = await db.execute(`SELECT email,username,role,program FROM admins WHERE email IN (${placeholders})`, emails);
   const [instructors] = await db.execute(`SELECT email,first_name,last_name FROM cwts_instructors WHERE email IN (${placeholders})`,emails);
   const actors = new Map(admins.map(actor => [actor.email, actor.role === 'director' ? 'NSTP Director' : `${actor.program} Administrator`]));
-  students.forEach(actor => actors.set(actor.email, [actor.first_name, actor.middle_name, actor.last_name, actor.suffix].filter(Boolean).join(' ')));
+  students.forEach(actor => {
+    const middleName = String(actor.middle_name || '').trim();
+    const middleInitial = middleName ? `${Array.from(middleName)[0].toLocaleUpperCase()}.` : '';
+    actors.set(actor.email, [actor.first_name, middleInitial, actor.last_name, actor.suffix].filter(Boolean).join(' '));
+  });
   instructors.forEach(actor=>actors.set(actor.email,[actor.first_name,actor.last_name].join(' ')));
   const ids = records.filter(row => row.verified_at).map(row => row.record_id || row.id).filter(Boolean);
   let logs = [];
