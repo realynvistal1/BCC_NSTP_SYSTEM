@@ -19,7 +19,7 @@ function gradeStatus(avg, course = '') {
     return { label: '-', cls: 'neutral' };
   }
 
-  const passingLimit = /criminology/i.test(String(course)) ? 2.5 : 3;
+  const passingLimit = /criminology|education|\bBEED\b|\bBSED\b/i.test(String(course)) ? 2.5 : 3;
   return avg >= 1 && avg <= passingLimit
     ? { label: 'Passed', cls: 'success' }
     : { label: 'Failed', cls: 'danger' };
