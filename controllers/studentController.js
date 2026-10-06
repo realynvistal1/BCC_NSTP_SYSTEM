@@ -108,6 +108,16 @@ async function resolveReEnrollContext(studentId) {
   if (latest && latest.status === 'rejected') {
     const retryLevel = String(latest.ms_level || '1');
 
+    if (retryLevel === '2') {
+      const schedule = await findBestSchedule(student.nstp_component, '2');
+      if (!schedule || !enrollmentService.nowWithin(schedule)) {
+        return {
+          status: 400,
+          message: `${levelLabelFor(student.nstp_component, '2')} enrollment is not open at this time.`,
+        };
+      }
+    }
+
     if (retryLevel === '2' && !hasCompleteLevelOneGrades) {
       return {
         status: 403,
@@ -187,6 +197,14 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
+  const schedule = await findBestSchedule(student.nstp_component, '2');
+  if (!schedule || !enrollmentService.nowWithin(schedule)) {
+    return {
+      status: 400,
+      message: `${levelLabelFor(student.nstp_component, '2')} enrollment is not open at this time.`,
+    };
+  }
+
   if (!hasCompleteLevelOneGrades) {
     return {
       status: 403,
@@ -216,14 +234,6 @@ async function resolveReEnrollContext(studentId) {
       message: duplicates[0].status === 'pending'
         ? `Your ${levelLabelFor(student.nstp_component, '2')} enrollment form is waiting for approval.`
         : 'You already have a level 2 enrollment request.',
-    };
-  }
-
-  const schedule = await findBestSchedule(student.nstp_component, '2');
-  if (!schedule || !enrollmentService.nowWithin(schedule)) {
-    return {
-      status: 400,
-      message: `${levelLabelFor(student.nstp_component, '2')} enrollment is not open at this time.`,
     };
   }
 
@@ -420,7 +430,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'X-ray is required for ROTC enrollment.' });
     }
 
-    const hasMedicalCondition = enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
+    const skipMedicalQuestion = isCriminologyCourse(body.course)
+      || (body.nstp_component === 'ROTC' && Number(body.willing_to_take_advance_course) === 1);
+    const hasMedicalCondition = skipMedicalQuestion ? 0 : enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
     if (hasMedicalCondition === 1 && !String(body.medical_condition || '').trim()) {
       return res.status(400).json({
         message: 'Enter your medical condition after selecting Yes.',
@@ -1154,7 +1166,17 @@ exports.certificate = async (req, res) => {
 exports.attendanceOffense = async (req, res) => {
   try {
     const offense = await offenseService.get(req.user.id);
-    return res.json(offense || null);
+    if (!offense) return res.json(null);
+    const [records] = await db.execute(`SELECT ar.*,ses.program,ses.mi_number,ses.mi_type
+      FROM attendance_records ar JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id
+      WHERE ar.student_id=? AND ar.status='absent' AND ar.false_present=1
+      ORDER BY ar.verified_at DESC,ar.id DESC`, [req.user.id]);
+    const updates = await decorateAttendanceUpdates(records);
+    return res.json({ ...offense, updates: updates.map(row => ({
+      program: row.program, mi_number: row.mi_number, mi_type: row.mi_type,
+      verified_by_name: row.verified_by_name, verified_at: row.verified_at,
+      reason: row.update_reason,
+    })) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
