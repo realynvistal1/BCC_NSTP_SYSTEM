@@ -3,7 +3,7 @@ function calculateGrade(midterm, finalTerm) {
 }
 
 function passingGradeLimit(course = '') {
-  return /criminology/i.test(String(course)) ? 2.5 : 3.0;
+  return /criminology|education|\bBEED\b|\bBSED\b/i.test(String(course)) ? 2.5 : 3.0;
 }
 
 function statusFromGrade(grade, course = '') {
