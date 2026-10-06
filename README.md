@@ -28,6 +28,8 @@ This build runs as a web application using:
 - SQL injection defenses use prepared execution, validated inputs, escaped search patterns, and disabled multi-statement runtime queries.
 - Stronger DoS protection is enabled with in-memory rate limits on `/api/*`, stricter limits on `/api/auth/*`, temporary IP blocking after repeated abuse, and per-IP concurrency caps.
 - Google reCAPTCHA v3 can be enabled on login and password-reset flows with `GOOGLE_RECAPTCHA_ENABLED=true` plus site/secret keys in `.env`.
+- Student enrollment also uses the shared v2 keys when `GOOGLE_RECAPTCHA_ROTC_V2_ENABLED=true`. The checkbox appears on the final Account Setup step for both ROTC and CWTS enrollment and is verified by the registration endpoint. Password resets retain their v3 configuration.
+- For the ROTC, CWTS, Student, and NSTP Director login “I'm not a robot” checkboxes, create separate reCAPTCHA v2 Checkbox keys, then set `GOOGLE_RECAPTCHA_ROTC_V2_ENABLED=true`, `GOOGLE_RECAPTCHA_ROTC_V2_SITE_KEY`, and `GOOGLE_RECAPTCHA_ROTC_V2_SECRET_KEY` in the server environment and restart. The existing ROTC_V2 variable names now configure all login portals. Authorize `localhost` and your production domain in the key settings. All logins verify v2 on the server without the localhost bypass; password reset flows keep their v3 configuration. Keep the secret key on the server only.
 - If the app runs behind Nginx, Apache, Cloudflare, or another proxy, set `TRUST_PROXY_HOPS` in `.env` so IP-based rate limiting uses the correct client address.
 
 ## Cloudflare Setup
