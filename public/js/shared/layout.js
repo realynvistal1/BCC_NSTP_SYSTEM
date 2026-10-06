@@ -1,3 +1,18 @@
+function openAttendanceUpdateHistory() {
+  if (location.hash !== '#attendanceChanges') return;
+  const history = document.getElementById('attendanceChanges');
+  if (!history) return;
+  const disclosure = history.querySelector('details');
+  if (disclosure) disclosure.open = true;
+  const focusTarget = history.querySelector('summary') || history;
+  if (!history.querySelector('summary')) history.tabIndex = -1;
+  requestAnimationFrame(() => {
+    history.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    focusTarget.focus({ preventScroll: true });
+  });
+}
+window.addEventListener('hashchange', openAttendanceUpdateHistory);
+
 const NAV = {
   student: [
     ['Dashboard', '/student/dashboard', 'dashboard'],
@@ -100,7 +115,7 @@ function shell(role, title, subtitle, auth) {
       .catch(error=>console.warn('CWTS attendance updates unavailable:',error.message));
   }
   if (role === 'student') {
-    if (String(auth.user?.program || auth.user?.nstp_component || '').toUpperCase() === 'ROTC') {
+    if (auth.user?.approved_advance_course === true) {
       if (!document.querySelector('a[href="/student/verify-attendance"]')) {
       const nav=document.querySelector('.sidebar .nav');
       if (nav) {
@@ -234,6 +249,7 @@ async function showStudentAttendanceOffense(offense) {
           ${blocked
             ? '<p>This is your <strong>second attendance offense</strong>. Your attendance was updated to <strong>Absent</strong>.</p><p><strong>Your access is restricted until the offense is settled with the ROTC/CWTS office.</strong></p>'
             : '<p>Your attendance was updated to <strong>Absent</strong>, which recorded a warning in your account.</p><p>Please follow attendance instructions to avoid a second offense.</p>'}
+          ${(offense.updates || []).map(update => `<div class="offense-update-reason"><strong>${esc(update.program === 'CWTS' ? 'CS' : 'MI')} ${esc(update.mi_number)} ${esc(String(update.mi_type || '').toUpperCase())}</strong><p>Updated by ${esc(update.verified_by_name || 'Attendance staff')}</p><p><strong>Reason:</strong> ${esc(update.reason || 'No reason recorded.')}</p></div>`).join('')}
         </div>
       </div>
       <div class="offense-actions">
@@ -270,6 +286,19 @@ async function guard(expected) {
     }
 
     if (expected === 'student') {
+      if (typeof session.approved_advance_course !== 'boolean') {
+        const dashboard = await API.get('/api/student/dashboard');
+        const student = dashboard.student || {};
+        const record = dashboard.record || {};
+        session.approved_advance_course = student.nstp_component === 'ROTC'
+          && Number(student.willing_to_take_advance_course) === 1
+          && record.status === 'approved' && Number(record.assignment_is_advance) === 1
+          && !student.special_unit && !record.assignment_special_unit;
+      }
+      if (document.body.dataset.page === 'verify-attendance' && session.approved_advance_course !== true) {
+        location.href = '/student/dashboard';
+        return null;
+      }
       try {
         const offense = await API.get('/api/student/attendance-offense');
         setTimeout(() => showStudentAttendanceOffense(offense), 0);
