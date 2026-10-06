@@ -1,31 +1,31 @@
 function serialAssignmentText(student, program) {
   if (program === 'CWTS') {
-    return student.company ? `Company ${student.company}` : '-';
+    return student.company ? String(student.company).replace(/^Company\s+/i, '').trim() || '-' : '-';
   }
 
   if (Number(student.willing_to_take_advance_course)) {
     return [
       'Advance Course',
-      student.battalion ? `Battalion ${student.battalion}` : '',
-      student.rotc_company ? `Company ${student.rotc_company}` : '',
-      student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
+      student.battalion ? `B${student.battalion}` : '',
+      student.rotc_company || '',
+      student.rotc_platoon ? `P${student.rotc_platoon}` : '',
     ].filter(Boolean).join(' ');
   }
 
   if (student.special_unit) {
     return [
       student.special_unit,
-      student.battalion ? `Battalion ${student.battalion}` : '',
-      student.rotc_company ? `Company ${student.rotc_company}` : '',
-      student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
+      student.battalion ? `B${student.battalion}` : '',
+      student.rotc_company || '',
+      student.rotc_platoon ? `P${student.rotc_platoon}` : '',
     ].filter(Boolean).join(' ');
   }
 
   return [
-    student.battalion ? `Battalion ${student.battalion}` : '',
-    student.rotc_company ? `Company ${student.rotc_company}` : '',
-    student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
-  ].filter(Boolean).join(' - ') || '-';
+    student.battalion ? `B${student.battalion}` : '',
+    student.rotc_company || '',
+    student.rotc_platoon ? `P${student.rotc_platoon}` : '',
+  ].filter(Boolean).join(' ') || '-';
 }
 
 const ROTC_BATTALION_COMPANIES = {
@@ -42,6 +42,11 @@ const ROTC_ADVANCE_GROUPS = ['Male', 'Female'];
 function serialCourseCode(course) {
   const value = String(course || '').trim();
   const upper = value.toUpperCase();
+  const major = value.match(/major\s+in\s+(.+)$/i);
+  if (major && /BSED|secondary education/i.test(value)) return `BSED ${major[1].trim()}`;
+  if (/BEED|elementary education/i.test(value)) return 'BEED Elementary';
+  if (/tourism/i.test(value)) return 'BSTM';
+  if (/criminology/i.test(value)) return 'BSCRIM';
   const known = {
     'BS INFORMATION TECHNOLOGY': 'BSIT',
     'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY': 'BSIT',
