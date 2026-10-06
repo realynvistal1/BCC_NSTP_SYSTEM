@@ -57,9 +57,13 @@ exports.assign=endpoint(async(req,res)=>{
     const [[instructor]]=await connection.execute("SELECT id FROM cwts_instructors WHERE id=? AND status<>'disabled' FOR UPDATE",[instructorId]);
     const [[session]]=await connection.execute("SELECT id FROM attendance_sessions WHERE id=? AND program='CWTS' FOR UPDATE",[sessionId]);
     if(!instructor||!session)fail(400,'Select an enabled instructor and an existing CWTS attendance session.');
+    const [activeAssignments]=await connection.execute('SELECT id FROM cwts_instructor_assignments WHERE instructor_id=? AND active=1 FOR UPDATE',[instructorId]);
+    if(activeAssignments.length)fail(409,'This instructor already has an active assignment. Revoke all active assignments before assigning this instructor again.');
+    const [occupied]=await connection.execute('SELECT id FROM cwts_instructor_assignments WHERE attendance_session_id=? AND company=? AND active=1 FOR UPDATE',[sessionId,company]);
+    if(occupied.length)fail(409,'This company already has an instructor for this session. Choose another company or revoke the current assignment first.');
     await connection.execute(`INSERT INTO cwts_instructor_assignments(instructor_id,attendance_session_id,company,assigned_by)
       VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE instructor_id=VALUES(instructor_id),active=1,assigned_by=VALUES(assigned_by)`,[instructorId,sessionId,company,req.user.email]);
-    await connection.commit();res.json({message:'Instructor assigned. Any previous instructor for this company and session has been replaced.'});
+    await connection.commit();res.json({message:'Instructor assigned.'});
   }catch(error){await connection.rollback();throw error;}finally{connection.release();}
 });
 exports.revoke=endpoint(async(req,res)=>{
@@ -104,7 +108,7 @@ exports.verify=endpoint(async(req,res)=>{
     const [[before]]=await connection.execute('SELECT * FROM attendance_records WHERE student_id=? AND attendance_session_id=? FOR UPDATE',[studentId,allowed.id]);
     if(before ? (!Number.isSafeInteger(req.body.expected_version)||req.body.expected_version!==Number(before.record_version)) : req.body.expected_version!==null)
       fail(409,'This record has changed. Refresh and review it before saving.');
-    const falseClaim=status==='absent'&&Number(before?.claimed_present)===1;
+    const falseClaim=status==='absent'&&(offenses.isAttendanceClaim(before)||Number(before?.false_present)===1);
     const newFalseClaim=falseClaim&&!Number(before?.false_present);
     let recordId=before?.id;
     if(before){
@@ -115,7 +119,7 @@ exports.verify=endpoint(async(req,res)=>{
     }
     await connection.execute(`INSERT INTO cwts_attendance_verification_log(record_id,assignment_id,instructor_id,previous_status,status,reason,record_version,verified_at)
       SELECT ?,?,?,?,?,?,record_version,verified_at FROM attendance_records WHERE id=?`,[recordId,id,instructor.id,before?.status||'unmarked',status,reason,recordId]);
-    const offense=before?.claimed_present||before?.false_present ? await offenses.reconcile(studentId,connection,newFalseClaim):null;
+    const offense=offenses.isAttendanceClaim(before)||before?.false_present ? await offenses.reconcile(studentId,connection,newFalseClaim):null;
     await connection.commit();
     res.json({message:newFalseClaim?`Attendance updated. False-attendance offense recorded.${Number(offense?.offend)>=2?' Settlement is required.':' First-offense warning recorded.'}`
       :falseClaim?'Attendance updated. The offense was already recorded; no duplicate added.'
