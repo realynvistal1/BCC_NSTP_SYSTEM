@@ -91,7 +91,8 @@ body[data-page="rotc-verifiers"] #content h2, body[data-page="verify-attendance"
 .verifier-section-heading p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; color: #657993; }
 .verifier-section-heading > .btn { margin-left: auto; }
 .verifier-section-heading .btn svg, .verifier-toolbar .btn svg { width: 16px; height: 16px; }
-.verifier-toolbar { display: flex; align-items: end; gap: 14px; flex-wrap: wrap; }
+.verifier-toolbar { display: flex; align-items: end; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+#verifierRecords [data-record][hidden], .verifier-search-empty[hidden] { display: none; }
 .verifier-toolbar .field { flex: 1; min-width: min(100%,250px); }
 .verifier-toolbar .btn { min-height: 46px; display: inline-flex; align-items: center; gap: 7px; }
 #verifierAssignmentForm { gap: 20px; padding: 20px; background: #f8faff; border: 1px solid #e2eaf6; border-radius: 16px; }
@@ -110,7 +111,7 @@ body[data-page="rotc-verifiers"] #content h2, body[data-page="verify-attendance"
 .attendance-assignment-details dt { font-size: 11px; color: #617791; margin-bottom: 5px; }
 .attendance-assignment-details dd { margin: 0; font-size: 14px; font-weight: 750; color: #2b5280; overflow-wrap: anywhere; }
 #verifierAssignmentDetails { margin-top: 20px; }
-.verifier-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 20px 0 24px; }
+.verifier-summary { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; margin: 20px 0 24px; }
 .verifier-stat { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 18px; border: 1px solid #dbe7fb; border-radius: 14px; color: #3568ac; background: #edf4ff; }
 .verifier-stat.present { color: #187753; background: #eaf8f1; border-color: #d0ecdd; }
 .verifier-stat.late { color: #926514; background: #fff7e5; border-color: #f2e4bf; }
@@ -124,7 +125,7 @@ body[data-page="rotc-verifiers"] #content h2, body[data-page="verify-attendance"
 .verifier-empty h3 { font-size: 15px; color: #345578; margin: 0 0 8px; }
 .verifier-empty p { max-width: 450px; margin: auto; font-size: 13px; line-height: 1.7; color: #6c8099; }
 @media (max-width: 700px) {
- .verifier-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .verifier-summary { grid-template-columns: repeat(5,minmax(110px,1fr)); overflow-x: auto; padding-bottom: 6px; }
  .attendance-assignment-details { grid-template-columns: 1fr; }
  .attendance-change-top { flex-wrap: wrap; }
  .attendance-change-top time { margin-left: 56px; }
@@ -161,21 +162,21 @@ body[data-page="rotc-verifiers"] #content h2, body[data-page="verify-attendance"
 .attendance-history-note { font-size: 12px; color: #6d7d94; }
 #attendanceChanges .verifier-section-heading { margin-bottom: 16px; }
 
-/* Distinct color groups for verifier, session, and assigned unit fields. */
-body[data-page="rotc-verifiers"] #content > .verifier-management-panel { border-top: 4px solid #548cdb; background: linear-gradient(135deg,#f2f7ff 0%,#fff 48%,#f6f1ff 100%); }
-.verifier-management-panel > .verifier-section-heading { padding: 17px 18px; border-radius: 14px; background: linear-gradient(105deg,#deedff,#ebe4ff); border: 1px solid #d1dff5; }
-.verifier-management-panel .verifier-heading-icon { color: #fff; background: linear-gradient(145deg,#4c94e1,#6576cd); box-shadow: 0 5px 12px #456fae22; }
+/* Quiet mint accent, matching the CWTS assignment forms. */
+body[data-page="rotc-verifiers"] #content > .verifier-management-panel { border-top: 4px solid #52ac97; background: linear-gradient(120deg,#eefaf6,#fff 65%); }
+.verifier-management-panel > .verifier-section-heading { padding: 17px 18px; border-radius: 14px; background: #f0f8f5; border: 1px solid #dbe9e4; }
+.verifier-management-panel .verifier-heading-icon { color: #287761; background: #d7f2e7; box-shadow: none; }
 #verifierAssignmentForm { background: #ffffffaa; border-color: #d8e3f5; gap: 12px; padding: 16px; }
-#verifierAssignmentForm > .field:not(.verifier-submit) { padding: 12px; border-radius: 12px; border: 1px solid var(--field-line,#d8e6f8); background: var(--field-bg,#edf5ff); }
-#verifierAssignmentForm .verifier-field-blue { --field-bg: #eaf3ff; --field-line: #cee0f7; --field-ink: #315f96; }
-#verifierAssignmentForm .verifier-field-violet { --field-bg: #f0ebfc; --field-line: #dfd3f4; --field-ink: #70519a; }
-#verifierAssignmentForm .verifier-field-teal { --field-bg: #e8f6f3; --field-line: #cce8e0; --field-ink: #2c7564; }
+#verifierAssignmentForm > .field:not(.verifier-submit) { padding: 8px 4px; border-radius: 0; border: 0; background: transparent; }
+#verifierAssignmentForm .verifier-field-blue,
+#verifierAssignmentForm .verifier-field-violet,
+#verifierAssignmentForm .verifier-field-teal { --field-line: #cadeda; --field-ink: #365766; }
 #verifierAssignmentForm label { color: var(--field-ink,#445e7c); }
-#verifierAssignmentForm label::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+#verifierAssignmentForm label::before { content: none; }
 #verifierAssignmentForm select { min-height: 42px; border-color: var(--field-line,#d8e6f8); }
-#verifierAssignmentForm select:disabled { color: #718695; background: #ffffff85; }
+#verifierAssignmentForm select:disabled { color: #718695; background: #f0f3f5; }
 #verifierAssignmentForm .verifier-submit { padding: 14px 4px 0; }
-#verifierAssignmentForm .verifier-submit .btn.primary { background: linear-gradient(110deg,#3c89d7,#6967cb); box-shadow: 0 5px 12px #4e75b826; border-color: transparent; }
+#verifierAssignmentForm .verifier-submit .btn.primary { background: linear-gradient(110deg,#348e79,#577ebc); box-shadow: 0 5px 12px #348e791a; border-color: transparent; }
 #verifierAssignmentForm .verifier-submit .btn.primary:hover { filter: brightness(.96); }
 @media (max-width: 900px) {
  .attendance-history-row { grid-template-columns: 1fr auto; gap: 10px 16px; }
@@ -329,6 +330,19 @@ body[data-page="rotc-verifiers"] #content > .verifier-history-panel { border-top
 .verifier-list-empty > span { font-size: 28px; color: #71ab9e; margin-bottom: 8px; }
 .verifier-list-empty strong { font-size: 14px; color: #365e57; }
 .verifier-list-empty p { font-size: 12px; color: #657d79; margin: 7px 0 0; line-height: 1.6; }
+#verifierAssignmentForm .verifier-form-step { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 16px 18px 18px; border: 1px solid #dce8e5; border-radius: 12px; background: #fff; }
+#verifierAssignmentForm .verifier-form-step legend { padding: 0 8px; font-size: 13px; font-weight: 750; color: #244d60; }
+.verifier-form-step legend > span { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 7px; border-radius: 50%; color: #24745e; background: #e0f4ec; font-size: 12px; }
+.verifier-step-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; padding-top: 8px; }
+.verifier-step-fields > .full { grid-column: 1 / -1; }
+#verifierGroupWarning[hidden], #verifierAvailabilityHint[hidden] { display: none; }
+#verifierGroupWarning { margin: 14px 0 0; }
+#verifierAssignmentForm .verifier-submit { justify-content: flex-end; border-top: 0; padding-top: 4px; }
+#verifierAssignmentForm .verifier-form-step:focus-within { border-color: #7bb9aa; box-shadow: 0 0 0 3px #eaf5f1; }
+@media(max-width:700px) {
+  #verifierAssignmentForm .verifier-form-step { padding: 12px; }
+  .verifier-step-fields { grid-template-columns: minmax(0,1fr); gap: 12px; }
+}
 .verifier-history-panel .verifier-list-empty { background: #faf8fe; border-color: #dfd1ee; }
 .verifier-history-panel .verifier-list-empty > span { color: #a08ac2; }
 .verifier-history-panel .attendance-history-list { max-height: none; overflow-y: visible; }
