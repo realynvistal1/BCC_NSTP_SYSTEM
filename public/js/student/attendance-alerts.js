@@ -65,14 +65,17 @@
         <a class="btn primary" href="/student/attendance">View attendance</a>
         <button class="btn" type="button" aria-label="Dismiss attendance notification">Dismiss</button>
       </div>`;
-    document.querySelector('.intro')?.insertAdjacentElement('afterend', host);
+    const showLiveAttendance = document.body.dataset.page === 'dashboard';
+    if (showLiveAttendance) {
+      document.querySelector('.intro')?.insertAdjacentElement('afterend', host);
+    }
     const hint = host.querySelector('#attendanceAlertHint');
     const banner = host.querySelector('.attendance-live-alert');
     const copy = host.querySelector('.attendance-live-copy');
     function render(sessions) {
       lastSessions = sessions;
       const signature = sessions.map(sessionKey).join('|');
-      banner.hidden = !sessions.length || signature === dismissed;
+      banner.hidden = !showLiveAttendance || !sessions.length || signature === dismissed;
       if (sessions.length) {
         copy.textContent = `${sessionLabel(sessions[0])} is available.${sessions.length > 1 ? ` ${sessions.length} sessions need your attention.` : ''} Open attendance to check in.`;
       }
@@ -110,7 +113,9 @@
           historySignature = signature;
           window.dispatchEvent(new CustomEvent('student-attendance-updated', { detail: { history } }));
         }
-        if (String(user.program || '').toUpperCase() === 'ROTC') {
+        const approvedAdvance = typeof auth.user.approved_advance_course === 'boolean'
+          ? auth.user.approved_advance_course : user.approved_advance_course;
+        if (approvedAdvance === true) {
           const assignments = await API.get('/api/student/rotc-verifier/assignments');
           if (!document.getElementById('attendanceOffenseOverlay')) showAssignments(assignments);
         }
