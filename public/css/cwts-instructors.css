@@ -8,6 +8,10 @@ body[data-page="cwts-instructor-attendance"] .sidebar > .sidebar-footer { margin
 .cwts-workspace .cwts-violet { border-top:4px solid #9681cd; background:linear-gradient(120deg,#f5effe,#fff 65%); }
 .cwts-workspace .cwts-blue { border-top:4px solid #76a8d8; }
 .cwts-two-column { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.cwts-two-column > .panel { margin:0; display:flex; flex-direction:column; }
+.cwts-two-column > .panel > .cwts-form { display:flex; flex-direction:column; flex:1; }
+.cwts-two-column > .panel > .cwts-form > button[type="submit"],
+.cwts-two-column > .panel > .cwts-form > button:last-child { margin-top:auto; }
 .cwts-heading { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
 .cwts-heading > div { flex:1; min-width:0; }
 .cwts-heading h2 { margin:0; font-size:20px; color:#24485c; }
@@ -16,6 +20,9 @@ body[data-page="cwts-instructor-attendance"] .sidebar > .sidebar-footer { margin
 .cwts-violet .cwts-step { color:#74539f; background:#e9ddfa; }
 .cwts-eyebrow { display:block; color:#568176; font-size:10px; text-transform:uppercase; letter-spacing:.1em; font-weight:800; margin:10px 0; }
 .cwts-form { display:grid; gap:14px; }
+.cwts-session-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.cwts-session-fields select:disabled { background:#f0f3f8; color:#718096; cursor:not-allowed; }
+@media(max-width:550px){.cwts-session-fields{grid-template-columns:1fr;}}
 .cwts-form .field,.cwts-invitation-card .field { display:grid; gap:7px; margin:0; font-size:12px; font-weight:700; color:#365766; }
 .cwts-form :is(input,select),.cwts-toolbar :is(input,select),.cwts-invitation-card input:not([type=checkbox]) { width:100%; min-height:44px; border:1px solid #cadeda; border-radius:10px; padding:10px 12px; color:#29495d; background:#fff; font:inherit; }
 .cwts-form .btn.primary,.cwts-invitation-card .btn.primary { background:linear-gradient(110deg,#348e79,#577ebc); color:#fff; border:0; min-height:44px; border-radius:11px; }
