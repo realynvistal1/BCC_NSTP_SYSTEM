@@ -12,9 +12,33 @@
   }
   ;
   const clearError=()=>msg.classList.add('hidden');
+  let checkboxId=null,checkboxRequired=false,checkboxReady=null;
+  function prepareCheckbox(){
+    if(!checkboxReady){
+      checkboxReady=(async()=>{
+        const config=await Captcha.config();
+        checkboxRequired=Boolean(config.loginCheckbox?.enabled);
+        if(!checkboxRequired)return;
+        if(!config.loginCheckbox.siteKey)throw new Error('Security check is not configured correctly. Please contact the administrator.');
+        const container=document.createElement('div');
+        container.className='enrollment-captcha';
+        sections[sections.length-1].append(container);
+        await Captcha.load('explicit');
+        await new Promise(resolve=>window.grecaptcha.ready(resolve));
+        checkboxId=window.grecaptcha.render(container,{
+          sitekey:config.loginCheckbox.siteKey,
+          size:window.matchMedia('(max-width: 380px)').matches?'compact':'normal',
+          'expired-callback':()=>showError('Security check expired. Please check the box again.'),
+          'error-callback':()=>showError('Unable to load security check. Please refresh and try again.'),
+        });
+      })();
+      checkboxReady.catch(error=>showError(error.message));
+    }
+    return checkboxReady;
+  }
   const program=()=>f.nstp_component.value;
   const course=()=>f.course.value;
-  const isMedicalNA=()=>course()==='BS Criminology';
+  const isMedicalNA=()=>course()==='BS Criminology'||(program()==='ROTC'&&f.querySelector('input[name="willingness_option"]:checked')?.value==='advance');
   const checkFile=(input,label)=>{
     const file=input?.files?.[0];
     if(file&&file.size>MAX_FILE){
@@ -45,8 +69,14 @@
       if(none)none.checked=true
     }
     $('#medicalQuestion')?.classList.toggle('hidden',isMedicalNA());
+    f.querySelectorAll('input[name="has_medical_condition_choice"]').forEach(input=>{
+      input.disabled=isMedicalNA();
+      if(isMedicalNA())input.checked=false;
+    });
+    f.medical_condition.disabled=isMedicalNA();
     if(isMedicalNA()){
       f.has_medical_condition.value='0';
+      f.medical_condition.value='';
       $('#medicalConditionName')?.classList.add('hidden');
       $('#uploadArea')?.classList.remove('hidden');
       $('#uploadIntro').textContent=cwts?'Upload your Medical Certificate':'Upload your Medical Certificate and X-ray';
@@ -69,6 +99,7 @@
     headerStepBadge.innerHTML=`<span>Current step</span><strong>${step+1} of ${sections.length}</strong>`;
     headerStepBadge.style.setProperty('--header-progress',`${((step+1)/sections.length)*100}%`);
     clearError();
+    if(step===sections.length-1)prepareCheckbox();
     updateConditionalFields();
     window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -106,6 +137,7 @@
     return '';
   }
   $$('.enrollment-program-btn').forEach(b=>b.addEventListener('click',()=>setProgram(b.dataset.program)));
+  $$('input[name="willingness_option"]').forEach(input=>input.addEventListener('change',updateConditionalFields));
   f.course.addEventListener('change',()=>{
   const crim=course()==='BS Criminology';
   const cwtsBtn=$('.enrollment-program-btn[data-program="CWTS"]');
@@ -230,7 +262,9 @@
       data.xray_file=await fileAsDataUrl(f.xray_file_input.files[0]);
       data.photo=await fileAsDataUrl(f.photo_file.files[0]);
       data.cor_file=await fileAsDataUrl(f.cor_file_input.files[0]);
-      data.recaptcha_token=await Captcha.token('student_enrollment');
+      await prepareCheckbox();
+      data.recaptcha_token=checkboxRequired?window.grecaptcha.getResponse(checkboxId):await Captcha.token('student_enrollment');
+      if(checkboxRequired&&!data.recaptcha_token)throw new Error('Please check "I\'m not a robot" before submitting enrollment.');
       delete data.medical_certificate_file;
       delete data.xray_file_input;
       delete data.photo_file;
@@ -244,6 +278,7 @@
       $('#enrollWrap').innerHTML=`<div class="enrollment-success-page"><div class="enrollment-success-card"><div class="enrollment-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Successfully Enrolled!</h2><p>Login to check your Enrollment status</p><a href="/student/login">Login</a></div></div>`;
       $('.enrollment-signin-note')?.classList.add('hidden');
     }  catch(e){
+      if(step===sections.length-1&&checkboxId!==null)window.grecaptcha.reset(checkboxId);
       const btn=$('#nextBtn');
       if(btn){
         btn.disabled=false;
