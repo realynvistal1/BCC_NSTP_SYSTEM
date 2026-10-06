@@ -525,6 +525,16 @@ tbody tr:hover {
   margin: 12px 0;
   border: 1px solid #d8ecfb
 }
+.notice.success {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+.notice.success a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .notice.error {
   background: #fef2f2;
   color: #b91c1c;
