@@ -233,3 +233,10 @@ body[data-page="attendance-summary"] #attendanceSummaryContent td small {
     background-image: none;
   }
 }
+
+body[data-page="attendance-summary"] #attendanceSummaryContent td { vertical-align: top; }
+body[data-page="attendance-summary"] #attendanceSummaryContent td > small { display: block; margin-top: 4px; }
+body[data-page="attendance-summary"] .summary-update-cell { min-width: 160px; width: 20%; white-space: normal; }
+body[data-page="attendance-summary"] .summary-update-details { display: grid; gap: 4px; padding: 7px 9px; border: 1px solid #d8e3f6; border-radius: 7px; background: #edf3ff; color: #536b89; font-size: 10px; line-height: 1.4; }
+body[data-page="attendance-summary"] .summary-update-details strong { display: inline; color: #29486b; font-size: 10px; font-weight: 600; }
+body[data-page="attendance-summary"] .summary-update-details time { display: block; color: #72839a; font-size: 10px; }
