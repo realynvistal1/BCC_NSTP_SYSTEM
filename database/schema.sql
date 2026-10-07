@@ -131,8 +131,14 @@ CREATE TABLE IF NOT EXISTS `student_ms_records` (
   `student_id` INT UNSIGNED NOT NULL,
   `schedule_id` VARCHAR(100) NOT NULL,
   `ms_level` ENUM('1','2') NOT NULL,
-  `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `status` ENUM('pending','approved','rejected','withdrawn','dropped') NOT NULL DEFAULT 'pending',
   `rejection_reason` TEXT DEFAULT NULL,
+  `status_reason` VARCHAR(1000) DEFAULT NULL,
+  `status_reviewed_by` VARCHAR(255) DEFAULT NULL,
+  `status_reviewed_at` DATETIME DEFAULT NULL,
+  `enrollment_kind` ENUM('initial','progression','retake','return') NOT NULL DEFAULT 'initial',
+  `prior_enrollment_id` INT UNSIGNED DEFAULT NULL,
+  `absence_years` INT UNSIGNED NOT NULL DEFAULT 0,
   `program` ENUM('ROTC','CWTS') NOT NULL,
   `assignment_battalion` TINYINT UNSIGNED DEFAULT NULL,
   `assignment_company` VARCHAR(30) DEFAULT NULL,
@@ -220,6 +226,27 @@ CREATE TABLE IF NOT EXISTS `student_grades` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_student_ms_program` (`student_id`, `ms_level`, `program`),
   CONSTRAINT `fk_grades_student` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- Enrollment attempts retain their own grades; student_grades stores the effective result.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS student_grade_attempts (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  enrollment_record_id INT UNSIGNED NOT NULL,
+  student_id INT UNSIGNED NOT NULL,
+  ms_level ENUM('1','2') NOT NULL,
+  program ENUM('ROTC','CWTS') NOT NULL,
+  midterm DECIMAL(5,2) DEFAULT NULL,
+  final_term DECIMAL(5,2) DEFAULT NULL,
+  grade DECIMAL(5,2) NOT NULL,
+  status ENUM('Passed','Failed') NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_grade_enrollment (enrollment_record_id),
+  KEY idx_grade_attempt_student (student_id,program,ms_level),
+  FOREIGN KEY (enrollment_record_id) REFERENCES student_ms_records(id) ON DELETE CASCADE,
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -318,3 +345,26 @@ CREATE TABLE IF NOT EXISTS `advance_course_withdrawals` (
   KEY `idx_withdrawal_status` (`status`),
   CONSTRAINT `fk_withdrawal_student` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Grade correction audit
+CREATE TABLE IF NOT EXISTS grade_change_log (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    enrollment_record_id INT UNSIGNED NOT NULL,
+    student_id INT UNSIGNED NOT NULL,
+    program ENUM('ROTC','CWTS') NOT NULL,
+    ms_level ENUM('1','2') NOT NULL,
+    previous_midterm DECIMAL(5,2) DEFAULT NULL,
+    previous_final_term DECIMAL(5,2) DEFAULT NULL,
+    previous_grade DECIMAL(5,2) DEFAULT NULL,
+    previous_status VARCHAR(10) DEFAULT NULL,
+    midterm DECIMAL(5,2) NOT NULL,
+    final_term DECIMAL(5,2) NOT NULL,
+    grade DECIMAL(5,2) NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    changed_by VARCHAR(255) NOT NULL,
+    changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_grade_change_student (student_id,program),
+    FOREIGN KEY (enrollment_record_id) REFERENCES student_ms_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
