@@ -261,7 +261,8 @@ body[data-page="rotc-verifiers"] #content > .verifier-assignments-panel { border
 .director-notification-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 26px; background: #fff; border-bottom: 1px solid #e2e7f1; color: #7d659e; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .director-notification-saved { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 20px; border: 1px solid #c7e7dc; background: #e9f8f1; color: #26745d; }
 .director-notification-saved svg { width: 14px; height: 14px; }
-.director-update-notification .attendance-dialog-body { padding: 20px 26px 24px; gap: 16px; scrollbar-width: thin; scrollbar-color: #bcb0d9 #f5f6fc; }
+/* Preserve full card heights when the dialog body is constrained by the viewport. */
+.director-update-notification .attendance-dialog-body { padding: 20px 26px 24px; gap: 16px; grid-auto-rows: max-content; align-content: start; scrollbar-width: thin; scrollbar-color: #bcb0d9 #f5f6fc; }
 .director-update-notification .attendance-dialog-body > .director-notification-intro { color: #63738c; font-size: 12px; line-height: 1.6; }
 .director-update-notification .attendance-change-card { border-radius: 16px; border-color: #dfe4f0; box-shadow: 0 4px 14px #30466608; }
 .director-update-notification .attendance-avatar { background: linear-gradient(140deg,#e1f2ee,#e7ebfc); color: #466793; }
