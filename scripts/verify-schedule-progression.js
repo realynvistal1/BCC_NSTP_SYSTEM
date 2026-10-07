@@ -48,7 +48,7 @@ async function submit(program, level, year, existing = [], dates = {}) {
 (async () => {
   const missing = await submit('ROTC', '2', '2030-2031');
   assert.equal(missing.res.code, 409);
-  assert.match(missing.res.body.message, /Create the MS 1 schedule/);
+  assert.match(missing.res.body.message, /next schedule must be MS 1/);
   assert.equal(missing.writes.length, 0);
 
   const openLevelOne = [{ ms_level: '1', year: '2030-2031', deadline: '2999-06-30T17:00:00' }];
