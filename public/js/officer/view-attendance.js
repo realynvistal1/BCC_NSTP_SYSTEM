@@ -266,8 +266,14 @@ function populateOfficerFilters() {
   }
 
   const mi = $('#viewMI');
+  const selectedCycle = cycle.value;
+  const selectedType = $('#viewType').value;
+  const matchingSessions = sessions.filter((session) => (
+    (!selectedCycle || `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}` === selectedCycle)
+    && (!selectedType || session.mi_type === selectedType)
+  ));
   const numbers = [...new Set(
-    sessions.map((session) => Number(session.mi_number)).filter(Boolean)
+    matchingSessions.map((session) => Number(session.mi_number)).filter(Boolean)
   )].sort((a, b) => a - b);
   const previousMi = mi.value;
 
@@ -896,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ['viewProgram', 'viewCycle', 'viewMI', 'viewType'].forEach((id) => {
       $(`#${id}`).addEventListener(
         'change',
-        id === 'viewProgram' ? populateOfficerFilters : renderOfficerSessions
+        id === 'viewMI' ? renderOfficerSessions : populateOfficerFilters
       );
     });
 
