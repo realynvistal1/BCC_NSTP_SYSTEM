@@ -239,6 +239,8 @@ function badge(status) {
       || normalized === 'absent'
       || normalized === 'failed'
       || normalized === 'closed'
+      || normalized === 'withdrawn'
+      || normalized === 'dropped'
       ? 'danger'
       : 'warning';
 
