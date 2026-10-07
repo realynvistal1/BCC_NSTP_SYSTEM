@@ -436,7 +436,7 @@ function enrollmentAssignment(x, p) {
 
 function enrollmentRow(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
-  const level = p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`;
+  const level = (p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`) + (Number(x.is_retake) ? ' / Retake' : '');
   const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}${x.suffix ? ` ${displayNamePart(x.suffix)}` : ''}`;
   const photo = `<img class="student-avatar-img" src="/api/admin/${p}/enrollments/${encodeURIComponent(x.record_id)}/photo" alt="${esc(fullName)} 2x2 photo" data-initials="${esc(studentInitials(x))}" loading="lazy">`;
 
@@ -645,7 +645,7 @@ function enrollmentDetailModal(x, p) {
 
       <div class="modal-review-actions">
         <button class="btn primary" id="editEnrollmentInformation" type="button">Edit Information</button>
-        ${x.status==='pending'?`<button class="btn danger" id="rejectEnrollment" type="button">Reject</button><button class="btn success" id="approveEnrollment" type="button">Approve Enrollment</button>`:`<button class="btn" id="resetPending" type="button">Set as Pending</button>`}
+        ${x.status==='pending'?`<button class="btn danger" id="rejectEnrollment" type="button">Reject</button><button class="btn success" id="approveEnrollment" type="button">Approve Enrollment</button>`:['withdrawn','dropped'].includes(x.status)?'':`<button class="btn" id="resetPending" type="button">Set as Pending</button>`}
         <button class="btn" id="closeEnrollmentBottom" type="button">Close</button>
       </div>
 
@@ -914,6 +914,7 @@ async function renderEnrollmentList(p,c){
     try {
       x=await API.get(`/api/admin/${p}/enrollments/${id}`);
       x.school_year=listRow.school_year;
+      x.is_retake=listRow.is_retake;
     } catch(error) {
       ensureModalHost().innerHTML='';
       toast(error.message,true);
