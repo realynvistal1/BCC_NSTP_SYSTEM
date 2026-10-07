@@ -305,21 +305,21 @@ async function renderAdminGrades(_program, content) {
   `;
 
   function hasGrade(student, level) {
-    return level
-      ? grades.has(`${student.student_id}|${level}`)
-      : grades.has(`${student.student_id}|1`) || grades.has(`${student.student_id}|2`);
+    const levels = level ? [String(level)] : ['1', '2'].filter(value => Number(student[`approved_ms${value}`]) || grades.has(`${student.student_id}|${value}`));
+    return levels.length > 0 && levels.every(value => grades.has(`${student.student_id}|${value}`));
   }
 
   function studentGradeState(student, level) {
-    const levels = level ? [String(level)] : ['1', '2'];
+    const levels = level ? [String(level)] : ['1', '2'].filter(value => Number(student[`approved_ms${value}`]) || grades.has(`${student.student_id}|${value}`));
     const studentGrades = levels
       .map((currentLevel) => grades.get(`${student.student_id}|${currentLevel}`))
       .filter(Boolean);
 
     if (!studentGrades.length) return 'ungraded';
-    return studentGrades.some((grade) => (
+    if (studentGrades.some((grade) => (
       gradeStatus(Number(grade.grade), student.course).label === 'Failed'
-    )) ? 'failed' : 'passed';
+    ))) return 'failed';
+    return studentGrades.length === levels.length ? 'passed' : 'ungraded';
   }
 
   function filtered() {
@@ -329,7 +329,7 @@ async function renderAdminGrades(_program, content) {
     const query = $('#gradeSearch').value.trim().toLowerCase();
 
     return students.filter((student) => {
-      if (level && !Number(student[`approved_ms${level}`])) {
+      if (level && !Number(student[`approved_ms${level}`]) && !grades.has(`${student.student_id}|${level}`)) {
         return false;
       }
 
@@ -416,7 +416,7 @@ async function renderAdminGrades(_program, content) {
           <div>
             <span class="grade-level-number">${level}</span>
             <strong>NSTP ${level}</strong>
-            ${disabled ? '<em>Not enrolled</em>' : ''}
+            ${disabled ? '<em>Not enrolled</em>' : `<em>${esc(student[`ms${level}_year`] || '')}${Number(student[`ms${level}_attempts`]) > 1 ? ' / Retake' : ''}</em>`}
           </div>
           <div>
             <span class="grade-average" id="avg${level}">${grade ? `Avg: ${Number(grade.grade).toFixed(2)}` : ''}</span>
@@ -542,6 +542,7 @@ async function renderAdminGrades(_program, content) {
           const result = await API.post(`/api/admin/${apiProgram}/grades`, {
             student_id: student.student_id,
             ms_level: level,
+            enrollment_record_id: student[`ms${level}_record_id`],
             midterm: Number(midterm),
             final_term: Number(finalTerm),
           });
