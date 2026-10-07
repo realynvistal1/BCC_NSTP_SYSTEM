@@ -214,6 +214,9 @@ return;
 }
 res.status(500).json({ message: "Unexpected server error." });
 });
+async function startServer() {
+await require('./database/migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(require('./config/database'));
+await require('./database/migrate-grade-attempts').ensureGradeAttempts(require('./config/database'));
 app.listen(PORT, HOST, (error) => {
   if (error) {
     if (error.code === 'EADDRINUSE') {
@@ -226,4 +229,10 @@ app.listen(PORT, HOST, (error) => {
   }
   console.log(`BCC NSTP System running at http://${HOST}:${PORT}`);
   console.log('Keep this terminal open. Press Ctrl+C to stop the server.');
+});
+}
+startServer().catch(error => {
+  console.error('Cannot initialize enrollment grade history:', error.message);
+  process.exitCode = 1;
+  require('./config/database').end();
 });
