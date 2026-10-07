@@ -8,6 +8,9 @@
     "node": ">=20 <25"
   },
   "scripts": {
+    "db:migrate:grade-attempts": "node database/migrate-grade-attempts.js",
+    "db:migrate:enrollment-lifecycle": "node database/migrate-enrollment-lifecycle.js",
+    "verify:retakes": "node scripts/verify-retake-flow.js && node scripts/verify-retake-ui.js",
     "db:migrate:cwts-instructors": "node database/migrate-cwts-instructors.js",
     "verify:cwts-instructors": "node scripts/verify-cwts-instructors.js",
     "db:migrate:rotc-verifiers": "node database/migrate-rotc-verifiers.js",
