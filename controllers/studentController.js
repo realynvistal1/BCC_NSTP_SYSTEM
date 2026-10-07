@@ -8,6 +8,7 @@ const attendanceService = require('../services/attendanceService');
 const certificateService = require('../services/certificateService');
 const enrollmentService = require('../services/enrollmentService');
 const gradesService = require('../services/gradesService');
+const gradeAttemptService = require('../services/gradeAttemptService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const captchaService = require('../services/captchaService');
@@ -27,8 +28,8 @@ function isCriminologyCourse(course) {
   return /criminology/i.test(String(course || ''));
 }
 
-async function findBestSchedule(program, level) {
-  const [rows] = await db.execute(
+async function findBestSchedule(program, level, executor = db) {
+  const [rows] = await executor.execute(
     'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? ORDER BY id DESC',
     [program, level]
   );
@@ -74,15 +75,15 @@ async function studentAssignmentView(student, record) {
   return { safeStudent, assignmentAssigned };
 }
 
-async function resolveReEnrollContext(studentId) {
-  const student = await studentById(studentId);
-  const latest = await latestRecord(studentId);
+async function resolveReEnrollContext(studentId, executor = db) {
+  const student = await studentById(studentId, executor);
+  let latest = await latestRecord(studentId, executor);
 
   if (!student) {
     return { status: 404, message: 'Student record not found.' };
   }
 
-  const [serialRows] = await db.execute(
+  const [serialRows] = await executor.execute(
     "SELECT id FROM serial_numbers WHERE student_id=? AND TRIM(serial_number)<>'' LIMIT 1",
     [studentId]
   );
@@ -94,7 +95,7 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
-  const [ms1Grades] = await db.execute(
+  const [ms1Grades] = await executor.execute(
     "SELECT * FROM student_grades WHERE student_id=? AND ms_level='1' AND program=? ORDER BY id DESC LIMIT 1",
     [studentId, student.nstp_component]
   );
@@ -105,11 +106,63 @@ async function resolveReEnrollContext(studentId) {
   const passedLevelOne = hasCompleteLevelOneGrades
     && gradesService.statusFromGrade(levelOneGrade.grade, student.course) === 'Passed';
 
+  if(passedLevelOne){
+    const [[levelTwoGrade]]=await executor.execute("SELECT * FROM student_grades WHERE student_id=? AND program=? AND ms_level='2' LIMIT 1",[studentId,student.nstp_component]);
+    if(levelTwoGrade?.midterm!=null&&levelTwoGrade?.final_term!=null&&gradesService.statusFromGrade(levelTwoGrade.grade,student.course)==='Passed'){
+      return {status:403,reason:'completed-awaiting-serial',message:'You have passed both NSTP levels. Completed — awaiting serial number. You do not need to enroll again.'};
+    }
+  }
+
+  // A Level 2 rejection caused by a failed prerequisite must not strand a
+  // student who needs to repeat Level 1 instead.
+  if(latest?.status==='rejected'&&String(latest.ms_level)==='2'&&hasCompleteLevelOneGrades&&!passedLevelOne){
+    const [[levelOneEnrollment]]=await executor.execute("SELECT * FROM student_ms_records WHERE student_id=? AND program=? AND ms_level='1' AND status='approved' ORDER BY id DESC LIMIT 1",[studentId,student.nstp_component]);
+    if(levelOneEnrollment)latest=levelOneEnrollment;
+  }
+
+  // Legacy closed records retain their stored status; complete grades determine retake eligibility.
+  const hasPriorEnrollment = latest && ['approved', 'withdrawn', 'dropped'].includes(latest.status);
+
+  if (hasPriorEnrollment && (String(latest.ms_level) === '2' || (hasCompleteLevelOneGrades && !passedLevelOne))) {
+    const targetLevel = String(latest.ms_level);
+    const label = levelLabelFor(student.nstp_component, targetLevel);
+    const [[attempt]] = await executor.execute(
+      'SELECT * FROM student_grade_attempts WHERE enrollment_record_id=?', [latest.id]
+    );
+    if (!attempt || attempt.midterm == null || attempt.final_term == null) {
+      return { status: 403, reason: 'retake-grades-incomplete', targetLevel,
+        message: `Wait for your complete ${label} grades to be released.` };
+    }
+    if (gradesService.statusFromGrade(attempt.grade, student.course) === 'Passed') {
+      return { status: 403, reason: 'level-two-passed', targetLevel,
+        message: `You passed ${label}. You do not need to enroll again.` };
+    }
+    if (targetLevel === '2' && !passedLevelOne) {
+      return { status: 403, reason: 'failed-grade', targetLevel: '2',
+        message: `A passed level 1 grade is required before you can retake ${label}.` };
+    }
+    const [[previousSchedule]] = await executor.execute(
+      'SELECT * FROM enrollment_schedules WHERE id=?', [latest.schedule_id]
+    );
+    const [schedules] = await executor.execute(
+      'SELECT * FROM enrollment_schedules WHERE program=? AND ms_level=? AND id>? ORDER BY id DESC',
+      [student.nstp_component, targetLevel, Number(latest.schedule_id)]
+    );
+    const schedule = schedules.find(candidate => enrollmentService.nowWithin(candidate)
+      && previousSchedule?.year && candidate.year !== previousSchedule.year);
+    if (!schedule) {
+      return { status: 400, reason: 'retake-waiting', mode: 'retake', targetLevel,
+        message: `You are required to retake ${label}. Please submit a retake application through your existing account when the next ${label} enrollment period opens. ${targetLevel === '2' ? `Your passing grade in ${levelLabelFor(student.nstp_component, '1')} remains valid; you do not need to repeat that level.` : `You must pass ${label} before enrolling in ${levelLabelFor(student.nstp_component, '2')}.`}` };
+    }
+    return { status: 200, mode: 'retake', student, latest, targetLevel, schedule,
+      message: `${label} retake enrollment is open for ${schedule.year}. Review your saved information and submit for administrator approval. Your previous records will be kept.` };
+  }
+
   if (latest && latest.status === 'rejected') {
     const retryLevel = String(latest.ms_level || '1');
 
     if (retryLevel === '2') {
-      const schedule = await findBestSchedule(student.nstp_component, '2');
+      const schedule = await findBestSchedule(student.nstp_component, '2', executor);
       if (!schedule || !enrollmentService.nowWithin(schedule)) {
         return {
           status: 400,
@@ -136,7 +189,7 @@ async function resolveReEnrollContext(studentId) {
       };
     }
 
-    const [pendingRetry] = await db.execute(
+    const [pendingRetry] = await executor.execute(
       "SELECT id FROM student_ms_records WHERE student_id=? AND ms_level=? AND status='pending' LIMIT 1",
       [studentId, retryLevel]
     );
@@ -148,13 +201,17 @@ async function resolveReEnrollContext(studentId) {
       };
     }
 
-    const allowedPrograms = retryLevel === '1' && !isCriminologyCourse(student.course)
+    const [[priorApproved]] = await executor.execute(
+      "SELECT id FROM student_ms_records WHERE student_id=? AND program=? AND ms_level=? AND status IN ('approved','withdrawn','dropped') LIMIT 1",
+      [studentId, student.nstp_component, retryLevel]
+    );
+    const allowedPrograms = retryLevel === '1' && !priorApproved && !isCriminologyCourse(student.course)
       ? ['ROTC', 'CWTS']
       : [student.nstp_component];
     const availableSchedules = [];
 
     for (const programCode of allowedPrograms) {
-      const candidate = await findBestSchedule(programCode, retryLevel);
+      const candidate = await findBestSchedule(programCode, retryLevel, executor);
       if (candidate && enrollmentService.nowWithin(candidate)) {
         availableSchedules.push(candidate);
       }
@@ -197,7 +254,7 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
-  const schedule = await findBestSchedule(student.nstp_component, '2');
+  const schedule = await findBestSchedule(student.nstp_component, '2', executor);
   if (!schedule || !enrollmentService.nowWithin(schedule)) {
     return {
       status: 400,
@@ -223,7 +280,7 @@ async function resolveReEnrollContext(studentId) {
     };
   }
 
-  const [duplicates] = await db.execute(
+  const [duplicates] = await executor.execute(
     "SELECT id,status FROM student_ms_records WHERE student_id=? AND ms_level='2' AND status IN ('pending','approved') LIMIT 1",
     [studentId]
   );
@@ -549,8 +606,11 @@ exports.dashboard = async (req, res) => {
     const record = await latestRecord(req.user.id);
     const { safeStudent, assignmentAssigned } = await studentAssignmentView(student, record);
     const [gradeRows] = await db.execute(
-      'SELECT * FROM student_grades WHERE student_id=? ORDER BY id DESC LIMIT 1',
-      [req.user.id]
+      `SELECT a.* FROM student_grade_attempts a WHERE a.student_id=? AND a.ms_level=?
+       AND a.enrollment_record_id=(SELECT MAX(r.id) FROM student_ms_records r
+         WHERE r.student_id=a.student_id AND r.program=a.program AND r.ms_level=a.ms_level AND r.status IN ('approved','withdrawn','dropped'))
+       ORDER BY a.ms_level DESC,a.id DESC LIMIT 1`,
+      [req.user.id, String(record?.ms_level || '1')]
     );
     const [serialRows] = await db.execute(
       'SELECT * FROM serial_numbers WHERE student_id=? ORDER BY id DESC LIMIT 1',
@@ -569,11 +629,17 @@ exports.dashboard = async (req, res) => {
       grade: gradeRows[0] || null,
       serial: serialRows[0] || null,
       attendance: attendanceRows[0],
+      completion: {
+        completed:['nstp-completed','completed-awaiting-serial'].includes(reEnrollmentContext.reason),
+        status:reEnrollmentContext.reason==='nstp-completed'?'serial-issued':reEnrollmentContext.reason==='completed-awaiting-serial'?'awaiting-serial':'in-progress',
+        message:reEnrollmentContext.reason==='nstp-completed'?'NSTP completed — serial number issued.':reEnrollmentContext.reason==='completed-awaiting-serial'?reEnrollmentContext.message:'NSTP requirements are not yet complete.',
+      },
       re_enrollment: {
         eligible: reEnrollmentContext.status === 200,
         reason: reEnrollmentContext.reason || null,
         message: reEnrollmentContext.message || '',
         target_level: reEnrollmentContext.targetLevel || null,
+        mode: reEnrollmentContext.mode || null,
       },
     });
   } catch (error) {
@@ -585,7 +651,10 @@ exports.profile = async (req, res) => {
   try {
     const student = await studentById(req.user.id);
     const [records] = await db.execute(
-      'SELECT * FROM student_ms_records WHERE student_id=? ORDER BY created_at DESC,id DESC',
+      `SELECT r.*,es.year AS school_year
+       FROM student_ms_records r
+       LEFT JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED) AND es.program=r.program
+       WHERE r.student_id=? ORDER BY r.created_at DESC,r.id DESC`,
       [req.user.id]
     );
     const { safeStudent, assignmentAssigned } = await studentAssignmentView(
@@ -660,8 +729,14 @@ exports.reEnrollForm = async (req, res) => {
 };
 
 exports.grades = async (req, res) => {
+  if (req.query.history === '1') {
+    return res.json(await gradeAttemptService.history(db, req.user.id));
+  }
   const [rows] = await db.execute(
-    'SELECT * FROM student_grades WHERE student_id=? ORDER BY ms_level',
+    `SELECT a.* FROM student_grade_attempts a WHERE a.student_id=?
+     AND a.enrollment_record_id=(SELECT MAX(r.id) FROM student_ms_records r
+       WHERE r.student_id=a.student_id AND r.program=a.program AND r.ms_level=a.ms_level AND r.status IN ('approved','withdrawn','dropped'))
+     ORDER BY a.ms_level`,
     [req.user.id]
   );
   res.json(rows);
@@ -713,9 +788,12 @@ exports.openSessions = async (req, res) => {
       [student.nstp_component, latest.ms_level]
     );
 
+    const [[schedule]] = await db.execute('SELECT year FROM enrollment_schedules WHERE id=?', [latest.schedule_id]);
+
     const isAdvance = platoonService.isAdvanceCourseCadet(student);
     const eligible = rows
       .filter((session) => {
+        if (session.school_year && session.school_year !== schedule?.year) return false;
         if (student.nstp_component === 'ROTC') {
           return Boolean(Number(session.is_advance_course || 0)) === isAdvance;
         }
@@ -776,6 +854,11 @@ exports.markAttendance = async (req, res) => {
       return res.status(403).json({
         message: `This session is for ${session.program === 'ROTC' ? 'MS' : 'CWTS'} ${session.ms_level}.`,
       });
+    }
+
+    const [[schedule]] = await db.execute('SELECT year FROM enrollment_schedules WHERE id=?', [latest.schedule_id]);
+    if (session.school_year && session.school_year !== schedule?.year) {
+      return res.status(403).json({ message: 'This attendance session belongs to a different enrollment school year.' });
     }
 
     if (session.program === 'ROTC') {
@@ -871,7 +954,9 @@ exports.reEnroll = async (req, res) => {
   const connection = await db.getConnection();
 
   try {
-    const context = await resolveReEnrollContext(req.user.id);
+    await connection.beginTransaction();
+    await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE', [req.user.id]);
+    const context = await resolveReEnrollContext(req.user.id, connection);
     if (context.status !== 200) {
       return res.status(context.status).json({ message: context.message });
     }
@@ -973,8 +1058,6 @@ exports.reEnroll = async (req, res) => {
         required: true,
       });
 
-    await connection.beginTransaction();
-
     await connection.execute(
       `UPDATE students SET
         religion=?,contact_number=?,temporary_barangay=?,temporary_municipality=?,temporary_province=?,
@@ -1023,9 +1106,10 @@ exports.reEnroll = async (req, res) => {
       ]
     );
 
+    const enrollmentKind=mode==='retry'?(context.latest.enrollment_kind||'initial'):mode==='next-level'?'progression':mode;
     await connection.execute(
-      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",
-      [req.user.id, String(schedule.id), targetLevel, selectedProgram]
+      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason,enrollment_kind,prior_enrollment_id) VALUES(?,?,?,'pending',?,NULL,?,?)",
+      [req.user.id, String(schedule.id), targetLevel, selectedProgram,enrollmentKind,context.latest.id]
     );
 
     await connection.commit();
@@ -1044,7 +1128,8 @@ exports.reEnroll = async (req, res) => {
 
     return res.status(500).json({ message: error.message });
   } finally {
-    connection.release();
+    // Also release the transaction when validation returns before commit.
+    try { await connection.rollback(); } finally { connection.release(); }
   }
 };
 
