@@ -15,7 +15,8 @@ const context = {
   document: { hidden: false, addEventListener() {}, querySelector: () => blocked ? {} : null,
     body: { appendChild() {} },
     createElement() {
-      const dialog = { open: false, buttons: [{}, {}], setAttribute() {},
+      const dialog = { open: false, buttons: [{}, {}], historyLink: {}, setAttribute() {},
+        querySelector() { return this.historyLink; },
         querySelectorAll() { return this.buttons; }, addEventListener(type, fn) { if (type === 'close') this.onclose = fn; },
         showModal() { this.open = true; }, close() { this.open = false; this.onclose(); }, remove() {},
       }; dialogs.push(dialog); return dialog;
