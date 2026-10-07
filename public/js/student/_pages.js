@@ -15,33 +15,46 @@
     }
     ;
     const grade=d.grade?`${esc(d.grade.grade)} - ${esc(d.grade.status)}`:'Not yet released';
-    const serial=esc(d.serial?.serial_number||'Not yet released');
+    const serial=esc(d.serial?.serial_number||s.serial_number||'Not yet released');
     const welcome=displayNamePart(s.last_name||s.first_name||'Student');
     const intro=document.querySelector('.intro-copy');
     if(intro){
       intro.innerHTML=`<div class="intro-kicker">BCC NSTP Management System</div><h1>Welcome back, ${esc(welcome)}</h1><p>${esc([s.student_id,s.course,s.year_level,s.nstp_component].filter(Boolean).join(' - '))}</p>`;
     }
     const reEnrollment=d.re_enrollment||{};
+    const retakeNotice=(enrollment)=>['retake','return'].includes(enrollment.mode)
+      ?`<div class="notice ${enrollment.eligible?'success':''}" style="margin-bottom:18px"><strong>${esc(levelPrefix)} ${esc(enrollment.target_level)} ${enrollment.mode==='return'?'Return':'Retake'} ${enrollment.eligible?'Enrollment Open':'Enrollment'}</strong><br>${esc(enrollment.message)}${enrollment.eligible?` <a href="/student/re-enrollment">Enroll for ${esc(levelPrefix)} ${esc(enrollment.target_level)} ${enrollment.mode==='return'?'Return':'Retake'}</a>`:''}</div>`:'';
     const isApprovedLevelOne=String(r.ms_level||'')==='1'&&String(rawStatus).toLowerCase()==='approved';
     const eligibilityBlocked=['failed-grade','grades-incomplete'].includes(reEnrollment.reason);
     const levelPrefix=String(s.nstp_component||'').toUpperCase()==='CWTS'?'CWTS':'MS';
     const targetLabel=`${levelPrefix} ${reEnrollment.target_level||'2'}`;
     const qualifiedForLevelTwo=reEnrollment.eligible===true&&String(reEnrollment.target_level)==='2';
     const eligibilityMessage=reEnrollment.message||`Only students who passed ${levelPrefix} 1 can enroll in ${targetLabel}.`;
-    const eligibilityNotice=eligibilityBlocked
+    const eligibilityNotice=['retake','return'].includes(reEnrollment.mode) ? retakeNotice(reEnrollment) : eligibilityBlocked
       ?`<div class="notice error" style="margin-bottom:18px"><strong>Not Qualified for ${esc(targetLabel)}</strong><br>${esc(eligibilityMessage)}</div>`
       :qualifiedForLevelTwo
         ?`<div class="notice success" style="margin-bottom:18px"><strong>Qualified for ${esc(targetLabel)} Enrollment</strong><br>You are qualified for ${esc(targetLabel)} enrollment because you passed ${esc(levelPrefix)} 1. Enrollment is now open. <a href="/student/re-enrollment">Enroll now</a>.</div>`
         :'';
     const enrollmentCard=reEnrollment.eligible
-      ?dashCard('Enroll',`${targetLabel} Enrollment`,`You passed ${levelPrefix} 1. Tap to enroll while the schedule is open.`,'/student/re-enrollment','refresh','indigo')
+      ?dashCard('Enroll',`${targetLabel}${reEnrollment.mode==='retake'?' Retake':''} Enrollment`,reEnrollment.message,'/student/re-enrollment','refresh','indigo')
       :eligibilityBlocked
         ?dashCard('Enrollment Eligibility','Not Qualified',eligibilityMessage,'/student/grades','grades','red')
         :'';
-    c.innerHTML=`${eligibilityNotice}<div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
+    c.innerHTML=`<div id="enrollmentNotice">${eligibilityNotice}</div><div class="portal-dashboard-grid student-dashboard-grid">${dashCard('Enrollment Status',status,'View your current enrollment review status.','/student/enrollment-status','enrollment','blue')}${dashCard('Assigned Platoon',esc(assignment),'View your assigned platoon, battalion, company, or special unit.','/student/assigned-platoon','platoon','green')}${dashCard('Attendance',`${
       att.present||0
     }
     Present`,'Tap to view and mark your attendance.','/student/attendance','attendance','cyan')}${dashCard('Grades',grade,'Grades are released at the end of the semester.','/student/grades','grades','orange')}${dashCard('Serial Number',serial,'Issued upon completion of the program.','/student/serial-number','serial','purple')}${isApprovedLevelOne||eligibilityBlocked?enrollmentCard:''}${dashCard('Settings','Account Security','Manage your account password and settings.','/student/settings','settings','blue')}</div>`;
+    const noticeTimer=window.setInterval(async()=>{
+      if(!c.isConnected){window.clearInterval(noticeTimer);return;}
+      if(document.hidden)return;
+      try{
+        const fresh=await API.get('/api/student/dashboard');
+        if(['retake','return'].includes(fresh.re_enrollment?.mode)||['retake','return'].includes(reEnrollment.mode)){
+          const notice=c.querySelector('#enrollmentNotice');
+          if(notice)notice.innerHTML=retakeNotice(fresh.re_enrollment||{});
+        }
+      }catch(_){/* Retry at the next dashboard refresh. */}
+    },30000);
     if(String(s.nstp_component||'').toUpperCase()==='ROTC' && Number(s.willing_to_take_advance_course)===1 && String(rawStatus).toLowerCase()==='approved' && Number(r.assignment_is_advance)===1 && !s.special_unit && !r.assignment_special_unit){
       const grid=c.querySelector('.student-dashboard-grid');
       grid.insertAdjacentHTML('beforeend',dashCard('My Assigned Attendance','Review Attendance','Check your assigned group and update attendance.','/student/verify-attendance','attendance','green'));
@@ -59,12 +72,13 @@
     }
     ;
     const enrollmentStatus=String(rec.status||'pending').toLowerCase();
-    const reviewComplete=enrollmentStatus==='approved'||enrollmentStatus==='rejected';
-    const finalState=enrollmentStatus==='approved'?'done':enrollmentStatus==='rejected'?'current rejected':'pending';
+    const reviewComplete=['approved','rejected','withdrawn','dropped'].includes(enrollmentStatus);
+    const enrollmentClosed=['withdrawn','dropped'].includes(enrollmentStatus);
+    const finalState=enrollmentStatus==='approved'?'done':enrollmentStatus==='rejected'||enrollmentClosed?'current rejected':'pending';
     c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Enrollment Status</h2><p class="panel-subtitle">Your latest NSTP enrollment information and review result.</p></div>${badge(rec.status||'pending')}</div>${rec.rejection_reason?`<div class="notice error"><strong>Admin remark:</strong> ${
       esc(rec.rejection_reason)
     }
-    </div>`:''}${rec.status==='rejected'?`<div class="actions" style="justify-content:flex-start;margin:16px 0 0"><button class="btn primary" id="resubmitEnrollment">Submit Enrollment Again</button></div>`:''}<div class="status-timeline" aria-label="Enrollment progress"><div class="timeline-step done"><div class="timeline-marker"><span>1</span></div><div class="timeline-copy"><strong>Submitted</strong><span>Enrollment received</span></div></div><div class="timeline-step ${reviewComplete?'done':'current'}" ${reviewComplete?'':'aria-current="step"'}><div class="timeline-marker"><span>2</span></div><div class="timeline-copy"><strong>Admin Review</strong><span>${reviewComplete?'Review completed':'Waiting for review'}</span></div></div><div class="timeline-step ${finalState}" ${enrollmentStatus==='rejected'?'aria-current="step"':''}><div class="timeline-marker"><span>3</span></div><div class="timeline-copy"><strong>${enrollmentStatus==='rejected'?'Needs Action':'Approval & Assignment'}</strong><span>${enrollmentStatus==='approved'?'Enrollment approved':enrollmentStatus==='rejected'?'Review the admin remark':'Next step'}</span></div></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
+    </div>`:''}${rec.status==='rejected'?`<div class="actions" style="justify-content:flex-start;margin:16px 0 0"><button class="btn primary" id="resubmitEnrollment">Submit Enrollment Again</button></div>`:''}<div class="status-timeline" aria-label="Enrollment progress"><div class="timeline-step done"><div class="timeline-marker"><span>1</span></div><div class="timeline-copy"><strong>Submitted</strong><span>Enrollment received</span></div></div><div class="timeline-step ${reviewComplete?'done':'current'}" ${reviewComplete?'':'aria-current="step"'}><div class="timeline-marker"><span>2</span></div><div class="timeline-copy"><strong>Admin Review</strong><span>${reviewComplete?'Review completed':'Waiting for review'}</span></div></div><div class="timeline-step ${finalState}" ${enrollmentStatus==='rejected'?'aria-current="step"':''}><div class="timeline-marker"><span>3</span></div><div class="timeline-copy"><strong>${enrollmentClosed?'Enrollment Closed':enrollmentStatus==='rejected'?'Needs Action':'Approval & Assignment'}</strong><span>${enrollmentClosed?'Review the recorded reason':enrollmentStatus==='approved'?'Enrollment approved':enrollmentStatus==='rejected'?'Review the admin remark':'Next step'}</span></div></div></div>${table(['Field','Information'],[['Student ID',x.student_id],['Name',`${
       displayNamePart(x.first_name)
     }
     ${
@@ -76,7 +90,7 @@
     `],['Course',x.course],['Year Level',x.year_level],['NSTP Component',x.nstp_component],['MS Level',rec.ms_level?`MS ${
       rec.ms_level
     }
-    `:'-'],['Email',x.email],['Contact',x.contact_number]].map(a=>`<tr><td><strong>${
+    `:'-'],['School Year',rec.school_year||'Not available'],['Email',x.email],['Contact',x.contact_number]].map(a=>`<tr><td><strong>${
       a[0]
     }
     </strong></td><td>${
@@ -257,6 +271,12 @@ async function renderReEnrollment(c){
     const checked=(value)=>Number(value)?'checked':'';
     c.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>Re-enrollment Form</h2><p class="panel-subtitle">${esc(data.message||'Review your saved information and submit your next enrollment request.')}</p></div><span class="badge">Enrollment open</span></div><div class="notice"><strong>Target Level:</strong> ${esc(data.level_label||`MS ${data.target_level||'2'}`)}${data.schedule?.year?` • <strong>School Year:</strong> ${esc(data.schedule.year)}`:''}</div><div class="summary-grid" style="margin-top:16px"><div class="summary-tile blue"><div class="summary-accent"></div><div class="dash-label">Student ID</div><div class="summary-number" style="font-size:22px">${esc(s.student_id||'-')}</div><div class="summary-helper">Existing student record will be reused.</div></div><div class="summary-tile green"><div class="summary-accent"></div><div class="dash-label">Program</div><div class="summary-number" style="font-size:22px">${esc(s.nstp_component||'-')}</div><div class="summary-helper">Your NSTP component stays the same.</div></div><div class="summary-tile orange"><div class="summary-accent"></div><div class="dash-label">Current Level</div><div class="summary-number" style="font-size:22px">MS ${esc(latest.ms_level||'1')}</div><div class="summary-helper">Your previously approved enrollment.</div></div><div class="summary-tile red"><div class="summary-accent"></div><div class="dash-label">Target</div><div class="summary-number" style="font-size:22px">${esc(data.level_label||`MS ${data.target_level||'2'}`)}</div><div class="summary-helper">This new request will go back to admin review.</div></div></div><form id="reEnrollForm" class="form-grid" style="margin-top:18px"><div class="field"><label>Student ID</label><input value="${esc(s.student_id||'')}" disabled></div><div class="field"><label>NSTP Component</label><input value="${esc(s.nstp_component||'')}" disabled></div><div class="field"><label>Course</label><input name="course" value="${esc(s.course||'')}" readonly></div><div class="field"><label>Year Level</label><select name="year_level" required>${['1st Year','2nd Year','3rd Year','4th Year'].map((value)=>`<option value="${value}" ${s.year_level===value?'selected':''}>${value}</option>`).join('')}</select></div><div class="field"><label>Religion</label><input name="religion" value="${esc(s.religion||'')}" required></div><div class="field"><label>Contact Number</label><input name="contact_number" value="${esc(s.contact_number||'')}" maxlength="11" placeholder="09XXXXXXXXX" required></div><div class="field"><label>Temporary Barangay</label><input name="temporary_barangay" value="${esc(s.temporary_barangay||'')}" required></div><div class="field"><label>Temporary Municipality</label><input name="temporary_municipality" value="${esc(s.temporary_municipality||'')}" required></div><div class="field"><label>Temporary Province</label><input name="temporary_province" value="${esc(s.temporary_province||'')}" required></div><div class="field"><label>Permanent Barangay</label><input name="permanent_barangay" value="${esc(s.permanent_barangay||'')}" required></div><div class="field"><label>Permanent Municipality</label><input name="permanent_municipality" value="${esc(s.permanent_municipality||'')}" required></div><div class="field"><label>Permanent Province</label><input name="permanent_province" value="${esc(s.permanent_province||'')}" required></div><div class="field"><label>Emergency Contact Name</label><input name="emergency_contact_name" value="${esc(s.emergency_contact_name||'')}" required></div><div class="field"><label>Emergency Relationship</label><input name="emergency_contact_relationship" value="${esc(s.emergency_contact_relationship||'')}" required></div><div class="field full"><label>Emergency Address</label><input name="emergency_contact_address" value="${esc(s.emergency_contact_address||'')}" required></div><div class="field"><label>Emergency Contact Number</label><input name="emergency_contact_contact_number" value="${esc(s.emergency_contact_contact_number||'')}" maxlength="11" placeholder="09XXXXXXXXX" required></div><div class="field"><label>Height</label><input name="height" value="${esc(s.height||'')}" placeholder="e.g. 5'7&quot;" required></div><div class="field"><label>Weight (kg)</label><input name="weight" value="${esc(s.weight||'')}" type="number" min="1" required></div><div class="field"><label>Blood Type</label><select name="blood_type" required>${['A+','A-','B+','B-','AB+','AB-','O+','O-','N/A'].map((value)=>`<option value="${value}" ${s.blood_type===value?'selected':''}>${value}</option>`).join('')}</select></div><div class="field"><label>Complexion</label><input name="complexion" value="${esc(s.complexion||'')}" required></div><div class="field full"><label>Medical Condition</label><select name="has_medical_condition" id="reMedicalSelect"><option value="0" ${!hasMedical?'selected':''}>No medical condition</option><option value="1" ${hasMedical?'selected':''}>Has medical condition</option></select></div><div class="field full ${hasMedical?'':'hidden'}" id="reMedicalNameField"><label>Medical Condition Details</label><input name="medical_condition" value="${esc(s.medical_condition||'')}" placeholder="e.g. Asthma, Hypertension"></div>${isRotc?`<div class="field full"><label>ROTC Preferences</label><div class="notice" style="display:grid;gap:10px"><label><input type="checkbox" name="willing_to_take_advance_course" value="1" ${checked(s.willing_to_take_advance_course)}> Willing to take Advance Course</label><label><input type="checkbox" name="willing_to_be_medics" value="1" ${checked(s.willing_to_be_medics)}> Willing to be assigned to Medics</label><label><input type="checkbox" name="willing_to_be_military_police" value="1" ${checked(s.willing_to_be_military_police)}> Willing to be assigned to Military Police</label></div></div>`:''}<div class="field"><label>Update Medical Certificate</label><input type="file" id="reMedicalCertificate" accept=".pdf,image/*"></div><div class="field"><label>Update COR</label><input type="file" id="reCorFile" accept=".pdf,image/*"></div>${isRotc?`<div class="field full"><label>Update X-ray</label><input type="file" id="reXrayFile" accept=".pdf,image/*"></div>`:''}<div class="field full"><div class="notice">Your saved profile will be updated with the information above. When you submit, a new pending enrollment record will appear again on the admin side for review.</div></div><div class="field full"><button class="btn primary" id="submitReEnroll" type="submit">Submit Re-enrollment</button></div></form></div>`;
     const form=$('#reEnrollForm');
+    if(['retake','return'].includes(data.mode)){
+      const enrollmentType=data.mode==='return'?'Return':'Retake';
+      const title=c.querySelector('.panel-head h2');
+      if(title)title.textContent=`${data.level_label} ${enrollmentType} Enrollment`;
+      $('#submitReEnroll').textContent=`Submit ${data.level_label} ${enrollmentType}`;
+    }
     const componentField=Array.from(form.children)[1];
     if(data.mode==='retry'&&availableComponents.length&&componentField){
       const oldControl=componentField.querySelector('input,select');
