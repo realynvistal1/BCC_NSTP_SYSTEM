@@ -16,6 +16,21 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     const grades = new Map((rows || []).map((grade) => [String(grade.ms_level), grade]));
     const ms1 = grades.get('1');
     const ms2 = grades.get('2');
+    const levelName = level => `${program === 'CWTS' ? 'CWTS' : 'MS'} ${level}`;
+    const enrollment = dashboard.re_enrollment || {};
+    const failed = [ms2, ms1].find(grade => grade?.status === 'Failed');
+    let nextTitle = 'Your latest grades';
+    let nextMessage = 'Check your result for each level below. Grades that have not been released are marked as pending.';
+    if (enrollment.mode === 'retake' || enrollment.mode === 'return') {
+      nextTitle = `${levelName(enrollment.target_level)} ${enrollment.mode === 'return' ? 'Enrollment' : 'Retake'}${enrollment.eligible ? ' Enrollment Open' : ' — Next Steps'}`;
+      nextMessage = enrollment.message || 'Check your enrollment status for the next available schedule.';
+    } else if (enrollment.eligible) {
+      nextTitle = `${levelName(enrollment.target_level)} enrollment is open`;
+      nextMessage = enrollment.message;
+    } else if (failed) {
+      nextTitle = `${levelName(failed.ms_level)} needs attention`;
+      nextMessage = enrollment.message || 'Check Enrollment Status for your next step, or contact your NSTP administrator.';
+    }
 
     if (!ms1 && !ms2) {
       content.innerHTML = `
@@ -36,12 +51,19 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         <td class="center">${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</td>
         <td class="center"><strong>${grade?.grade != null ? Number(grade.grade).toFixed(2) : '-'}</strong></td>
         <td class="center">3</td>
-        <td class="center">${grade ? badge(grade.status) : '-'}</td>
+        <td class="center">${grade ? badge(grade.status) : 'Pending release'}</td>
       </tr>
     `;
 
     content.innerHTML = `
+      <section class="panel" style="margin-bottom:18px;border-left:4px solid ${failed ? '#f59e0b' : '#3b82f6'}">
+        <h2 style="margin:0 0 10px">${esc(nextTitle)}</h2>
+        <p style="margin:0;line-height:1.7">${esc(nextMessage)}</p>
+        ${enrollment.eligible ? '<a class="btn primary" style="margin-top:14px" href="/student/re-enrollment">Open enrollment form</a>' : ''}
+      </section>
       <section class="panel student-grade-panel">
+        <h2 style="margin:0 0 8px">Current Results</h2>
+        <p class="muted" style="margin:0 0 18px">Your latest released grade for each level. Enrollment approval does not mean you passed the subject.</p>
         <div class="table-wrap">
           <table class="data-table student-grade-table">
             <thead>
@@ -56,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
               </tr>
             </thead>
             <tbody>
-              ${rowTemplate('NSTP 1', ms1)}
-              ${rowTemplate('NSTP 2', ms2)}
+              ${rowTemplate(levelName('1'), ms1)}
+              ${rowTemplate(levelName('2'), ms2)}
             </tbody>
           </table>
         </div>
