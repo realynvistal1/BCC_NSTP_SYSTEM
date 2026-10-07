@@ -440,25 +440,26 @@ async function renderAdminSerial(content, program) {
           <div class="panel serial-import-report">
             <div class="serial-import-head">
               <div>
-                <h3>Latest Bulk Import</h3>
-                <p>${esc(importReport.message || 'Bulk import finished.')}</p>
+                <span class="serial-import-eyebrow">EXCEL UPLOAD RESULTS</span>
+                <h3>Import complete</h3>
+                <p>${Number(importReport.summary?.assigned || 0)} of ${Number(importReport.summary?.total || 0)} students received a serial number.${Number(importReport.summary?.skipped || 0) ? ' Review the skipped rows below.' : ' All rows were assigned successfully.'}</p>
               </div>
-              <button class="btn small" type="button" id="clearImportReport">Clear</button>
+              <button class="btn small" type="button" id="clearImportReport">Dismiss results</button>
             </div>
             <div class="serial-import-stats">
-              <div class="stat-card"><div class="dash-label">Rows</div><div class="value">${Number(importReport.summary?.total || 0)}</div></div>
-              <div class="stat-card"><div class="dash-label">Assigned</div><div class="value">${Number(importReport.summary?.assigned || 0)}</div></div>
-              <div class="stat-card"><div class="dash-label">Skipped</div><div class="value">${Number(importReport.summary?.skipped || 0)}</div></div>
+              <div class="serial-import-stat"><span>Rows processed</span><strong>${Number(importReport.summary?.total || 0)}</strong></div>
+              <div class="serial-import-stat assigned"><span>Successfully assigned</span><strong>${Number(importReport.summary?.assigned || 0)}</strong></div>
+              <div class="serial-import-stat skipped"><span>Skipped</span><strong>${Number(importReport.summary?.skipped || 0)}</strong></div>
             </div>
             ${table(
               ['Excel Row', 'Student ID', 'Student', 'Serial Number', 'Status'],
               (importReport.results || []).map((row) => `
-                <tr>
+                <tr class="${row.status === 'assigned' ? 'import-assigned' : 'import-skipped'}">
                   <td>${esc(row.excel_row)}</td>
                   <td>${esc(row.student_id || '-')}</td>
-                  <td>${esc(row.student_name || '-')}</td>
-                  <td>${esc(row.serial_number || '-')}</td>
-                  <td>${row.status === 'assigned' ? badge('Assigned') : badge('Skipped')}<div class="serial-muted-note">${esc(row.message || '')}</div></td>
+                  <td><strong>${esc(row.student_name || '-')}</strong></td>
+                  <td><span class="serial-import-code">${esc(row.serial_number || '-')}</span></td>
+                  <td><span class="serial-import-badge ${row.status === 'assigned' ? 'assigned' : 'skipped'}">${row.status === 'assigned' ? 'Assigned' : 'Skipped'}</span><div class="serial-muted-note">${esc(row.message || '')}</div></td>
                 </tr>
               `)
             )}
