@@ -3,6 +3,7 @@ const XLSX = require('xlsx');
 const db = require('../config/database');
 const certificateService = require('../services/certificateService');
 const gradesService = require('../services/gradesService');
+const gradeAttemptService = require('../services/gradeAttemptService');
 const offenseService = require('../services/offenseService');
 const platoonService = require('../services/platoonService');
 const attendanceService = require('../services/attendanceService');
@@ -668,10 +669,17 @@ exports.enrollments = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT
          smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,
+         smr.status_reason,smr.status_reviewed_by,smr.status_reviewed_at,
+         smr.enrollment_kind,smr.prior_enrollment_id,smr.absence_years,
+         EXISTS(SELECT 1 FROM student_ms_records prior WHERE prior.student_id=smr.student_id
+           AND prior.program=smr.program AND prior.ms_level=smr.ms_level
+           AND prior.status IN ('approved','withdrawn','dropped') AND prior.id<smr.id) is_retake,
          COALESCE(es.year,'') school_year,
          s.id,s.student_id,s.last_name,s.first_name,s.middle_name,s.suffix,s.email,s.contact_number,
          s.sex,s.course,s.year_level,s.nstp_component,s.has_medical_condition,s.medical_condition,
-         s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
+         smr.assignment_company AS company,smr.assignment_battalion AS battalion,
+         CASE WHEN smr.program='ROTC' THEN smr.assignment_company END AS rotc_company,
+         smr.assignment_platoon AS rotc_platoon,smr.assignment_special_unit AS special_unit,
          s.willing_to_take_advance_course,s.willing_to_be_medics,s.willing_to_be_military_police
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
@@ -849,7 +857,12 @@ exports.enrollmentDetail = async (req, res) => {
 
     const [[row]] = await db.execute(
       `SELECT smr.id record_id,smr.schedule_id,smr.status,smr.ms_level,smr.rejection_reason,smr.created_at,
-              COALESCE(es.year,'') school_year,s.*
+              COALESCE(es.year,'') school_year,smr.status_reason,smr.status_reviewed_by,smr.status_reviewed_at,
+              smr.enrollment_kind,smr.prior_enrollment_id,smr.absence_years,s.*,
+              smr.assignment_company AS company,smr.assignment_battalion AS battalion,
+              CASE WHEN smr.program='ROTC' THEN smr.assignment_company END AS rotc_company,
+              smr.assignment_platoon AS rotc_platoon,smr.assignment_special_unit AS special_unit,
+              smr.assignment_label AS platoon
        FROM student_ms_records smr
        JOIN students s ON s.id=smr.student_id
        LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
@@ -902,6 +915,9 @@ exports.updateEnrollment = async (req, res) => {
       return res.status(404).json({ message: 'Enrollment record not found.' });
     }
 
+    if (['withdrawn', 'dropped'].includes(record.status) && status !== record.status) {
+      return res.status(409).json({ message: 'Keep this closed enrollment in history. The student must submit a new return enrollment for review.' });
+    }
     if (
       status === 'approved'
       && String(record.ms_level) === '2'
@@ -1449,8 +1465,8 @@ exports.grades = async (req, res) => {
         `SELECT s.id student_id,s.student_id student_no,s.first_name,s.middle_name,s.last_name,s.suffix,
                 s.course,s.year_level,s.sex,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
                 s.willing_to_take_advance_course,
-                MAX(CASE WHEN smr.ms_level='1' AND smr.status='approved' THEN 1 ELSE 0 END) approved_ms1,
-                MAX(CASE WHEN smr.ms_level='2' AND smr.status='approved' THEN 1 ELSE 0 END) approved_ms2,
+                MAX(CASE WHEN smr.ms_level='1' AND smr.status IN ('approved','withdrawn','dropped') THEN 1 ELSE 0 END) approved_ms1,
+                MAX(CASE WHEN smr.ms_level='2' AND smr.status IN ('approved','withdrawn','dropped') THEN 1 ELSE 0 END) approved_ms2,
                 MAX(CASE WHEN smr.ms_level='1' AND smr.status='approved' THEN es.year END) ms1_year,
                 MAX(CASE WHEN smr.ms_level='2' AND smr.status='approved' THEN es.year END) ms2_year
          FROM students s
@@ -1463,7 +1479,9 @@ exports.grades = async (req, res) => {
         [programCode, programCode]
       );
       const [grades] = await db.execute(
-        'SELECT id,student_id,ms_level,midterm,final_term,grade,status,program,updated_at FROM student_grades WHERE program=?',
+        `SELECT a.* FROM student_grade_attempts a
+         WHERE a.program=? AND a.enrollment_record_id=(SELECT MAX(r.id) FROM student_ms_records r
+           WHERE r.student_id=a.student_id AND r.program=a.program AND r.ms_level=a.ms_level AND r.status IN ('approved','withdrawn','dropped'))`,
         [programCode]
       );
 
@@ -1478,7 +1496,21 @@ exports.grades = async (req, res) => {
         ),
       }));
 
-      return res.json({ students, grades: normalizedGrades });
+      const history = await gradeAttemptService.history(db, null, programCode);
+      // Use the latest approved attempt for encoding; previous attempts remain
+      // available in the read-only history even after a new retake is approved.
+      for (const student of students) {
+        for (const level of ['1', '2']) {
+          const records = history.filter(row => Number(row.student_id) === Number(student.student_id)
+            && String(row.ms_level) === level && ['approved','withdrawn','dropped'].includes(row.enrollment_status));
+          const current = records.at(-1);
+          student[`approved_ms${level}`] = Number(current?.enrollment_status === 'approved');
+          student[`ms${level}_record_id`] = current?.enrollment_status === 'approved' ? current.enrollment_record_id : null;
+          student[`ms${level}_year`] = current?.school_year || null;
+          student[`ms${level}_attempts`] = records.length;
+        }
+      }
+      return res.json({ students, grades: normalizedGrades, history });
     }
 
     const { student_id: rawStudentId, ms_level: msLevel, midterm, final_term: finalTerm } = req.body;
@@ -1494,14 +1526,18 @@ exports.grades = async (req, res) => {
     }
 
     const [[approved]] = await db.execute(
-      "SELECT COUNT(*) total FROM student_ms_records WHERE student_id=? AND program=? AND ms_level=? AND status='approved'",
+      "SELECT * FROM student_ms_records WHERE student_id=? AND program=? AND ms_level=? AND status IN ('approved','withdrawn','dropped') ORDER BY id DESC LIMIT 1",
       [studentId, programCode, level]
     );
 
-    if (!Number(approved.total)) {
+    if (!approved || approved.status !== 'approved') {
       return res.status(400).json({
         message: `This student does not have an approved ${levelPrefix(programCode)} ${level} enrollment.`,
       });
+    }
+
+    if (req.body.enrollment_record_id != null && Number(req.body.enrollment_record_id) !== Number(approved.id)) {
+      return res.status(409).json({ message: 'A newer enrollment attempt exists. Reload the grades page before saving.' });
     }
 
     const mid = Number(midterm);
@@ -1524,6 +1560,17 @@ exports.grades = async (req, res) => {
 
     try {
       await connection.beginTransaction();
+      await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE', [studentId]);
+      const [[current]] = await connection.execute(
+        "SELECT * FROM student_ms_records WHERE student_id=? AND program=? AND ms_level=? AND status IN ('approved','withdrawn','dropped') ORDER BY id DESC LIMIT 1 FOR UPDATE",
+        [studentId, programCode, level]
+      );
+      if (!current || current.status !== 'approved' || Number(current.id) !== Number(approved.id)) {
+        const error = new Error('The enrollment attempt changed. Reload the grades page before saving.');
+        error.status = 409;
+        throw error;
+      }
+      await gradeAttemptService.save(connection, current, mid, fin, grade, status);
       await connection.execute(
         `INSERT INTO student_grades(student_id,ms_level,midterm,final_term,grade,status,program)
          VALUES(?,?,?,?,?,?,?)
@@ -1578,9 +1625,10 @@ exports.grades = async (req, res) => {
       grade,
       status,
       reopened_enrollments: reopenedEnrollments,
+      enrollment_record_id: approved.id,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 };
 
