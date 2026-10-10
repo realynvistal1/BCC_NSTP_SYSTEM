@@ -45,22 +45,18 @@ services:
       - key: GOOGLE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS
         value: false
       - key: RATE_LIMIT_WINDOW_MS
-        value: 60000
+        value: 10000
       - key: RATE_LIMIT_MAX_REQUESTS
-        value: 120
-      - key: RATE_LIMIT_BLOCK_MS
-        value: 300000
-      - key: RATE_LIMIT_MAX_BLOCK_MS
-        value: 3600000
+        value: 200
       - key: RATE_LIMIT_MAX_CONCURRENT
         value: 30
       - key: AUTH_RATE_LIMIT_WINDOW_MS
-        value: 60000
+        value: 10000
       - key: AUTH_RATE_LIMIT_MAX_REQUESTS
-        value: 20
-      - key: AUTH_RATE_LIMIT_BLOCK_MS
-        value: 600000
-      - key: AUTH_RATE_LIMIT_MAX_BLOCK_MS
-        value: 7200000
+        value: 50
       - key: AUTH_RATE_LIMIT_MAX_CONCURRENT
-        value: 5
+        value: 20
+      - key: RATE_LIMIT_MAX_TOTAL_CONCURRENT
+        value: 30
+      - key: AUTH_RATE_LIMIT_MAX_TOTAL_CONCURRENT
+        value: 20
