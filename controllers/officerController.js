@@ -317,7 +317,7 @@ exports.dashboard = async (req, res) => {
 
     return res.json(summary);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -394,7 +394,7 @@ exports.attendanceProgress = async (req, res) => {
       progress,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -586,7 +586,7 @@ exports.createAttendance = async (req, res) => {
       id: result.insertId,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -606,7 +606,7 @@ exports.sessions = async (req, res) => {
       }))
     );
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -670,7 +670,7 @@ exports.sessionRecords = async (req, res) => {
       total: output.length,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -708,7 +708,7 @@ exports.setAttendance = async (req, res) => {
       offense,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -744,7 +744,7 @@ exports.updateAttendance = async (req, res) => {
       offense,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -764,6 +764,16 @@ exports.roster = async (req, res) => {
        LEFT JOIN enrollment_schedules es ON CAST(smr.schedule_id AS UNSIGNED)=es.id
        WHERE s.role='student' AND smr.program=? AND smr.status='approved'
          AND (
+           (smr.program='CWTS' AND NULLIF(TRIM(smr.assignment_company),'') IS NOT NULL)
+           OR (smr.program='ROTC' AND es.platoons_assigned_at IS NOT NULL AND (
+             (smr.assignment_battalion IS NOT NULL
+              AND NULLIF(TRIM(smr.assignment_company),'') IS NOT NULL
+              AND smr.assignment_platoon IS NOT NULL)
+             OR smr.assignment_is_advance=1
+             OR smr.assignment_special_unit IN ('Medics','HQ','MP')
+           ))
+         )
+         AND (
            ? IN ('cwts','rotc')
            OR (?='advance-course' AND smr.assignment_is_advance=1 AND smr.assignment_special_unit IS NULL)
            OR (?='special-platoon' AND smr.assignment_special_unit IN ('Medics','HQ','MP'))
@@ -782,7 +792,7 @@ exports.roster = async (req, res) => {
 
     return res.json(rows);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -825,7 +835,7 @@ exports.enrollments = async (req, res) => {
         cwts: filtered.filter((row) => row.program === 'CWTS'),
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
     }
   };
 
@@ -838,7 +848,7 @@ exports.records = async (req, res) => {
 
     return res.json([...rotcRows, ...cwtsRows]);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -885,7 +895,7 @@ exports.downloadRecordProfiles = async (req, res) => {
     });
   } catch (error) {
     if (!res.headersSent) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
     }
   }
 };
@@ -900,7 +910,7 @@ exports.recordFilterOptions = async (req, res) => {
 
     return res.json(rows);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -984,6 +994,6 @@ exports.recordDetail = async (req, res) => {
       withdrawals,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
