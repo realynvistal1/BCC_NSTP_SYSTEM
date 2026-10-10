@@ -7,6 +7,10 @@ const excelUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 8 * 1024 * 1024,
+    files: 1,
+    fields: 10,
+    fieldSize: 64 * 1024,
+    parts: 11,
   },
   fileFilter(req, file, cb) {
     try {
