@@ -1,4 +1,4 @@
-﻿function directorCard(label,subtitle,value,suffix,href,ico,tone,meta='',pct=null){
+function directorCard(label,subtitle,value,suffix,href,ico,tone,meta='',pct=null){
   return `<a class="dashboard-card director-card officer-shortcut-card" href="${href}"><div class="officer-card-head"><span class="dash-icon ${tone}">${icon(ico)}</span><div><h3>${esc(label)}</h3><p class="director-subtitle">${esc(subtitle)}</p></div></div><div class="officer-card-number"><strong>${esc(value)}</strong><span>${esc(suffix)}</span></div>${pct!==null?`<div class="officer-capacity"><div class="officer-progress"><i class="${tone}" style="width:${Math.min(Number(pct)||0,100)}%"></i></div>${
     meta?`<small>${esc(meta)}</small>`:''
   }
@@ -123,8 +123,9 @@ function officerExpander(key,label,rows,limit,tone='blue'){
 function bindOfficerExpanders(){
   $$('.roster-expand-card').forEach(card=>card.querySelector('.roster-expand-head')?.addEventListener('click',()=>card.classList.toggle('open')))
 }
-function rosterFilterOptions(rows, program){
-  const years=[...new Set(rows.flatMap(x=>x.enrollments||[x]).map(x=>String(x.school_year||'').trim()).filter(Boolean))].sort().reverse();
+function rosterFilterOptions(rows, program, level = ''){
+  const enrollments=rows.flatMap(x=>x.enrollments||[x]);
+  const years=[...new Set(enrollments.map(x=>String(x.school_year||'').trim()).filter(Boolean))].sort().reverse();
   const levels=['1', '2'];
   const levelLabel=program==='CWTS'?'CWTS':'MS';
   return { years, levels, levelLabel };
@@ -139,8 +140,9 @@ function filterRosterRows(rows, state){
   });
 }
 function officerRosterFilterBar(rows, program, state){
-  const { years, levels, levelLabel } = rosterFilterOptions(rows, program);
-  return `<section class="section-card"><div class="section-heading"><h2>Filter Enrolled Students</h2><p>Filter this roster by enrolled level and school year.</p></div><div class="filter-row"><select id="officerFilterLevel"><option value="">All ${levelLabel} Levels</option>${levels.map(level=>`<option value="${esc(level)}" ${String(state.level||'')===String(level)?'selected':''}>${levelLabel} ${esc(level)}</option>`).join('')}</select><select id="officerFilterSchoolYear"><option value="">All School Years</option>${years.map(year=>`<option value="${esc(year)}" ${String(state.schoolYear||'')===String(year)?'selected':''}>SY ${esc(year)}</option>`).join('')}</select><button class="clear-filter-btn" id="clearOfficerRosterFilters">Clear Filters</button></div></section>`;
+  const { years, levels, levelLabel } = rosterFilterOptions(rows, program, state.level);
+  const emptyMessage = filterRosterRows(rows,state).length ? '' : '<div class="notice">No students are assigned to this roster for the selected level and school year. Check the program administrator\'s roster assignments for this enrollment cycle.</div>';
+  return `<section class="section-card"><div class="section-heading"><h2>Filter Enrolled Students</h2><p>Filter this roster by enrolled level and school year.</p></div><div class="filter-row"><select id="officerFilterLevel"><option value="">All ${levelLabel} Levels</option>${levels.map(level=>`<option value="${esc(level)}" ${String(state.level||'')===String(level)?'selected':''}>${levelLabel} ${esc(level)}</option>`).join('')}</select><select id="officerFilterSchoolYear"><option value="">All School Years</option>${years.map(year=>`<option value="${esc(year)}" ${String(state.schoolYear||'')===String(year)?'selected':''}>SY ${esc(year)}</option>`).join('')}</select><button class="clear-filter-btn" id="clearOfficerRosterFilters">Clear Filters</button></div>${emptyMessage}</section>`;
 }
 function bindOfficerRosterFilters(state, rerender){
   $('#officerFilterLevel')?.addEventListener('change',()=>{
