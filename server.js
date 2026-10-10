@@ -36,8 +36,13 @@ if (jwtSecret === "replace-with-a-long-random-secret") {
 }
 
 app.set("trust proxy", trustProxyHop());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/api", generalApiConcurrencyLimit);
+app.use("/api", generalApiRateLimit);
+app.use("/api/auth", authConcurrencyLimit);
+app.use("/api/auth", authRateLimit);
+// Reject abusive traffic before allocating and parsing request bodies.
+app.use(express.json({ limit: "10mb", inflate: false }));
+app.use(express.urlencoded({ extended: true, limit: "10mb", inflate: false, parameterLimit: 100, depth: 5 }));
 app.use(cookieParser());
 // Prevent stale HTML/API responses from causing an empty page after refresh.
 app.use((req, res, next) => {
@@ -55,10 +60,6 @@ app.use("/assets", express.static(path.join(__dirname, "public"), {
     res.set('Expires', '0');
   },
 }));
-app.use("/api", generalApiConcurrencyLimit);
-app.use("/api", generalApiRateLimit);
-app.use("/api/auth", authConcurrencyLimit);
-app.use("/api/auth", authRateLimit);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/admin/rotc", require("./routes/rotcAdminRoutes"));
@@ -197,6 +198,16 @@ app.use((req, res) => {
 res.status(404).sendFile(path.join(__dirname, "views/404.html"));
 });
 app.use((err, req, res, next) => {
+if (res.headersSent) return next(err);
+if (err?.type === 'entity.too.large' || err?.type === 'parameters.too.many') {
+  return res.status(413).json({ message: 'Request body exceeds the allowed size or number of fields.' });
+}
+if (err?.type === 'entity.parse.failed' || err?.type === 'querystring.parse.rangeError') {
+  return res.status(400).json({ message: 'Invalid request body.' });
+}
+if (err?.type === 'encoding.unsupported' || err?.type === 'charset.unsupported') {
+  return res.status(415).json({ message: 'Unsupported request encoding.' });
+}
 console.error(err);
 if (err instanceof multer.MulterError) {
 res.status(400).json({ message: err.message });
@@ -215,9 +226,10 @@ return;
 res.status(500).json({ message: "Unexpected server error." });
 });
 async function startServer() {
+await require('./database/ensure-local-mysql').ensureLocalMysql();
 await require('./database/migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(require('./config/database'));
 await require('./database/migrate-grade-attempts').ensureGradeAttempts(require('./config/database'));
-app.listen(PORT, HOST, (error) => {
+const server = app.listen(PORT, HOST, (error) => {
   if (error) {
     if (error.code === 'EADDRINUSE') {
       console.error(`Cannot start BCC NSTP: ${HOST}:${PORT} is already in use. Stop the existing server before starting another copy.`);
@@ -230,9 +242,21 @@ app.listen(PORT, HOST, (error) => {
   console.log(`BCC NSTP System running at http://${HOST}:${PORT}`);
   console.log('Keep this terminal open. Press Ctrl+C to stop the server.');
 });
+// Bound slow HTTP reads and idle keep-alive connections.
+server.requestTimeout = 60000;
+server.headersTimeout = 15000;
+server.keepAliveTimeout = 5000;
+server.maxRequestsPerSocket = 1000;
 }
 startServer().catch(error => {
-  console.error('Cannot initialize enrollment grade history:', error.message);
+  const causes = Array.isArray(error.errors) ? error.errors : [error];
+  const connectionRefused = error.code === 'ECONNREFUSED'
+    || causes.some(cause => cause.code === 'ECONNREFUSED');
+  if (connectionRefused) {
+    console.error('Cannot connect to MySQL. Start your MySQL/MariaDB server and check DB_HOST and DB_PORT in .env.');
+  }
+  const details = causes.map(cause => cause.message || cause.code || cause.name).filter(Boolean).join('; ');
+  console.error('Cannot initialize database:', details || error.message || error.code || 'Unknown database error.');
   process.exitCode = 1;
   require('./config/database').end();
 });
