@@ -527,7 +527,7 @@ exports.dashboard = async (req, res) => {
         : null,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -659,7 +659,7 @@ exports.schedules = async (req, res) => {
 
     return res.json({ message: `${programCode} enrollment schedule created successfully.` });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -691,7 +691,7 @@ exports.enrollments = async (req, res) => {
 
     return res.json(rows);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -723,7 +723,7 @@ exports.enrollmentPhoto = async (req, res) => {
     res.type(photo.mimeType);
     return res.send(photo.buffer);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -751,7 +751,7 @@ exports.studentPhoto = async (req, res) => {
     res.type(photo.mimeType);
     return res.send(photo.buffer);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -801,7 +801,7 @@ exports.deleteEnrollmentStudent = async (req, res) => {
     return res.json({ message: 'Student account and linked records deleted.' });
   } catch (error) {
     if (connection) await connection.rollback();
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   } finally {
     if (connection) connection.release();
   }
@@ -842,7 +842,7 @@ exports.editEnrollmentStudent = async (req, res) => {
     if (!result.affectedRows) return res.status(404).json({ message: 'Student enrollment not found in this program.' });
     return res.json({ message: 'Student information updated.' });
   } catch (error) {
-    return res.status(error.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ message: error.code === 'ER_DUP_ENTRY' ? 'That email address is already used by another account.' : error.message });
+    return res.status(error.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ message: error.code === 'ER_DUP_ENTRY' ? 'That email address is already used by another account.' : 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -878,7 +878,7 @@ exports.enrollmentDetail = async (req, res) => {
     delete row.password;
     return res.json(row);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -960,7 +960,7 @@ exports.updateEnrollment = async (req, res) => {
       message: 'Enrollment approved. Cadet will appear in the roster after enrollment closes and platoon assignment is completed.',
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1032,7 +1032,7 @@ exports.bulkApprove = async (req, res) => {
         approved += 1;
       } catch (error) {
         failed += 1;
-        messages.push(error.message);
+        messages.push(error.code ? 'Unable to process this record.' : error.message);
       }
     }
 
@@ -1044,7 +1044,7 @@ exports.bulkApprove = async (req, res) => {
       details: messages.slice(0, 3),
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1094,7 +1094,7 @@ exports.bulkReject = async (req, res) => {
         rejected += 1;
       } catch (error) {
         failed += 1;
-        messages.push(error.message);
+        messages.push(error.code ? 'Unable to process this record.' : error.message);
       }
     }
 
@@ -1106,7 +1106,7 @@ exports.bulkReject = async (req, res) => {
       details: messages.slice(0, 3),
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1183,7 +1183,7 @@ exports.roster = async (req, res) => {
 
     return res.json(rows);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1448,7 +1448,7 @@ exports.autoAssign = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   } finally {
     if (connection) {
       try { if (transactionOpen) await connection.rollback(); } finally { connection.release(); }
@@ -1540,6 +1540,17 @@ exports.grades = async (req, res) => {
       return res.status(409).json({ message: 'A newer enrollment attempt exists. Reload the grades page before saving.' });
     }
 
+    // Bind the requested year to the same enrollment whose grade will be saved.
+    if (req.body.school_year != null) {
+      const [[schedule]] = await db.execute(
+        'SELECT year FROM enrollment_schedules WHERE id=? LIMIT 1',
+        [approved.schedule_id]
+      );
+      if (!schedule || String(schedule.year) !== String(req.body.school_year)) {
+        return res.status(409).json({ message: 'This enrollment does not match the selected school year. Reload the grades page before saving.' });
+      }
+    }
+
     const mid = Number(midterm);
     const fin = Number(finalTerm);
     if (!Number.isFinite(mid) || !Number.isFinite(fin) || mid < 1 || mid > 5 || fin < 1 || fin > 5) {
@@ -1567,6 +1578,15 @@ exports.grades = async (req, res) => {
       );
       if (!current || current.status !== 'approved' || Number(current.id) !== Number(approved.id)) {
         const error = new Error('The enrollment attempt changed. Reload the grades page before saving.');
+        error.status = 409;
+        throw error;
+      }
+      const [[savedGrade]] = await connection.execute(
+        'SELECT id FROM student_grade_attempts WHERE enrollment_record_id=? LIMIT 1 FOR UPDATE',
+        [current.id]
+      );
+      if (savedGrade) {
+        const error = new Error('Grades for this enrollment have already been saved and cannot be edited.');
         error.status = 409;
         throw error;
       }
@@ -1628,7 +1648,7 @@ exports.grades = async (req, res) => {
       enrollment_record_id: approved.id,
     });
   } catch (error) {
-    return res.status(error.status || 500).json({ message: error.message });
+    return res.status(error.status || 500).json({ message: error.status && error.status < 500 ? error.message : 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1683,7 +1703,7 @@ exports.offenses = async (req, res) => {
       offense: updated,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1846,7 +1866,7 @@ exports.serials = async (req, res) => {
       serial_number: serial,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2078,7 +2098,7 @@ exports.bulkImportSerials = async (req, res) => {
       results,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2168,7 +2188,7 @@ exports.certificateSettings = async (req, res) => {
       settings: rows[0],
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2211,7 +2231,7 @@ exports.certificate = async (req, res) => {
     });
   } catch (error) {
     if (!res.headersSent) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
     }
   }
 };
@@ -2282,7 +2302,7 @@ exports.downloadCertificates = async (req, res) => {
     });
   } catch (error) {
     if (!res.headersSent) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
     }
   }
 };
@@ -2293,7 +2313,7 @@ exports.records = async (req, res) => {
     const rows = await approvedRecordRows(programCode);
     return res.json(rows);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2359,7 +2379,7 @@ exports.downloadRecordProfiles = async (req, res) => {
     });
   } catch (error) {
     if (!res.headersSent) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
     }
   }
 };
@@ -2441,7 +2461,7 @@ exports.recordDetail = async (req, res) => {
       withdrawals,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2601,7 +2621,7 @@ exports.withdrawals = async (req, res) => {
       connection.release();
     }
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2721,7 +2741,7 @@ exports.attendanceSummary = async (req, res) => {
       late_minutes: attendanceService.LATE_THRESHOLD_MINUTES,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -2760,6 +2780,6 @@ exports.verifyAttendance = async (req, res) => {
       offense,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
