@@ -2,8 +2,14 @@ const ONE_SECOND_MS = 1000;
 const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
 
 const buckets = new Map();
-const penalties = new Map();
 const activeRequests = new Map();
+const MAX_TRACKED_CLIENTS = 10000;
+
+// Periodic cleanup avoids scanning every client for each new IP.
+const cleanupTimer = setInterval(() => {
+  cleanupExpiredBuckets(Date.now());
+}, ONE_MINUTE_MS);
+cleanupTimer.unref();
 
 function readPositiveInt(value, fallback) {
   const parsed = Number(value);
@@ -30,81 +36,27 @@ function cleanupExpiredBuckets(now) {
   }
 }
 
-function cleanupExpiredPenalties(now) {
-  for (const [key, entry] of penalties.entries()) {
-    if (entry.blockedUntil <= now && entry.violationResetAt <= now) {
-      penalties.delete(key);
-    }
-  }
-}
-
-function violationPenaltyMs(violations, baseBlockMs, maxBlockMs) {
-  const exponent = Math.max(0, violations - 1);
-  return Math.min(maxBlockMs, baseBlockMs * (2 ** exponent));
-}
-
-function createRateLimit({
-  keyPrefix,
-  windowMs,
-  maxRequests,
-  message,
-  blockMessage = 'Too many abusive requests. Please try again later.',
-  baseBlockMs = 5 * ONE_MINUTE_MS,
-  maxBlockMs = 60 * ONE_MINUTE_MS,
-}) {
-  const safeWindowMs = readPositiveInt(windowMs, ONE_MINUTE_MS);
-  const safeMaxRequests = readPositiveInt(maxRequests, 60);
-  const safeBaseBlockMs = readPositiveInt(baseBlockMs, 5 * ONE_MINUTE_MS);
-  const safeMaxBlockMs = readPositiveInt(maxBlockMs, 60 * ONE_MINUTE_MS);
-
+function createRateLimit({ keyPrefix, windowMs, maxRequests, message }) {
+  const safeWindowMs = readPositiveInt(windowMs, 10000);
+  const safeMaxRequests = readPositiveInt(maxRequests, 200);
   return function rateLimit(req, res, next) {
     const now = Date.now();
-    const clientIp = readClientIp(req);
-    const key = `${keyPrefix}:${clientIp}`;
-    const penalty = penalties.get(key);
-    if (penalty && penalty.blockedUntil > now) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((penalty.blockedUntil - now) / ONE_SECOND_MS));
-      res.set('Retry-After', String(retryAfterSeconds));
-      return res.status(429).json({
-        message: blockMessage,
-        retry_after_seconds: retryAfterSeconds,
-      });
-    }
-
-    const current = buckets.get(key);
-
+    const key = keyPrefix + ':' + readClientIp(req);
+    let current = buckets.get(key);
     if (!current || current.resetAt <= now) {
-      buckets.set(key, {
-        count: 1,
-        resetAt: now + safeWindowMs,
-      });
-      cleanupExpiredBuckets(now);
-      cleanupExpiredPenalties(now);
-      return next();
+      if (!current && buckets.size >= MAX_TRACKED_CLIENTS) {
+        res.set('Retry-After', '60');
+        return res.status(503).json({ message: 'Server is busy. Please try again shortly.' });
+      }
+      current = { count: 0, resetAt: now + safeWindowMs };
+      buckets.set(key, current);
     }
-
-    current.count += 1;
-
-    if (current.count > safeMaxRequests) {
-      const existingPenalty = penalties.get(key);
-      const violations = existingPenalty && existingPenalty.violationResetAt > now
-        ? existingPenalty.violations + 1
-        : 1;
-      const blockedUntil = now + violationPenaltyMs(violations, safeBaseBlockMs, safeMaxBlockMs);
-      penalties.set(key, {
-        violations,
-        blockedUntil,
-        violationResetAt: now + safeMaxBlockMs,
-      });
-
-      const retryAfterSeconds = Math.max(1, Math.ceil((blockedUntil - now) / ONE_SECOND_MS));
+    if (current.count >= safeMaxRequests) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAt - now) / ONE_SECOND_MS));
       res.set('Retry-After', String(retryAfterSeconds));
-      return res.status(429).json({
-        message,
-        retry_after_seconds: retryAfterSeconds,
-      });
+      return res.status(429).json({ message, retry_after_seconds: retryAfterSeconds });
     }
-
+    current.count += 1;
     return next();
   };
 }
@@ -112,9 +64,12 @@ function createRateLimit({
 function createConcurrencyLimit({
   keyPrefix,
   maxConcurrent,
+  maxTotalConcurrent = 100,
   message,
 }) {
   const safeMaxConcurrent = readPositiveInt(maxConcurrent, 20);
+  const safeMaxTotalConcurrent = readPositiveInt(maxTotalConcurrent, 100);
+  let totalActive = 0;
 
   return function concurrencyLimit(req, res, next) {
     const clientIp = readClientIp(req);
@@ -122,17 +77,24 @@ function createConcurrencyLimit({
     const current = Number(activeRequests.get(key) || 0);
 
     if (current >= safeMaxConcurrent) {
+      res.set('Retry-After', '1');
       return res.status(429).json({
         message,
       });
     }
 
+    if (totalActive >= safeMaxTotalConcurrent) {
+      res.set('Retry-After', '1');
+      return res.status(503).json({ message: 'Server is busy. Please try again shortly.' });
+    }
+    totalActive += 1;
     activeRequests.set(key, current + 1);
 
     let released = false;
     function release() {
       if (released) return;
       released = true;
+      totalActive -= 1;
 
       const latest = Number(activeRequests.get(key) || 0);
       if (latest <= 1) {
@@ -150,37 +112,35 @@ function createConcurrencyLimit({
 
 const generalApiRateLimit = createRateLimit({
   keyPrefix: 'api',
-  windowMs: readPositiveInt(process.env.RATE_LIMIT_WINDOW_MS, ONE_MINUTE_MS),
-  maxRequests: readPositiveInt(process.env.RATE_LIMIT_MAX_REQUESTS, 120),
+  windowMs: readPositiveInt(process.env.RATE_LIMIT_WINDOW_MS, 10000),
+  maxRequests: readPositiveInt(process.env.RATE_LIMIT_MAX_REQUESTS, 200),
   message: 'Too many requests. Please try again shortly.',
-  blockMessage: 'This IP has been temporarily blocked for abusive API traffic.',
-  baseBlockMs: readPositiveInt(process.env.RATE_LIMIT_BLOCK_MS, 5 * ONE_MINUTE_MS),
-  maxBlockMs: readPositiveInt(process.env.RATE_LIMIT_MAX_BLOCK_MS, 60 * ONE_MINUTE_MS),
 });
 
 const authRateLimit = createRateLimit({
   keyPrefix: 'auth',
-  windowMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, ONE_MINUTE_MS),
+  windowMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 10000),
   maxRequests: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 50),
   message: 'Too many authentication requests. Please wait a moment and try again.',
-  blockMessage: 'This IP has been temporarily blocked for abusive authentication traffic.',
-  baseBlockMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_BLOCK_MS, 10 * ONE_MINUTE_MS),
-  maxBlockMs: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_BLOCK_MS, 120 * ONE_MINUTE_MS),
 });
 
 const generalApiConcurrencyLimit = createConcurrencyLimit({
   keyPrefix: 'api-concurrency',
+  maxTotalConcurrent: readPositiveInt(process.env.RATE_LIMIT_MAX_TOTAL_CONCURRENT, 30),
   maxConcurrent: readPositiveInt(process.env.RATE_LIMIT_MAX_CONCURRENT, 30),
   message: 'Too many simultaneous requests from this IP. Please slow down and try again.',
 });
 
 const authConcurrencyLimit = createConcurrencyLimit({
   keyPrefix: 'auth-concurrency',
-  maxConcurrent: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_CONCURRENT, 5),
+  maxTotalConcurrent: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_TOTAL_CONCURRENT, 20),
+  maxConcurrent: readPositiveInt(process.env.AUTH_RATE_LIMIT_MAX_CONCURRENT, 20),
   message: 'Too many simultaneous authentication requests from this IP. Please try again shortly.',
 });
 
 module.exports = {
+  createRateLimit,
+  createConcurrencyLimit,
   trustProxyHop,
   generalApiRateLimit,
   authRateLimit,
