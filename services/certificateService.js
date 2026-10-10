@@ -79,12 +79,10 @@ function ordinal(number) {
 }
 
 function fullName(student) {
-  return [
-    student.first_name,
-    student.middle_name ? `${String(student.middle_name).trim().charAt(0)}.` : '',
-    student.last_name,
-    student.suffix,
-  ].filter(Boolean).join(' ');
+  const surname = String(student.last_name || '').trim();
+  const givenNames = [student.first_name, student.middle_name, student.suffix]
+    .map(value => String(value || '').trim()).filter(Boolean).join(' ');
+  return [surname, givenNames].filter(Boolean).join(', ');
 }
 
 function formatCeremonyDate(settings, serial) {
@@ -117,13 +115,13 @@ function signerList(settings, program) {
 function drawRecipientLine(doc, text, x, y, width) {
   doc.font('Helvetica-Bold')
     .fillColor('#111827')
-    .fontSize(17)
-    .text(String(text || '').toUpperCase(), x, y, { width, align: 'center' });
+    .fontSize(23);
+  const recipient = String(text || '');
+  while (doc.widthOfString(recipient) > width && doc._fontSize > 12) {
+    doc.fontSize(doc._fontSize - 1);
+  }
+  doc.text(recipient, x, y, { width, align: 'center' });
 
-  doc.moveTo(x + 12, y + 34)
-    .lineTo(x + width - 12, y + 34)
-    .lineWidth(1.5)
-    .stroke('#111827');
 }
 
 function drawRotcHeader(doc, assets, width) {
@@ -133,35 +131,29 @@ function drawRotcHeader(doc, assets, width) {
     .text('BUENAVISTA COMMUNITY COLLEGE', 0, 54, { align: 'center' });
 
   doc.font('Helvetica-Bold')
-    .fontSize(14)
+    .fontSize(19)
     .fillColor('#111827')
     .text('Cangawa, Buenavista, Bohol', 0, 80, { align: 'center' });
 
-  const images = [
-    'nstp-rotc.png',
-    'republika-rotc.png',
-    'commision-rotc.png',
-    'tesda-rotc.png',
-  ];
-
-  const totalWidth = 4 * 54 + 3 * 18;
-  const startX = width / 2 - totalWidth / 2;
+  putImage(doc, path.join(assets, 'nstp-rotc.png'), 82, 108, 66, 66);
+  const images = ['commision-rotc.png', 'republika-rotc.png', 'tesda-rotc.png'];
+  const startX = width - 284;
   images.forEach((name, index) => {
-    putImage(doc, path.join(assets, name), startX + index * 72, 112, 54, 54);
+    putImage(doc, path.join(assets, name), startX + index * 68, 108, 62, 62);
   });
 }
 
 function drawRotcBody(doc, { student, serial, settings }, width) {
   const academicYear = settings.academic_year || '';
-  const awardY = 176;
-  const titleY = 208;
-  const toY = 254;
-  const nameY = 282;
-  const completedY = 346;
-  const componentY = 380;
-  const ofTheY = 412;
-  const nstpY = 444;
-  const givenY = 472;
+  const awardY = 158;
+  const titleY = 192;
+  const toY = 236;
+  const nameY = 266;
+  const completedY = 330;
+  const componentY = 364;
+  const ofTheY = 390;
+  const nstpY = 416;
+  const givenY = 458;
 
   doc.font('Helvetica-Oblique')
     .fillColor('#111827')
@@ -178,7 +170,7 @@ function drawRotcBody(doc, { student, serial, settings }, width) {
     .fontSize(12)
     .text('to', 0, toY, { align: 'center' });
 
-  drawRecipientLine(doc, `${fullName(student)} ${serial.serial_number || ''}`.trim(), 88, nameY, width - 176);
+  drawRecipientLine(doc, `Pvt ${fullName(student)} ${serial.serial_number || ''}`.trim(), 88, nameY, width - 176);
 
   doc.font('Helvetica-Oblique')
     .fillColor('#111827')
@@ -187,7 +179,7 @@ function drawRotcBody(doc, { student, serial, settings }, width) {
 
   doc.font('Helvetica-Bold')
     .fillColor('#111827')
-    .fontSize(14)
+    .fontSize(19)
     .text('RESERVE OFFICERS TRAINING CORPS (ROTC) COMPONENT', 56, componentY, {
       width: width - 112,
       align: 'center',
@@ -231,14 +223,9 @@ function drawRotcSigners(doc, settings, width) {
       .fontSize(11)
       .text((name || '').toUpperCase(), x, y + 14, { width: spacing, align: 'center' });
 
-    doc.moveTo(x + 50, y + 30)
-      .lineTo(x + spacing - 50, y + 30)
-      .lineWidth(0.9)
-      .stroke('#111827');
-
     doc.font('Helvetica-Oblique')
       .fontSize(10)
-      .text(label, x, y + 40, { width: spacing, align: 'center' });
+      .text(label, x, y + 32, { width: spacing, align: 'center' });
   });
 }
 
@@ -247,24 +234,24 @@ function drawCwtsFrame(doc, width, height) {
     .lineWidth(3)
     .stroke('#e5c0a7');
 
-  doc.rect(56, 56, width - 112, height - 112)
-    .lineWidth(1.8)
-    .stroke('#d97706');
+  doc.moveTo(82, 356).lineTo(82, 82).lineTo(420, 82)
+    .lineWidth(8).stroke('#d97706');
+  doc.moveTo(width - 82, 270).lineTo(width - 82, height - 82)
+    .lineTo(width - 228, height - 82)
+    .lineWidth(8).stroke('#d97706');
 
   doc.rect(32, 48, 34, 308).fill('#1f3b73');
-  doc.rect(32, height - 120, 34, 72).fill('#1f3b73');
-  doc.rect(width - 66, 214, 34, 194).fill('#1f3b73');
-  doc.rect(24, 42, 388, 18).fill('#1f3b73');
-  doc.rect(width - 228, height - 76, 196, 18).fill('#1f3b73');
+  // Two continuous corner accents, matching the printed certificate reference.
+  doc.rect(width - 66, 214, 34, height - 262).fill('#1f3b73');
+  doc.rect(32, 48, 388, 18).fill('#1f3b73');
+  doc.rect(width - 228, height - 66, 196, 18).fill('#1f3b73');
 
-  doc.rect(width / 2 - 129, 84, 258, 8).fill('#d97706');
-  doc.rect(width - 80, 246, 8, 116).fill('#d97706');
 }
 
 function drawCwtsHeader(doc, assets, width) {
   putImage(doc, path.join(assets, 'ched-logo.png'), 96, 98, 82, 82);
   putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 184, 102, 74, 74);
-  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 184, 92, 86, 86);
+  putImage(doc, path.join(assets, 'cwts-logo-transparent.png'), width - 174, 104, 66, 66);
 
   doc.font('Times-Bold')
     .fillColor('#111827')
@@ -288,7 +275,7 @@ function drawCwtsBody(doc, { student, serial, settings }, width) {
 
   doc.font('Helvetica-Bold')
     .fillColor('#466b1f')
-    .fontSize(27)
+    .fontSize(34)
     .text('CERTIFICATE OF COMPLETION', 0, 198, { align: 'center' });
 
   doc.font('Times-Italic')
@@ -301,29 +288,42 @@ function drawCwtsBody(doc, { student, serial, settings }, width) {
     .fontSize(13)
     .text('to', 0, 282, { align: 'center' });
 
-  drawRecipientLine(doc, fullName(student), 210, 304, width - 420);
+  doc.font('Helvetica-Bold').fillColor('#111827').fontSize(25);
+  const surname = String(student.last_name || '').trim();
+  const givenNames = [student.first_name, student.middle_name, student.suffix]
+    .map(value => String(value || '').trim()).filter(Boolean).join(' ');
+  const recipient = [surname, givenNames].filter(Boolean).join(', ').toUpperCase();
+  while (doc.widthOfString(recipient) > width - 216 && doc._fontSize > 14) {
+    doc.fontSize(doc._fontSize - 1);
+  }
+  doc.text(recipient, 108, 304, { width: width - 216, align: 'center' });
+  doc.moveTo(160, 334).lineTo(width - 160, 334)
+    .lineWidth(0.9).stroke('#111827');
 
   const paragraph = `for having satisfactorily completed the National Service Training Program - Civic Welfare Training Service (NSTP-CWTS) A.Y. ${academicYear} with a`;
   doc.font('Times-Italic')
     .fillColor('#111827')
     .fontSize(10)
-    .text(paragraph, 108, 376, {
+    .text(paragraph, 108, 346, {
       width: width - 216,
       align: 'center',
     });
 
-  doc.font('Helvetica-Bold')
-    .fillColor('#111827')
-    .fontSize(12.5)
-    .text(`SERIAL NUMBER ${serial.serial_number}`, 108, 392, {
-      width: width - 216,
-      align: 'center',
-    });
+  doc.font('Helvetica-Bold').fillColor('#111827').fontSize(12.5);
+  const serialLabel = 'SERIAL NUMBER ';
+  const serialText = String(serial.serial_number || '');
+  const labelWidth = doc.widthOfString(serialLabel);
+  const serialWidth = doc.widthOfString(serialText);
+  const serialX = (width - labelWidth - serialWidth) / 2;
+  doc.text(serialLabel + serialText, serialX, 364, { lineBreak: false });
+  doc.moveTo(serialX + labelWidth, 380)
+    .lineTo(serialX + labelWidth + serialWidth, 380)
+    .lineWidth(0.9).stroke('#111827');
 
   doc.font('Times-Italic')
     .fillColor('#374151')
     .fontSize(8.5)
-    .text(formatCeremonyDate(settings, serial), 136, 410, {
+    .text(formatCeremonyDate(settings, serial), 136, 386, {
       width: width - 272,
       align: 'center',
     });
@@ -362,21 +362,18 @@ function drawCwtsSigners(doc, settings, width) {
 
     doc.font('Helvetica-Bold')
       .fillColor('#111827')
-      .fontSize(8)
+      .fontSize(11)
       .text((signer.name || '').toUpperCase(), signer.x, signer.y + 2, {
         width: signer.width,
         align: 'center',
       });
 
-    doc.moveTo(signer.x + 24, signer.y + 17)
-      .lineTo(signer.x + signer.width - 24, signer.y + 17)
-      .lineWidth(0.9)
-      .stroke('#111827');
+    const labelY = Math.max(signer.y + 18, doc.y + 3);
 
     doc.font('Helvetica')
       .fillColor('#111827')
-      .fontSize(7)
-      .text(signer.label, signer.x, signer.y + 20, {
+      .fontSize(10)
+      .text(signer.label, signer.x, labelY, {
         width: signer.width,
         align: 'center',
       });
@@ -404,14 +401,6 @@ function drawCertificateByProgram(doc, payload) {
     drawCwtsSigners(doc, settings, width);
     return;
   }
-
-  doc.rect(20, 20, width - 40, height - 40)
-    .lineWidth(1.5)
-    .stroke('#374151');
-
-  doc.rect(28, 28, width - 56, height - 56)
-    .lineWidth(1)
-    .stroke('#9ca3af');
 
   drawRotcHeader(doc, assets, width);
   drawRotcBody(doc, { student, serial, settings }, width);
@@ -629,7 +618,7 @@ function drawCwtsRegistrationPage(doc, record, assets, pageIndex, total) {
 
   putImage(doc, path.join(assets, 'bcclogo-removebg-preview.png'), 130, 28, 58, 58);
   // Match the visible BCC emblem size; its source image includes extra padding.
-  putImage(doc, path.join(assets, 'cwts-logo.png'), width - 184, 33, 48, 48);
+  putImage(doc, path.join(assets, 'cwts-logo-transparent.png'), width - 184, 33, 48, 48);
 
   doc.font('Helvetica-Bold')
     .fillColor('#111827')
