@@ -79,19 +79,29 @@ function courseCode(course) {
   return letters && letters.length >= 2 ? letters.join('') : value;
 }
 
+function matchingGradeLevels(student, grades, level, schoolYear) {
+  return (level ? [String(level)] : ['1', '2']).filter(value =>
+    (Number(student[`approved_ms${value}`]) === 1 || grades.has(`${student.student_id}|${value}`))
+    && (!schoolYear || student[`ms${value}_year`] === schoolYear)
+  );
+}
+
 function downloadGradesExcel(rows, grades, program, level, schoolYear) {
-  const headers = ['NO.', 'ID NUMBER', 'LAST NAME', 'FIRST NAME', 'MIDDLE NAME', 'YEAR', 'COURSE', 'MIDTERM', 'FINAL'];
+  const levelPrefix = 'Ms';
+  const headers = ['NO.', 'ID NUMBER', 'LAST NAME', 'FIRST NAME', 'MIDDLE NAME', 'SUFFIX', 'YEAR', 'COURSE', 'MIDTERM', 'FINAL', 'AVERAGE'];
   const makeCell = (value, options = {}) => {
     const {
       style = 'Cell',
       type = 'String',
       mergeAcross = 0,
+      formula = '',
     } = options;
     const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
-    return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="${type}">${xmlSafe(value)}</Data></Cell>`;
+    const formulaAttr = formula ? ` ss:Formula="${xmlSafe(formula)}"` : '';
+    return `<Cell ss:StyleID="${style}"${mergeAttr}${formulaAttr}><Data ss:Type="${type}">${xmlSafe(value)}</Data></Cell>`;
   };
   const levels = level ? [String(level)] : ['1', '2'];
-  const columnWidths = [42, 100, 110, 120, 110, 90, 90, 80, 80];
+  const columnWidths = [42, 100, 110, 120, 110, 60, 90, 90, 80, 80, 80];
   const columnsXml = columnWidths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
 
   const stylesXml = `
@@ -122,8 +132,14 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
           <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D7DEE7"/>
         </Borders>
       </Style>
+      <Style ss:ID="GradeCell" ss:Parent="Cell">
+        <NumberFormat ss:Format="0.00"/>
+      </Style>
       <Style ss:ID="MetaLabel">
         <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>
+      </Style>
+      <Style ss:ID="MetaRight" ss:Parent="MetaLabel">
+        <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
       </Style>
       <Style ss:ID="SchoolTitle">
         <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
@@ -150,24 +166,31 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
   const worksheetOptions = '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><Selected/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>5</SplitHorizontal><TopRowBottomPane>5</TopRowBottomPane><ActivePane>2</ActivePane><Panes><Pane><Number>3</Number></Pane><Pane><Number>2</Number><ActiveRow>5</ActiveRow></Pane></Panes><ProtectObjects>False</ProtectObjects><ProtectScenarios>False</ProtectScenarios></WorksheetOptions>';
   const worksheetsXml = levels.map((currentLevel) => {
     const levelData = rows
-      .filter((student) => Number(student[`approved_ms${currentLevel}`]) === 1)
+      .filter((student) => Number(student[`approved_ms${currentLevel}`]) === 1
+        && matchingGradeLevels(student, grades, currentLevel, schoolYear).length > 0)
       .map((student, index) => [
         index + 1,
         student.student_no || '',
         student.last_name || '',
         student.first_name || '',
         student.middle_name || '',
+        student.suffix || '',
         student.year_level || '',
         courseCode(student.course),
         gradeValue(grades.get(`${student.student_id}|${currentLevel}`)?.midterm),
         gradeValue(grades.get(`${student.student_id}|${currentLevel}`)?.final_term),
+        gradeValue(avgGrade(
+          grades.get(`${student.student_id}|${currentLevel}`)?.midterm,
+          grades.get(`${student.student_id}|${currentLevel}`)?.final_term
+        )),
       ]);
 
     const levelRows = levelData.map((dataRow) => `
         <Row ss:Height="21">
           ${dataRow.map((value, columnIndex) => makeCell(value, {
-            style: columnIndex === 0 ? 'CenterCell' : 'Cell',
-            type: columnIndex === 0 ? 'Number' : 'String',
+            style: columnIndex === 0 ? 'CenterCell' : columnIndex >= 8 ? 'GradeCell' : 'Cell',
+            type: columnIndex === 0 || (columnIndex >= 8 && value !== '') ? 'Number' : 'String',
+            formula: columnIndex === 10 ? '=IF(COUNT(RC[-2]:RC[-1])=2,ROUND(AVERAGE(RC[-2]:RC[-1]),2),"")' : '',
           })).join('')}
         </Row>
       `).join('');
@@ -175,13 +198,13 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
     const topRows = [
       `<Row ss:Height="24">${makeCell('BUENAVISTA COMMUNITY COLLEGE', { style: 'SchoolTitle', mergeAcross: headers.length - 1 })}</Row>`,
       `<Row ss:Height="18">${makeCell('Cangawa, Buenavista, Bohol', { style: 'SchoolSubtitle', mergeAcross: headers.length - 1 })}</Row>`,
-      `<Row ss:Height="18">${makeCell(`School Year: ${schoolYear ? `SY ${schoolYear}` : 'All'}    Level: NSTP ${currentLevel}`, { style: 'MetaLabel', mergeAcross: headers.length - 1 })}</Row>`,
+      `<Row ss:Height="18">${makeCell(`School Year: ${schoolYear ? `SY ${schoolYear}` : 'All'}`, { style: 'MetaLabel', mergeAcross: headers.length - 3 })}${makeCell(`${levelPrefix}:${currentLevel}`, { style: 'MetaRight', mergeAcross: 1 })}</Row>`,
       '<Row ss:Height="10"></Row>',
       `<Row ss:Height="24">${headers.map((header) => makeCell(header, { style: 'TableHeader' })).join('')}</Row>`,
     ].join('');
 
     return `
-      <Worksheet ss:Name="NSTP ${currentLevel}">
+      <Worksheet ss:Name="${levelPrefix} ${currentLevel}">
         <Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${levelData.length + 5}" x:FullColumns="1" x:FullRows="1">
           ${columnsXml}
           ${topRows}
@@ -205,7 +228,7 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
   const url = URL.createObjectURL(blob);
 
   link.href = url;
-  link.download = `${program}${level ? `_NSTP${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Grades.xls`;
+  link.download = `${program}${level ? `_${levelPrefix}${level}` : ''}${schoolYear ? `_SY${schoolYear}` : ''}_Grades.xls`;
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
@@ -255,7 +278,7 @@ async function renderAdminGrades(_program, content) {
       <div class="grade-filter-head">
         <div>
           <h2>Student Grades</h2>
-          <p>Encode or update ${program} NSTP 1 and NSTP 2 midterm and final term grades.</p>
+          <p>Encode ${program} NSTP 1 and NSTP 2 grades. Once saved, grades cannot be edited.</p>
         </div>
       </div>
       <div class="grade-tools">
@@ -305,12 +328,12 @@ async function renderAdminGrades(_program, content) {
   `;
 
   function hasGrade(student, level) {
-    const levels = level ? [String(level)] : ['1', '2'].filter(value => Number(student[`approved_ms${value}`]) || grades.has(`${student.student_id}|${value}`));
+    const levels = matchingGradeLevels(student, grades, level, $('#gradeSY').value);
     return levels.length > 0 && levels.every(value => grades.has(`${student.student_id}|${value}`));
   }
 
   function studentGradeState(student, level) {
-    const levels = level ? [String(level)] : ['1', '2'].filter(value => Number(student[`approved_ms${value}`]) || grades.has(`${student.student_id}|${value}`));
+    const levels = matchingGradeLevels(student, grades, level, $('#gradeSY').value);
     const studentGrades = levels
       .map((currentLevel) => grades.get(`${student.student_id}|${currentLevel}`))
       .filter(Boolean);
@@ -329,11 +352,7 @@ async function renderAdminGrades(_program, content) {
     const query = $('#gradeSearch').value.trim().toLowerCase();
 
     return students.filter((student) => {
-      if (level && !Number(student[`approved_ms${level}`]) && !grades.has(`${student.student_id}|${level}`)) {
-        return false;
-      }
-
-      if (schoolYear && !(student.ms1_year === schoolYear || student.ms2_year === schoolYear)) {
+      if (!matchingGradeLevels(student, grades, level, schoolYear).length) {
         return false;
       }
 
@@ -388,7 +407,7 @@ async function renderAdminGrades(_program, content) {
             <td>${statusBadge}</td>
             <td>
               <button class="btn small ${gradeState === 'failed' ? 'danger' : gradedAlready ? 'success' : 'secondary'}" data-grade-student="${student.student_id}">
-                ${gradeState === 'failed' ? 'Review / Edit' : gradedAlready ? 'View / Edit' : 'Encode'}
+                ${gradedAlready ? 'View Grades' : 'Encode'}
               </button>
             </td>
           </tr>
@@ -408,7 +427,8 @@ async function renderAdminGrades(_program, content) {
   function section(student, level) {
     const approved = Number(student[`approved_ms${level}`]) === 1;
     const grade = grades.get(`${student.student_id}|${level}`);
-    const disabled = !approved;
+    const matchesSelection = matchingGradeLevels(student, grades, $('#gradeLevel').value, $('#gradeSY').value).includes(level);
+    const disabled = !approved || !matchesSelection || Boolean(grade);
 
     return `
       <div class="grade-level-card ${disabled ? 'disabled' : ''}" data-level="${level}">
@@ -416,7 +436,7 @@ async function renderAdminGrades(_program, content) {
           <div>
             <span class="grade-level-number">${level}</span>
             <strong>NSTP ${level}</strong>
-            ${disabled ? '<em>Not enrolled</em>' : `<em>${esc(student[`ms${level}_year`] || '')}${Number(student[`ms${level}_attempts`]) > 1 ? ' / Retake' : ''}</em>`}
+            ${!approved || !matchesSelection ? `<em>${approved ? 'Outside selected level / school year' : 'Not enrolled'}</em>` : `<em>${esc(student[`ms${level}_year`] || '')}${grade ? ' / Saved (locked)' : Number(student[`ms${level}_attempts`]) > 1 ? ' / Retake' : ''}</em>`}
           </div>
           <div>
             <span class="grade-average" id="avg${level}">${grade ? `Avg: ${Number(grade.grade).toFixed(2)}` : ''}</span>
@@ -459,6 +479,8 @@ async function renderAdminGrades(_program, content) {
 
   function openModal(student) {
     const modal = $('#gradeModal');
+    const canEncode = matchingGradeLevels(student, grades, $('#gradeLevel').value, $('#gradeSY').value)
+      .some(level => Number(student[`approved_ms${level}`]) === 1 && !grades.has(`${student.student_id}|${level}`));
     const initials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
     $('#gradeModalBody').innerHTML = `
@@ -476,11 +498,12 @@ async function renderAdminGrades(_program, content) {
       <div class="grade-modal-content">
         ${section(student, '1')}
         ${section(student, '2')}
+        <div class="notice">Check both grades before saving. Saved grades are permanent and cannot be edited.</div>
         <div id="gradeMessage"></div>
       </div>
       <div class="app-dialog-actions">
         <button class="btn" id="cancelGrade">Close</button>
-        <button class="btn primary" id="saveGrades">Save Grades</button>
+        <button class="btn primary" id="saveGrades" ${canEncode ? '' : 'disabled'}>Save Grades</button>
       </div>
     `;
 
@@ -523,7 +546,8 @@ async function renderAdminGrades(_program, content) {
 
       try {
         for (const level of ['1', '2']) {
-          if (!Number(student[`approved_ms${level}`])) {
+          if (!Number(student[`approved_ms${level}`]) || $(`#mid${level}`).disabled
+              || grades.has(`${student.student_id}|${level}`)) {
             continue;
           }
 
@@ -543,6 +567,7 @@ async function renderAdminGrades(_program, content) {
             student_id: student.student_id,
             ms_level: level,
             enrollment_record_id: student[`ms${level}_record_id`],
+            school_year: student[`ms${level}_year`],
             midterm: Number(midterm),
             final_term: Number(finalTerm),
           });
@@ -569,7 +594,7 @@ async function renderAdminGrades(_program, content) {
       } catch (error) {
         $('#gradeMessage').innerHTML = `<div class="notice error">${esc(error.message)}</div>`;
       } finally {
-        button.disabled = false;
+        button.disabled = !canEncode;
       }
     };
   }
