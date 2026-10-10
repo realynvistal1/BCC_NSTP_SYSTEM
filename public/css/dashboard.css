@@ -508,6 +508,84 @@ body[data-portal-theme="officer"] .progress-meta span {
 .reject-note span {
   color: #be123c
 }
+.schedule-history > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 18px 20px;
+  margin: 0;
+  gap: 14px;
+  transition: background .15s ease;
+}
+.schedule-history {
+  background: #fff;
+  border: 1px solid #dce5ef;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .04);
+}
+.schedule-history > summary:hover {
+  background: #f8fafc;
+  border-radius: 16px;
+}
+.schedule-history > summary h3 {
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #1e3a5f;
+}
+.schedule-history > summary p {
+  color: #64748b;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.history-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+.history-icon svg {
+  width: 21px;
+  height: 21px;
+}
+.schedule-history[open] > summary {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+.schedule-history > summary .history-count {
+  font-size: 11px;
+  color: #475569;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.schedule-history > summary::-webkit-details-marker {
+  display: none;
+}
+.schedule-history > summary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.history-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 18px;
+  transition: transform .15s ease;
+}
+.schedule-history[open] .history-chevron {
+  transform: rotate(180deg);
+}
 .schedule-section {
   margin-top: 18px
 }
