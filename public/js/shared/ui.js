@@ -258,16 +258,18 @@ async function renderEnrollmentSchedule(p,c){
       </div>
       ${activeMarkup}
     </section>
-    <section class="schedule-section">
-      <div class="schedule-section-title history">
+    <details class="schedule-section schedule-history">
+      <summary class="schedule-section-title history">
+        <span class="history-icon" aria-hidden="true">${icon('schedule')}</span>
         <div>
           <h3>Enrollment History</h3>
-          <p>Previously completed enrollment schedules.</p>
+          <p>View completed enrollment schedules.</p>
         </div>
         <span class="history-count">${closed.length} record${closed.length === 1 ? '' : 's'}</span>
-      </div>
+        <span class="history-chevron" aria-hidden="true">⌄</span>
+      </summary>
       ${historyMarkup}
-    </section>
+    </details>
     ${modalMarkup}`;
 
   const modal = $('#scheduleModal');
