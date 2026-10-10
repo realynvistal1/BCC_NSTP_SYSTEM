@@ -83,6 +83,14 @@ npm start
 
 5. Open `http://localhost:3000`.
 
+On Windows, app startup automatically starts XAMPP MySQL if your existing
+database is in `C:\xampp\mysql\data` and local port 3306 is stopped. This
+also works with `npm run dev` or `node server.js`. Set `XAMPP_PATH` in `.env`
+for another XAMPP installation, or `DB_AUTO_START=false` to disable it.
+Production and remote databases must be started by their hosting/service manager.
+For first-time setup, start MySQL in the XAMPP Control Panel before running
+`npm run db:setup`.
+
 ## Render Deployment
 
 This repo is now prepared for a Render web service deployment.
