@@ -26,7 +26,8 @@
     "verify:grade-rules": "node scripts/verify-grade-rules.js",
     "verify:serial-format": "node scripts/verify-serial-number-format.js",
     "verify:schedule-progression": "node scripts/verify-schedule-progression.js",
-    "verify:roster-cycles": "node scripts/verify-roster-cycle-assignments.js"
+    "verify:roster-cycles": "node scripts/verify-roster-cycle-assignments.js",
+    "verify:dos": "node scripts/verify-dos-hardening.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
