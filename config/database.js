@@ -9,7 +9,9 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'bcc_nstp_database',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
+  // Bound waiting work when all database connections are busy.
+  queueLimit: 100,
+  connectTimeout: 10000,
   dateStrings: true,
   multipleStatements: false,
 });
