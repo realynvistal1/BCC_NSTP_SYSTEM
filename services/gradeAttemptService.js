@@ -19,8 +19,7 @@ async function history(db, studentId, program) {
 async function save(db, record, midterm, finalTerm, grade, status) {
   await db.execute(`INSERT INTO student_grade_attempts
     (enrollment_record_id,student_id,ms_level,program,midterm,final_term,grade,status)
-    VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE midterm=VALUES(midterm),
-    final_term=VALUES(final_term),grade=VALUES(grade),status=VALUES(status),updated_at=CURRENT_TIMESTAMP`,
+    VALUES(?,?,?,?,?,?,?,?)`,
   [record.id,record.student_id,record.ms_level,record.program,midterm,finalTerm,grade,status]);
 }
 
