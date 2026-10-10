@@ -76,6 +76,32 @@ async function verify(program) {
   assert.equal(savedBody.ms_level,'2');
   assert.equal(adminHistory[1].status,'Failed','Saving a retake must leave the old history intact');
   assert.equal(savedBody.correction_reason,undefined);
+  assert.equal(savedBody.school_year,'2027-2028');
+  gradeButton.onclick();
+  assert.match(element('#gradeModalBody').innerHTML,/Saved \(locked\)/);
+  assert.match(element('#gradeModalBody').innerHTML,/id="mid2"[\s\S]*?disabled/);
+  assert.match(element('#gradeModalBody').innerHTML,/id="saveGrades" disabled/);
+  const firstSavedBody = savedBody;
+  element('#mid2').value='1';
+  await element('#saveGrades').onclick();
+  assert.equal(savedBody,firstSavedBody,'A saved grade must not be submitted again');
+  element('#gradeLevel').value='2';
+  element('#gradeSY').value='2026-2027';
+  await context.renderAdminGrades(program,content);
+  assert.match(element('#gradeRows').innerHTML,/No students found/,
+    'MS 1 in the selected year must not admit MS 2 from another year');
+  element('#gradeSY').value='2027-2028';
+  await context.renderAdminGrades(program,content);
+  assert.match(element('#gradeRows').innerHTML,/Retake/);
+  gradeButton.onclick();
+  assert.match(element('#gradeModalBody').innerHTML,/Outside selected level \/ school year/);
+  assert.match(element('#gradeModalBody').innerHTML,/id="mid1"[\s\S]*?disabled/);
+  element('#gradeLevel').value='';
+  element('#gradeSY').value='2026-2027';
+  await context.renderAdminGrades(program,content);
+  assert.equal(element('#gradePassed').textContent,1,
+    'All levels in one year must ignore an ungraded level from a different year');
+  element('#gradeSY').value='';
   const legacyStudent={...studentRow,approved_ms2:0,ms2_record_id:null};
   context.API={get:async()=>({students:[legacyStudent],grades:[{...history[0],student_id:7},{student_id:7,ms_level:'2',midterm:3,final_term:4,grade:3.5,status:'Failed'}]})};
   await context.renderAdminGrades(program,content);
