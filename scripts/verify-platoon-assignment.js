@@ -9,12 +9,13 @@ async function run(schedule, {
   students = [{ id: 1, sex: 'Male', last_name: 'Test' }],
 } = {}) {
   const events = [];
+  const assignments = [];
   db.getConnection = async () => ({
     beginTransaction: async () => events.push('begin'),
     commit: async () => events.push('commit'),
     rollback: async () => events.push('rollback'),
     release: () => events.push('release'),
-    execute: async (sql) => {
+    execute: async (sql, params) => {
       if (sql.startsWith('SELECT * FROM enrollment_schedules')) {
         assert.match(sql, /FOR UPDATE/);
         return [schedule ? [schedule] : []];
@@ -22,6 +23,7 @@ async function run(schedule, {
       if (sql.includes("SUM(status='pending')")) return [[{ pending: 0 }]];
       if (sql.includes('FROM students s')) return [students];
       if (sql.startsWith('UPDATE students')) {
+        assignments.push({ id: params.at(-1), unit: sql.includes('special_unit=?') ? params[0] : null });
         events.push(sql.includes('special_unit=?')
           ? 'special'
           : sql.includes("platoon='Advance Course'")
@@ -30,16 +32,17 @@ async function run(schedule, {
         if (fail) throw new Error('Simulated write failure');
         return [{ affectedRows: 1 }];
       }
+      if (sql.startsWith('UPDATE student_ms_records smr')) return [{ affectedRows: 1 }];
       if (sql.startsWith('UPDATE enrollment_schedules')) { events.push('mark'); return [{ affectedRows: 1 }]; }
       throw new Error(`Unexpected SQL: ${sql}`);
     },
   });
   const res = { code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } };
   await autoAssign({ params: { program: 'rotc' }, body: { ms_level: '1', school_year: year }, query: {} }, res);
-  return { ...res, events };
+  return { ...res, events, assignments };
 }
 
-async function runCwts(schedule, { students = [], pending = 0, fail = false } = {}) {
+async function runCwts(schedule, { students = [], pending = 0, fail = false, companies = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot'] } = {}) {
   const events = [];
   const assignments = [];
   db.getConnection = async () => ({
@@ -48,6 +51,7 @@ async function runCwts(schedule, { students = [], pending = 0, fail = false } = 
     rollback: async () => events.push('rollback'),
     release: () => events.push('release'),
     execute: async (sql, params) => {
+      if (sql.includes('FROM cwts_companies')) return [companies.map(name => ({name}))];
       if (sql.startsWith('SELECT * FROM enrollment_schedules')) return [schedule ? [schedule] : []];
       if (sql.includes("SUM(status='pending')")) return [[{ pending }]];
       if (sql.includes('FROM students s')) {
@@ -60,6 +64,7 @@ async function runCwts(schedule, { students = [], pending = 0, fail = false } = 
         events.push('company');
         return [{ affectedRows: 1 }];
       }
+      if (sql.startsWith('UPDATE student_ms_records smr')) return [{ affectedRows: 1 }];
       if (sql.startsWith('UPDATE enrollment_schedules')) { events.push('mark'); return [{ affectedRows: 1 }]; }
       throw new Error(`Unexpected CWTS SQL: ${sql}`);
     },
@@ -103,6 +108,25 @@ async function runCwts(schedule, { students = [], pending = 0, fail = false } = 
     'begin', 'special', 'special', 'special', 'advance',
     'battalion', 'battalion', 'mark', 'commit', 'release',
   ]);
+  for (const unit of ['Medics', 'MP']) {
+    for (const count of [50, 51, 55]) {
+      const students = Array.from({ length: count }, (_, i) => ({
+        id: i + 1, sex: i % 2 ? 'Female' : 'Male',
+        last_name: 'Student ' + String(i + 1).padStart(3, '0'),
+        willing_to_be_medics: unit === 'Medics' ? 1 : 0,
+        willing_to_be_military_police: unit === 'MP' ? 1 : 0,
+        willing_to_take_advance_course: 1,
+      })).reverse();
+      const result = await run(closed, { students });
+      assert.equal(result.code, 200);
+      assert.equal(result.body.specialAssigned, 50);
+      assert.equal(result.body.battalionAssigned, count - 50);
+      assert.equal(result.body.advanceAssigned, 0);
+      assert.equal(result.body.overflow[unit], count - 50);
+      assert.deepEqual(result.assignments.filter(a => a.unit === unit).map(a => a.id), Array.from({ length: 50 }, (_, i) => i + 1));
+      assert.deepEqual(result.assignments.filter(a => !a.unit).map(a => a.id).sort((a,b)=>a-b), Array.from({ length: count - 50 }, (_, i) => i + 51));
+    }
+  }
   const log = console.error;
   let failure;
   try { console.error = () => {}; failure = await run(closed, { fail: true }); } finally { console.error = log; }
@@ -125,13 +149,18 @@ async function runCwts(schedule, { students = [], pending = 0, fail = false } = 
   assert.deepEqual(cwtsSuccess.assignments.slice(60).map((entry) => entry.company), ['Bravo', 'Bravo']);
   assert.deepEqual(cwtsSuccess.events, ['begin', ...Array(62).fill('company'), 'mark', 'commit', 'release']);
 
+  const expanded = await runCwts(closed, { students:Array.from({length:361},(_,i)=>({id:i+1,last_name:'Student',first_name:String(i),student_id:String(i)})), companies:['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf'] });
+  assert.equal(expanded.code,200);
+  assert.equal(expanded.assignments.at(-1).company,'Golf');
+  assert.equal(expanded.assignments.filter(a=>a.company==='Alpha').length,60);
   const originalExecute = db.execute;
   let rosterQueryChecked = false;
   db.execute = async (sql, params) => {
     if (sql.includes('FROM enrollment_schedules')) return [[closed]];
     if (sql.includes('FROM students s')) {
-      assert.match(sql, /es\.platoons_assigned_at IS NOT NULL/);
-      assert.equal(params.at(-1), 'ROTC');
+      assert.ok(sql.includes('smr.assignment_company AS rotc_company'));
+      assert.equal(params[0], 'ROTC');
+      assert.equal(params[1], 'ROTC');
       rosterQueryChecked = true;
       return [[]];
     }
@@ -143,5 +172,5 @@ async function runCwts(schedule, { students = [], pending = 0, fail = false } = 
   assert.equal(rosterResponse.code, 200);
   assert.ok(rosterQueryChecked);
 
-  console.log('PASS: closed-only atomic assignment covers ROTC groups and alphabetical CWTS companies; unassigned schedules stay hidden.');
+  console.log('PASS: closed-only atomic assignment covers ROTC groups and alphabetical CWTS companies; cycle assignment snapshots are used; Medics/MP overflow follows alphabetical selection.');
 })().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => db.end());
