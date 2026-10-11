@@ -5,7 +5,7 @@ window.addEventListener('director-attendance-updated', () => {
 const officerRecordStore = new Map();
 let officerAttendanceRows = [];
 let officerAttendanceRequest = 0;
-const CWTS_COMPANY_OPTIONS = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+let CWTS_COMPANY_OPTIONS = [];
 function attendanceDisplayName(value) {
   return String(value || '').trim().replace(/(^|[\s'\-])\p{L}/gu, letter => letter.toLocaleUpperCase());
 }
@@ -877,6 +877,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       auth
     );
 
+    CWTS_COMPANY_OPTIONS = await API.get('/api/officer/cwts-companies');
+    watchCwtsCompanyChanges('/api/officer/cwts-companies',CWTS_COMPANY_OPTIONS,async names=>{CWTS_COMPANY_OPTIONS=names;await renderOfficerSessions(true);});
     officerSessions = await API.get('/api/officer/attendance/sessions');
 
     const queryProgram = new URLSearchParams(location.search).get('program');
