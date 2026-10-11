@@ -1,7 +1,19 @@
+function verifierCandidateLabel(student) {
+  const shortCourses = {
+    'BS Criminology': 'BSCrim',
+    'BS Information Technology': 'BSIT',
+    'BS Hospitality Management': 'BSHM',
+    'BS Tourism Management': 'BSTM',
+    'BEED - Bachelor of Elementary Education': 'BEED',
+    'BSED - Major in English': 'BSED - English',
+    'BSED - Major in Mathematics': 'BSED - Mathematics',
+  };
+  return [student.last_name + ', ' + student.first_name, shortCourses[student.course] || student.course, student.year_level, student.student_id].filter(Boolean).join(' / ');
+}
 function verifierSearchMatches(record, query) {
   const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const tokens = normalize(query).split(/\s+/).filter(Boolean);
-  const text = normalize([record.first_name, record.last_name, record.student_id].join(' '));
+  const text = normalize([record.first_name, record.middle_name, record.last_name, record.student_id].join(' '));
   const compactId = normalize(record.student_id).replace(/\s/g, '');
   return tokens.every(token => text.includes(token) || (/^\d+$/.test(token) && compactId.includes(token)));
 }
@@ -64,7 +76,7 @@ async function renderVerifierManagement(content) {
       <div class="field verifier-field-blue" data-regular-assignment><label for="verifierPlatoon">Platoon</label><select id="verifierPlatoon">${[1,2,3,4].map(i=>`<option value="${i}">Platoon ${i}</option>`).join('')}</select></div>
       </div><div id="verifierGroupWarning" class="notice error" role="status" hidden></div></fieldset>
       <fieldset class="verifier-form-step"><legend><span>3</span> Verifier</legend><div class="verifier-step-fields">
-      <div class="field full verifier-field-blue"><label for="verifierCandidate">Advance Course Student</label><select id="verifierCandidate" required><option value="">Select verifier</option>${data.candidates.map((s,i)=>`<option value="${i}">${esc(s.last_name+', '+s.first_name+' ('+s.student_id+')')}</option>`).join('')}</select><small id="verifierAvailabilityHint" hidden>Already assigned. Revoke the current assignment to change its verifier.</small></div>
+      <div class="field full verifier-field-blue"><label for="verifierCandidateSearch">Advance Course Student</label><div class="verifier-picker-search"><span aria-hidden="true">${icon('records')}</span><input id="verifierCandidateSearch" type="search" placeholder="Search by name or Student ID" autocomplete="off" aria-controls="verifierCandidate"></div><label class="verifier-picker-label" for="verifierCandidate">Select a verifier</label><select id="verifierCandidate" class="verifier-candidate-list" size="5" required aria-describedby="verifierCandidateCount"><option value="" disabled>Select a student below</option><option value="">Select verifier</option>${data.candidates.map((s,i)=>`<option value="${i}">${esc(verifierCandidateLabel(s))}</option>`).join('')}</select><small id="verifierCandidateCount" role="status" aria-live="polite"></small><small id="verifierAvailabilityHint" hidden>Already assigned. Revoke the current assignment to change its verifier.</small></div>
       </div></fieldset>
       <div class="field full verifier-submit"><button class="btn primary" type="submit" ${data.candidates.length?'':'disabled'}>Assign Verifier</button></div>
     </form>${data.candidates.length?'':'<p class="notice">No approved Advance Course students with saved cycle assignments are available.</p>'}</section>
@@ -87,8 +99,15 @@ async function renderVerifierManagement(content) {
     const candidates=data.candidates.map((student,index)=>({student,index})).filter(({student})=>special||student.sex===sex);
     const activeVerifiers=new Set(data.assignments.filter(a=>Number(a.active)===1).map(a=>String(a.verifier_id)));
     const available=candidates.filter(({student})=>!activeVerifiers.has(String(student.id)));
-    $('#verifierCandidate').innerHTML='<option value="">Select verifier</option>'+candidates.map(({student:s,index})=>`<option value="${index}" ${activeVerifiers.has(String(s.id))?'disabled':''}>${esc(s.last_name+', '+s.first_name+' ('+s.student_id+') — '+s.sex)}${activeVerifiers.has(String(s.id))?' (Already assigned)':''}</option>`).join('');
-    if(!assigned&&available.some(candidate=>String(candidate.index)===selected)) $('#verifierCandidate').value=selected;
+    const query = $('#verifierCandidateSearch').value;
+    const matched = candidates.filter(({student}) => verifierSearchMatches(student, query));
+    const selectedCandidate = candidates.find(candidate => String(candidate.index) === selected);
+    // Keep an existing selection visible when the query changes.
+    const visible = selectedCandidate && !matched.includes(selectedCandidate) ? [selectedCandidate, ...matched] : matched;
+    $('#verifierCandidate').innerHTML='<option value="" disabled>Select a verifier</option>'+visible.map(({student:s,index})=>`<option value="${index}" ${activeVerifiers.has(String(s.id))?'disabled':''}>${esc(verifierCandidateLabel(s))}${activeVerifiers.has(String(s.id))?' (Already assigned)':''}</option>`).join('');
+    $('#verifierCandidate').value = !assigned && available.some(candidate=>String(candidate.index)===selected) ? selected : '';
+    $('#verifierCandidateCount').textContent = assigned ? 'This group already has a verifier.' : matched.length ? matched.length + ' matching student(s). Select a name to continue.' : 'No students match your search.';
+    $('#verifierCandidateSearch').disabled = Boolean(assigned);
     $('#verifierCandidate').disabled=Boolean(assigned);
     const warning=$('#verifierGroupWarning');
     warning.hidden=!assigned;
@@ -97,6 +116,7 @@ async function renderVerifierManagement(content) {
     $('#verifierAvailabilityHint').textContent='No available verifiers. Revoke an active assignment to make its student available.';
     $('#verifierAssignmentForm button[type="submit"]').disabled=!available.length||Boolean(assigned);
   };
+  $('#verifierCandidateSearch').oninput = updateCandidates;
   updateCompanies(); $('#verifierBattalion').onchange=()=>{updateCompanies();updateCandidates();};
   const cycleSessions=()=>{
     const cycle=data.cycles[$('#verifierTargetCycle').value];
@@ -219,24 +239,29 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
     records.forEach(r => { r.row_key = r.id || `unmarked-${r.student_internal_id}-${r.session_id}`; });
     if (token !== request || content.verifierGeneration !== generation) return;
     const node = $('#verifierRecords');
-    node.innerHTML = `<div class="section-heading verifier-section-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('attendance')}</span><div><h2>Attendance records</h2><p>Check physical attendance. Update the status and enter a reason for each correction.</p></div></div><div class="verifier-summary"><span class="verifier-stat total"><span class="verifier-stat-icon" aria-hidden="true">${icon('platoon')}</span><span><strong>${records.length}</strong><small>Records</small></span></span>${['present','late','absent','unmarked'].map(status => `<span class="verifier-stat ${status}"><span class="verifier-stat-dot" aria-hidden="true"></span><span><strong>${records.filter(r => r.status === status).length}</strong><small>${status[0].toUpperCase()+status.slice(1)}</small></span></span>`).join('')}</div><div class="verifier-toolbar"><div class="field"><label for="verifierSearch">Find a student</label><input id="verifierSearch" type="search" placeholder="Name or student ID"></div></div>${records.length ? verifierTable(['Student','Session','Attendance','Last update','Action'], records.map(r => `<tr data-record="${r.row_key}"><td><strong>${esc(r.first_name+' '+r.last_name)}</strong><br><small>${esc(r.student_id)}</small></td><td>MI ${esc(r.mi_number)} ${esc(String(r.mi_type).toUpperCase())}<br><small>${esc(attendanceUpdateDate(r.open_date))}</small></td><td>${badge(r.status)}</td><td>${attendanceUpdateDetails(r) || '—'}</td><td><button class="btn small primary" type="button" data-update="${r.row_key}">Update Attendance</button></td></tr>`)) : '<div class="verifier-empty"><span class="verifier-empty-symbol" aria-hidden="true">&#10003;</span><h3>No students for this assignment</h3><p>No approved students match this assigned group and session. Use Refresh to check for new records.</p></div>'}`;
+    node.innerHTML = `<div class="section-heading verifier-section-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('attendance')}</span><div><h2>Attendance records</h2><p>Check physical attendance. Update the status and enter a reason for each correction.</p></div></div><div class="verifier-summary"><span class="verifier-stat total"><span class="verifier-stat-icon" aria-hidden="true">${icon('platoon')}</span><span><strong>${records.length}</strong><small>Records</small></span></span>${['present','late','absent','unmarked'].map(status => `<span class="verifier-stat ${status}"><span class="verifier-stat-dot" aria-hidden="true"></span><span><strong>${records.filter(r => r.status === status).length}</strong><small>${status[0].toUpperCase()+status.slice(1)}</small></span></span>`).join('')}</div><div class="verifier-toolbar"><div class="field"><label for="verifierSearch">Find a student</label><input id="verifierSearch" type="search" placeholder="Name or student ID"></div></div>${attendanceStatusFilters(records)}${records.length ? verifierTable(['Student','Session','Attendance','Last update','Action'], records.map(r => `<tr data-record="${r.row_key}"><td><strong>${esc(r.first_name+' '+r.last_name)}</strong><br><small>${esc(r.student_id)}</small></td><td>MI ${esc(r.mi_number)} ${esc(String(r.mi_type).toUpperCase())}<br><small>${esc(attendanceUpdateDate(r.open_date))}</small></td><td>${badge(r.status)}</td><td>${attendanceUpdateDetails(r) || '—'}</td><td><button class="btn small primary" type="button" data-update="${r.row_key}">Update Attendance</button></td></tr>`)) : '<div class="verifier-empty"><span class="verifier-empty-symbol" aria-hidden="true">&#10003;</span><h3>No students for this assignment</h3><p>No approved students match this assigned group and session. Use Refresh to check for new records.</p></div>'}`;
     const emptySearch = document.createElement('div');
     emptySearch.className = 'notice verifier-search-empty';
     emptySearch.setAttribute('role', 'status');
-    emptySearch.textContent = 'No students match your search.';
+    emptySearch.textContent = 'No students match your search and attendance filter.';
     emptySearch.hidden = true;
     node.append(emptySearch);
     const recordsByKey = new Map(records.map(record => [String(record.row_key), record]));
-    $('#verifierSearch').oninput = event => {
+    let attendanceStatus = 'all';
+    const filterRecords = () => {
+      const query = $('#verifierSearch').value;
+      node.querySelectorAll('[data-attendance-status]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.attendanceStatus === attendanceStatus)));
       let matches = 0;
       node.querySelectorAll('[data-record]').forEach(row => {
         const record = recordsByKey.get(row.dataset.record);
-        const matched = Boolean(record && verifierSearchMatches(record, event.target.value));
+        const matched = Boolean(record && verifierSearchMatches(record, query) && (attendanceStatus === 'all' || record.status === attendanceStatus));
         row.hidden = !matched;
         if (matched) matches++;
       });
       emptySearch.hidden = !records.length || matches > 0;
     };
+    $('#verifierSearch').oninput = filterRecords;
+    node.querySelectorAll('[data-attendance-status]').forEach(button => button.onclick = () => { attendanceStatus = button.dataset.attendanceStatus; filterRecords(); });
     node.querySelectorAll('[data-update]').forEach(button => button.onclick = () => {
       const record = records.find(r => String(r.row_key) === button.dataset.update);
       const dialog = document.createElement('dialog');
