@@ -3,6 +3,7 @@ function makeAttendanceSummary(_programKey) {
   const apiProgram = 'cwts';
   const unit = 'CS';
 
+  let companyNames = [];
   let sessions = [];
   let current = null;
   let allStudents = [];
@@ -11,6 +12,12 @@ function makeAttendanceSummary(_programKey) {
   const fmtTime = (value) => value
     ? new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     : '—';
+
+  const studentAttendanceTime = (student) => {
+    const status = String(student.attendance_status || student.status || '').toLowerCase();
+    if (status === 'absent') return student.session_close_date ? fmtTime(student.session_close_date) : '';
+    return student.attendance_time ? fmtTime(student.attendance_time) : '';
+  };
 
   const fmtDate = (value) => value
     ? new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -153,9 +160,7 @@ function makeAttendanceSummary(_programKey) {
     const platoonSelect = $('#summaryPlatoon');
 
     if (companySelect) {
-      const companies = [...new Set(
-        allStudents.map((student) => String(student.company || student.rotc_company || '').trim()).filter(Boolean)
-      )].sort((a, b) => a.localeCompare(b));
+      const companies = companyNames;
 
       companySelect.innerHTML = '<option value="">All Company</option>'
         + companies.map((company) => `<option value="${esc(company)}">${esc(company)} Company</option>`).join('');
@@ -212,7 +217,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
         <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         <td>
@@ -345,7 +350,7 @@ function makeAttendanceSummary(_programKey) {
         student.course || '',
         student.year_level || '',
         assignment(student),
-        student.attendance_time ? fmtTime(student.attendance_time) : '',
+        studentAttendanceTime(student),
         student.distance_meters != null ? `${Math.round(Number(student.distance_meters))} m` : '',
         student.attendance_status === 'unmarked' ? 'Not Yet Marked' : String(student.attendance_status || '').toUpperCase(),
       ]),
@@ -510,7 +515,7 @@ function makeAttendanceSummary(_programKey) {
       const course = truncate(student.course || '', 12).padEnd(12);
       const year = truncate(student.year_level || '', 6).padEnd(6);
       const assign = truncate(assignment(student), 29).padEnd(29);
-      const time = (student.attendance_time ? fmtTime(student.attendance_time) : '—').padEnd(10);
+      const time = (studentAttendanceTime(student)).padEnd(10);
       const distance = (student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—').padEnd(10);
       const status = student.attendance_status === 'unmarked' ? 'NOT YET' : String(student.attendance_status || '').toUpperCase();
 
@@ -688,7 +693,7 @@ function makeAttendanceSummary(_programKey) {
           truncate(`${student.last_name || ''}, ${student.first_name || ''}`, 28).padEnd(28),
           truncate(student.student_id || '', 12).padEnd(12),
           truncate(statusText(student), 13).padEnd(13),
-          truncate(student.attendance_time ? fmtTime(student.attendance_time) : '-', 10),
+          truncate(studentAttendanceTime(student), 10),
         ].join(' ');
         lines.push({ x: 40, y, size: 8, text: row });
         y -= 10;
@@ -720,6 +725,14 @@ function makeAttendanceSummary(_programKey) {
       auth
     );
 
+    companyNames = await API.get('/api/admin/cwts/companies');
+    const updateCompanyGroups = () => {
+      const select = $('#summaryGroup'), selected = select.value;
+      select.innerHTML = '<option value="overall">Overall Summary</option>' + companyNames.map(name => '<option value="company-' + esc(name.toLowerCase()) + '">' + esc(name) + ' Company</option>').join('');
+      select.value = Array.from(select.options).some(option => option.value === selected) ? selected : 'overall';
+    };
+    updateCompanyGroups();
+    watchCwtsCompanyChanges('/api/admin/cwts/companies',companyNames,async names=>{companyNames=names;updateCompanyGroups();await loadSelected();});
     const data = await API.get(`/api/admin/${apiProgram}/attendance-summary`);
     sessions = data.sessions || [];
 
