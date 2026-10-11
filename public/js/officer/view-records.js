@@ -89,7 +89,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
     const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
     return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="String">${officerXmlSafe(value)}</Data></Cell>`;
   };
-  const widths = [34, 92, 92, 92, 54, 86, 86, 64, 92, 78, 58, 150, 74, 62, 62, 66];
+  const widths = [34, 92, 92, 92, 54, 200, 86, 64, 92, 78, 58, 210, 74, 62, 62, 66];
   if (program === 'CWTS') widths.splice(7, 1);
   const columns = widths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
   const styles = `
@@ -149,6 +149,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
 }
 
 async function renderOfficerRecords(content) {
+  let cwtsCompanyNames = await API.get('/api/officer/cwts-companies');
   const rows = await API.get('/api/officer/records');
   const scheduleOptions = await API.get('/api/officer/records/filter-options');
 
@@ -385,7 +386,7 @@ async function renderOfficerRecords(content) {
       2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
     };
     const allRotcCompanies = Object.values(battalionCompanies).flat();
-    const allCwtsCompanies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+    const allCwtsCompanies = cwtsCompanyNames;
     const companyValues = program === 'ROTC'
       ? (battalionCompanies[filters.battalion]
         || allRotcCompanies)
@@ -562,6 +563,12 @@ async function renderOfficerRecords(content) {
             </div>
           </section>
           <section class="record-section">
+            <h3>Submitted Documents</h3>
+            <div class="record-documents-grid">
+              ${[['Medical Certificate', student.medical_certificate], ['Certificate of Registration (COR)', student.cor_file], ...(program === 'ROTC' ? [['X-Ray', student.xray_file]] : [])].map(([label, file]) => `<div class="record-document-item"><div><strong>${esc(label)}</strong><span>${file ? 'Uploaded' : 'Not uploaded'}</span></div>${file ? `<button type="button" class="btn small" data-record-document="${esc(file)}" aria-label="View ${esc(label)}">View File</button>` : ''}</div>`).join('')}
+            </div>
+          </section>
+          <section class="record-section">
             <h3>Grades</h3>
             <div class="record-grade-row">
               ${officerInfoItem('Midterm', grade?.midterm ?? '-')}
@@ -602,9 +609,23 @@ async function renderOfficerRecords(content) {
               </table>
             </div>
           </section>
+          <section class="record-section record-completion-section">
+            <h3>Completion / Certificate Information</h3>
+            <div class="record-info-grid">
+              ${officerInfoItem('Serial Number', data.serial?.serial_number || 'Not yet issued')}
+              ${officerInfoItem('Certificate Status', data.serial?.serial_number ? 'Available' : 'Not yet available')}
+            </div>
+            ${data.serial?.serial_number ? '<div class="record-certificate-actions"><button type="button" class="btn small primary" id="viewCompletionCertificate">View Certificate</button></div>' : ''}
+          </section>
         </div>
       `;
 
+      $('#viewCompletionCertificate')?.addEventListener('click', () => {
+        window.open(`/api/officer/certificates/${id}?program=${encodeURIComponent(program)}`, '_blank', 'noopener');
+      });
+      body.querySelectorAll('[data-record-document]').forEach(button => {
+        button.onclick = () => openFileInNewTab(button.dataset.recordDocument);
+      });
       $('#recordClose').onclick = () => modal.classList.add('hidden');
       $('.app-dialog-backdrop', modal).onclick = () => modal.classList.add('hidden');
     } catch (error) {
@@ -716,6 +737,7 @@ async function renderOfficerRecords(content) {
     $('#recordSpecial').value = '';
     draw();
   };
+  watchCwtsCompanyChanges('/api/officer/cwts-companies',cwtsCompanyNames,names=>{cwtsCompanyNames=names;draw();});
   draw();
 }
 
