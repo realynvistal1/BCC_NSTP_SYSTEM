@@ -247,7 +247,7 @@ function badge(status) {
   return `<span class="badge ${tone}">${esc(status || 'N/A')}</span>`;
 }
 
-function toast(message, error = false) {
+function toast(message, error = false, duration = 3200) {
   let node = $('#toast');
 
   if (!node) {
@@ -260,5 +260,32 @@ function toast(message, error = false) {
   node.textContent = message;
   node.classList.remove('hidden');
 
-  setTimeout(() => node.classList.add('hidden'), 3200);
+  setTimeout(() => node.classList.add('hidden'), duration);
+}
+
+const cwtsCompanyWatchers = new Map();
+function watchCwtsCompanyChanges(url, initial, onChange) {
+  cwtsCompanyWatchers.get(url)?.();
+  let previous = JSON.stringify(initial), busy = false;
+  const check = async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try { const names = await API.get(url), signature = JSON.stringify(names); if (signature !== previous) {previous=signature;await onChange(names);} }
+    catch (_) {} finally {busy=false;}
+  };
+  const storage = event => {if(event.key==='cwts-company-change')check();};
+  window.addEventListener('focus',check);window.addEventListener('cwts-company-change',check);window.addEventListener('storage',storage);
+  cwtsCompanyWatchers.set(url,()=>{window.removeEventListener('focus',check);window.removeEventListener('cwts-company-change',check);window.removeEventListener('storage',storage);});
+}
+function notifyCwtsCompanyChange() {
+  try {localStorage.setItem('cwts-company-change',String(Date.now()));} catch (_) {}
+  window.dispatchEvent(new Event('cwts-company-change'));
+}
+
+function attendanceStatusFilters(records, selected = 'all') {
+  return '<div class="attendance-status-filters" role="group" aria-label="Filter students by attendance">' + ['all','present','late','absent','unmarked'].map(status => {
+    const label = status === 'all' ? 'All students' : status[0].toUpperCase() + status.slice(1);
+    const count = status === 'all' ? records.length : records.filter(record => record.status === status).length;
+    return '<button type="button" class="attendance-status-filter ' + status + '" data-attendance-status="' + status + '" aria-pressed="' + (selected === status) + '">' + label + '<span>' + count + '</span></button>';
+  }).join('') + '</div>';
 }
