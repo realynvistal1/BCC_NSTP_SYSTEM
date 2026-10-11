@@ -2,6 +2,11 @@ require("dotenv").config();
 
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
+const fs = require("fs");
+const path = require("path");
+function samplePhoto() {
+  return "data:image/png;base64," + fs.readFileSync(path.join(__dirname, "../public/images/ID.png")).toString("base64");
+}
 
 const DB_NAME = process.env.DB_NAME || "bcc_nstp_database";
 const PER_PROGRAM = Math.max(1, Number(process.env.SEED_STUDENTS_PER_PROGRAM || 500));
@@ -36,14 +41,13 @@ const LAST_NAMES = [
 ];
 
 const COURSES = [
-  "BS Information Technology",
   "BS Criminology",
   "BS Hospitality Management",
-  "BS Business Administration",
-  "BEEd",
-  "BSEd",
-  "BS Civil Engineering",
-  "BS Accountancy",
+  "BS Information Technology",
+  "BS Tourism Management",
+  "BEED - Bachelor of Elementary Education",
+  "BSED - Major in English",
+  "BSED - Major in Mathematics"
 ];
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -88,14 +92,14 @@ function buildStudent(component, index) {
   const lastName = at(LAST_NAMES, index * 3);
   const middleName = at(LAST_NAMES, index * 5).replace(/\s+/g, "");
   const yearLevel = index % 4 === 0 ? "2nd Year" : "1st Year";
-  const course = at(COURSES, index * 7);
+  const course = at(COURSES, index);
   const studentNo = makeStudentId(component, index + 1);
   const email = `${component.toLowerCase()}.ms1.seed.${String(index + 1).padStart(4, "0")}@bcc.test`;
 
   const hasMedicalCondition = isRotc && index % 25 === 0 ? 1 : 0;
   const willingToBeMedics = isRotc && !hasMedicalCondition && index % 18 === 0 ? 1 : 0;
   const willingToBeMilitaryPolice = isRotc && !hasMedicalCondition && !willingToBeMedics && index % 17 === 0 ? 1 : 0;
-  const willingToTakeAdvanceCourse = isRotc && sex === "Male" && !hasMedicalCondition && !willingToBeMedics && !willingToBeMilitaryPolice && index % 11 === 0 ? 1 : 0;
+  const willingToTakeAdvanceCourse = isRotc && !hasMedicalCondition && !willingToBeMedics && !willingToBeMilitaryPolice && index % 11 === 0 ? 1 : 0;
 
   return {
     studentId: studentNo,
@@ -136,7 +140,7 @@ function buildStudent(component, index) {
     medicalCertificate: `/uploads/seed/medical-${component.toLowerCase()}-${index + 1}.pdf`,
     xrayFile: isRotc ? `/uploads/seed/xray-${index + 1}.pdf` : null,
     email,
-    photo: `/uploads/seed/photo-${index + 1}.jpg`,
+    photo: samplePhoto(),
     corFile: `/uploads/seed/cor-${index + 1}.pdf`,
   };
 }
@@ -242,7 +246,20 @@ async function seedProgram(db, hash, program) {
   return schedule;
 }
 
-(async () => {
+async function seedScheduleStudents(db, program, scheduleId, count = 1000) {
+  const hash = await bcrypt.hash(PASSWORD, 10);
+  for (let index = 0; index < count; index += 1) {
+    const student = buildStudent(program, index);
+    student.email = program.toLowerCase() + '.ms1.seed.' + scheduleId + '.' + (index + 1) + '@bcc.test';
+    student.studentId = String((program === 'ROTC' ? 100000 : 500000) + (Number(scheduleId) % 150) * 2000 + index + 1).padStart(6, '0') + '-2026';
+    student.photo = samplePhoto();
+    student.corFile = student.medicalCertificate = student.xrayFile = null;
+    await upsertStudent(db, hash, student, scheduleId);
+  }
+  return count;
+}
+module.exports = { seedScheduleStudents };
+if (require.main === module) (async () => {
   const db = await mysql.createConnection(config);
   const hash = await bcrypt.hash(PASSWORD, 10);
 
