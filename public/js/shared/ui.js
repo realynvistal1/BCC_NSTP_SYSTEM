@@ -1,3 +1,64 @@
+function enrollmentApprovalSummary(result) {
+  const text = [result.message, ...(result.capacityWarnings || [])].join(' ');
+  // Older running servers return the capacity figures in their warning text.
+  const legacyPending = text.match(/(\d+) selected enrollment\(s\).*?(?:remain pending|could not be approved)/i);
+  const legacyCapacity = text.match(/CWTS[^.]*?(\d+)-student/i);
+  const capacity = Number(result.capacity || legacyCapacity?.[1] || 0);
+  const pending = Number(result.capacitySkipped ?? legacyPending?.[1] ?? 0);
+  const approved = Number(result.approved || 0);
+  return { capacity, pending, approved };
+}
+function showEnrollmentApprovalResult(result, error = false) {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'enrollment-result-dialog';
+    const {capacity, pending, approved} = enrollmentApprovalSummary(result);
+    const capacityFull = Boolean(pending || result.capacityReached || (capacity && result.capacityWarnings?.length));
+    const counted = typeof result.approved === 'number';
+    dialog.setAttribute('aria-labelledby', 'enrollmentResultTitle');
+    dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error || capacityFull ? 'warning' : ''}" aria-hidden="true">${error || capacityFull ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : capacityFull ? 'CWTS capacity reached' : 'Students approved'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Still pending</span></div></div>` : ''}
+      ${counted && capacityFull && capacity ? `<p class="enrollment-result-explanation">CWTS has <strong>${esc(capacity)} slots</strong> across ${esc(capacity / 60)} companies. ${pending ? `The remaining <strong>${esc(pending)} students were not approved</strong> and stay pending.` : 'All available slots are now filled.'}</p><div class="enrollment-result-next"><strong>What to do next</strong><p>Add a company for 60 more slots, or review and reject pending enrollments with a reason.</p></div>` : `<p class="enrollment-result-explanation">${esc(result.message)}</p>`}
+      <button type="button" class="btn primary enrollment-result-done">Close</button></div>`;
+    dialog.querySelectorAll('button').forEach(button => button.onclick = () => dialog.close());
+    dialog.addEventListener('close', () => {dialog.remove();resolve();}, {once:true});
+    document.body.appendChild(dialog); dialog.showModal();
+    dialog.querySelector('.enrollment-result-done').focus();
+  });
+}
+
+function confirmRosterAssignment(program, level, year) {
+  return new Promise(resolve => {
+    const previousFocus = document.activeElement;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'roster-confirm-dialog';
+    dialog.setAttribute('aria-labelledby', 'rosterConfirmTitle');
+    dialog.setAttribute('aria-describedby', 'rosterConfirmDescription');
+    dialog.innerHTML = `<form method="dialog" class="roster-confirm-content">
+      <div class="roster-confirm-top"><span class="roster-confirm-icon">${icon('platoon')}</span><button type="submit" value="cancel" class="delete-student-close" aria-label="Close">&times;</button></div>
+      <span class="roster-confirm-eyebrow">${esc(program)} ADMINISTRATION</span>
+      <h2 id="rosterConfirmTitle">${program === 'CWTS' ? 'Assign companies?' : 'Assign platoons?'}</h2>
+      <p id="rosterConfirmDescription">Assign approved ${program === 'CWTS' ? 'students alphabetically across the available companies' : 'cadets to their platoons'} for this enrollment schedule.</p>
+      <div class="roster-confirm-cycle"><span>${program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(level)}</span><strong>SY ${esc(year)}</strong></div>
+      <div class="roster-confirm-note"><strong>One assignment per schedule</strong><p>This action can only run once for this enrollment schedule. Review the selected level and school year before continuing.</p></div>
+      <div class="roster-confirm-actions"><button class="btn" type="submit" value="cancel" autofocus>Cancel</button><button class="btn primary" type="submit" value="assign">${program === 'CWTS' ? 'Assign Companies' : 'Assign Platoons'}</button></div>
+    </form>`;
+    dialog.addEventListener('close', () => {
+      const approved = dialog.returnValue === 'assign';
+      dialog.remove();
+      if (previousFocus?.isConnected) previousFocus.focus();
+      resolve(approved);
+    }, { once: true });
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) {
+        const box = dialog.getBoundingClientRect();
+        if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close('cancel');
+      }
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+}
+
 function summaryTile(label,value,helper,tone='blue'){
   return `<div class="summary-tile ${tone}"><div class="summary-accent"></div><div class="dash-label">${esc(label)}</div><div class="summary-number">${esc(value)}</div><div class="summary-helper">${esc(helper)}</div></div>`
 }
@@ -461,7 +522,7 @@ function enrollmentRow(x, p) {
       <td>${esc(x.school_year || x.schedule_year || '-')}</td>
       <td>${oldDateTime(x.created_at)}</td>
       <td>${badge(x.status)}</td>
-      <td><div class="actions enrollment-row-actions"><button type="button" class="view-edit-link enrollment-view-btn" data-record="${x.record_id}">View</button>${x.status === 'pending' ? `<button type="button" class="btn small success" data-approve-enrollment="${x.record_id}">Approve</button>` : ''}${['pending', 'rejected'].includes(x.status) ? `<div class="enrollment-action-menu"><button type="button" class="enrollment-menu-toggle" data-row-menu-toggle aria-label="More actions" aria-expanded="false">&#8942;</button><div class="enrollment-row-menu hidden"><button type="button" class="enrollment-delete-option" data-delete-student="${x.record_id}">Delete Student</button></div></div>` : ''}</div></td>
+      <td><div class="actions enrollment-row-actions"><button type="button" class="view-edit-link enrollment-view-btn" data-record="${x.record_id}">View</button>${['pending', 'rejected'].includes(x.status) ? `<div class="enrollment-action-menu"><button type="button" class="enrollment-menu-toggle" data-row-menu-toggle aria-label="More actions" aria-expanded="false">&#8942;</button><div class="enrollment-row-menu hidden"><button type="button" class="enrollment-delete-option" data-delete-student="${x.record_id}">Delete Student</button></div></div>` : ''}</div></td>
     </tr>`;
 }
 function detailSection(title, fields) {
@@ -883,23 +944,6 @@ async function renderEnrollmentList(p,c){
       };
     });
     $$('.enrollment-row-menu').forEach(menu => menu.onclick = event => event.stopPropagation());
-    $$('[data-approve-enrollment]').forEach(button => {
-      button.onclick = async () => {
-        const recordId = Number(button.dataset.approveEnrollment);
-        if (!recordId || button.disabled) return;
-        button.disabled = true;
-        button.textContent = 'Approving...';
-        try {
-          const result = await API.patch(`/api/admin/${p}/enrollments/${recordId}`, { status: 'approved' });
-          toast(result.message);
-          setTimeout(() => location.reload(), 450);
-        } catch (error) {
-          button.disabled = false;
-          button.textContent = 'Approve';
-          toast(error.message, true);
-        }
-      };
-    });
     $$('[data-delete-student]').forEach(button => {
       button.onclick = async () => {
         const student = rows.find(row => Number(row.record_id) === Number(button.dataset.deleteStudent));
@@ -1001,12 +1045,12 @@ async function renderEnrollmentList(p,c){
       button.textContent='Approving...';
       try{
         const z=await API.patch(`/api/admin/${p}/enrollments/${id}`,{status:'approved'});
-        toast(z.message);
-        setTimeout(()=>location.reload(),450)
+        await showEnrollmentApprovalResult(z);
+        location.reload();
       }   catch(e){
         button.disabled=false;
         button.textContent='Approve Enrollment';
-        toast(e.message,true)
+        await showEnrollmentApprovalResult({message:e.message}, true)
       }
     }
     ;
@@ -1057,8 +1101,8 @@ async function renderEnrollmentList(p,c){
     b.textContent='Approving...';
     try{
       const z=await API.post(`/api/admin/${p}/enrollments/bulk-approve`,{ids});
-      toast(z.message);
-      setTimeout(()=>location.reload(),600)
+      await showEnrollmentApprovalResult(z);
+      location.reload();
     }   catch(e){
       b.disabled=false;
       toast(e.message,true)
@@ -1203,7 +1247,7 @@ async function renderLegacyROTCRoster(c,specialOnly=false){
     ;
     if(specialOnly){
       const total=Object.values(special).flat().length;
-      c.innerHTML=`<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><select id="specialMs" class="roster-ms-select"><option value="1" ${ms==='1'?'selected':''}>MS 1</option><option value="2" ${ms==='2'?'selected':''}>MS 2</option></select></div><div class="roster-summary-grid four">${rosterSummary('Special Members',total,'all units','rose')}${rosterSummary('Medics',special.Medics.length,'of 37','rose')}${rosterSummary('HQ',special.HQ.length,'no limit','blue')}${rosterSummary('Military Police',special.MP.length,'of 37','green')}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard('medics','Medics',special.Medics.length,37,rosterRows(special.Medics),'rose')}${expanderCard('hq','HQ',special.HQ.length,Infinity,rosterRows(special.HQ),'blue')}${expanderCard('mp','MP',special.MP.length,37,rosterRows(special.MP),'green')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><select id="specialMs" class="roster-ms-select"><option value="1" ${ms==='1'?'selected':''}>MS 1</option><option value="2" ${ms==='2'?'selected':''}>MS 2</option></select></div><div class="roster-summary-grid four">${rosterSummary('Special Members',total,'all units','rose')}${rosterSummary('Medics',special.Medics.length,'of 50','rose')}${rosterSummary('HQ',special.HQ.length,'no limit','blue')}${rosterSummary('Military Police',special.MP.length,'of 50','green')}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard('medics','Medics',special.Medics.length, 50,rosterRows(special.Medics),'rose')}${expanderCard('hq','HQ',special.HQ.length,Infinity,rosterRows(special.HQ),'blue')}${expanderCard('mp','MP',special.MP.length, 50,rosterRows(special.MP),'green')}</div>`;
       $('#specialMs').onchange=e=>{
         ms=e.target.value;
         draw()
@@ -1262,7 +1306,7 @@ async function renderLegacyROTCRoster(c,specialOnly=false){
     enrollment is closed. You can now assign cadets to platoons.`:`Waiting for the MS ${
       ms
     }
-    enrollment schedule to close before assignment.`}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${closed?'':'disabled'}>${closed?'Assign Platoons':'Assignment Locked'}</button><div id="assignResult"></div></div>${battalion(1,'Male',maleCos,b1)}${battalion(2,'Female',femaleCos,b2)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard('advance-male','Male',advanceMale.length,Infinity,rosterRows(advanceMale),'purple')}${expanderCard('advance-female','Female',advanceFemale.length,Infinity,rosterRows(advanceFemale),'rose')}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard('medics','Medics',special.Medics.length,37,rosterRows(special.Medics),'rose')}${expanderCard('hq','HQ',special.HQ.length,Infinity,rosterRows(special.HQ),'blue')}${expanderCard('mp','MP',special.MP.length,37,rosterRows(special.MP),'green')}</div>`;
+    enrollment schedule to close before assignment.`}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${closed?'':'disabled'}>${closed?'Assign Platoons':'Assignment Locked'}</button><div id="assignResult"></div></div>${battalion(1,'Male',maleCos,b1)}${battalion(2,'Female',femaleCos,b2)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard('advance-male','Male',advanceMale.length,Infinity,rosterRows(advanceMale),'purple')}${expanderCard('advance-female','Female',advanceFemale.length,Infinity,rosterRows(advanceFemale),'rose')}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard('medics','Medics',special.Medics.length, 50,rosterRows(special.Medics),'rose')}${expanderCard('hq','HQ',special.HQ.length,Infinity,rosterRows(special.HQ),'blue')}${expanderCard('mp','MP',special.MP.length, 50,rosterRows(special.MP),'green')}</div>`;
     $('#rosterMs').onchange=e=>{
       ms=e.target.value;
       draw()
@@ -1484,7 +1528,7 @@ async function renderROTCRoster(c, specialOnly = false) {
 
     if (specialOnly) {
       const total = Object.values(special).flat().length;
-      c.innerHTML = `<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><div class="filter-row"><select id="specialMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="specialYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Filter Special Platoon</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Special Members", total, "all units", "rose")}${rosterSummary("Medics", special.Medics.length, "of 37", "rose")}${rosterSummary("HQ", special.HQ.length, "no limit", "blue")}${rosterSummary("Military Police", special.MP.length, "of 37", "green")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+      c.innerHTML = `<div class="page-intro-banner rose"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>Special Platoon</h2><p>View cadets assigned to Medics, HQ, and Military Police.</p></div><div class="filter-row"><select id="specialMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="specialYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Filter Special Platoon</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Special Members", total, "all units", "rose")}${rosterSummary("Medics", special.Medics.length, "of 50", "rose")}${rosterSummary("HQ", special.HQ.length, "no limit", "blue")}${rosterSummary("Military Police", special.MP.length, "of 50", "green")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${total} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 50, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 50, rosterRows(special.MP), "green")}</div>`;
       $("#specialMs").onchange = (event) => {
         selectedLevel = event.target.value;
         draw();
@@ -1525,7 +1569,7 @@ async function renderROTCRoster(c, specialOnly = false) {
     const total = battalionOne.length + battalionTwo.length + specialTotal + advanceTotal;
     const battalionCap = maleCompanies.length * platoons * platoonCap;
 
-    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Assigned Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 37, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 37, rosterRows(special.MP), "green")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner sky"><div><div class="page-intro-kicker">ROTC ADMIN</div><h2>ROTC Platoon List</h2><p>View and assign the platoon roster by MS level and school year.</p></div><div class="filter-row"><select id="rosterMs" class="roster-ms-select"><option value="">All MS Levels</option>${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>MS ${esc(level)}</option>`).join("")}</select><select id="rosterYear" class="roster-ms-select"><option value="">All School Years</option>${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing ${esc(cycleLabel)}.</p></div></section><div class="roster-summary-grid six">${rosterSummary("Total Assigned Cadets", total, "", "slate")}${rosterSummary("Battalion 1 (M)", `${battalionOne.length}/${battalionCap}`, "", "blue")}${rosterSummary("Battalion 2 (F)", `${battalionTwo.length}/${battalionCap}`, "", "rose")}${rosterSummary("Advance Course", advanceTotal, "cadets", "amber")}${rosterSummary("Special Platoon", specialTotal, "members", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Platoon Assignment</strong><p>${alreadyAssigned ? "Platoons have been assigned for this enrollment schedule. This action can only be used once." : canAssign ? `MS ${selectedLevel} enrollment for SY ${selectedYear} is closed. You can now assign cadets to platoons.` : selectedLevel && selectedYear && schedule ? `Waiting for the MS ${selectedLevel} enrollment schedule for SY ${selectedYear} to close before assignment.` : "Choose both an MS level and a school year to assign cadets for one ROTC cycle."}</p></div></div><button class="btn primary assign-wide" id="assignPlatoons" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Platoons Already Assigned" : canAssign ? "Assign Platoons" : "Assignment Locked"}</button><div id="assignResult"></div></div>${battalionMarkup(1, "Male", maleCompanies, battalionOne, battalionCap)}${battalionMarkup(2, "Female", femaleCompanies, battalionTwo, battalionCap)}<div class="roster-section-title"><h3>Advance Course List</h3><span class="unit-badge advance">ADVANCE</span><small>${advanceTotal} cadets</small></div><div class="roster-stack">${expanderCard("advance-male", "Male", advanceMale.length, Infinity, rosterRows(advanceMale), "purple")}${expanderCard("advance-female", "Female", advanceFemale.length, Infinity, rosterRows(advanceFemale), "rose")}</div><div class="roster-section-title"><h3>Special Platoon</h3><span class="unit-badge medical">MEDICAL</span><small>${specialTotal} members</small></div><div class="roster-stack">${expanderCard("medics", "Medics", special.Medics.length, 50, rosterRows(special.Medics), "rose")}${expanderCard("hq", "HQ", special.HQ.length, Infinity, rosterRows(special.HQ), "blue")}${expanderCard("mp", "MP", special.MP.length, 50, rosterRows(special.MP), "green")}</div>`;
 
     $("#rosterMs").onchange = (event) => {
       selectedLevel = event.target.value;
@@ -1541,7 +1585,7 @@ async function renderROTCRoster(c, specialOnly = false) {
     if (assign) {
       assign.onclick = async () => {
         if (!canAssign || assign.disabled) return;
-        if (!confirm(`This action can only run once for this enrollment schedule. Assign approved ROTC MS ${selectedLevel} cadets for SY ${selectedYear} now?`)) return;
+        if (!await confirmRosterAssignment('ROTC', selectedLevel, selectedYear)) return;
         assign.disabled = true;
         assign.textContent = "Assigning...";
         try {
@@ -1550,7 +1594,20 @@ async function renderROTCRoster(c, specialOnly = false) {
             school_year: selectedYear,
           });
           $("#assignResult").innerHTML = `<div class="assignment-result success">${esc(result.message)}</div>`;
-          setTimeout(() => location.reload(), 700);
+          if (result.overflow?.Medics || result.overflow?.MP) {
+            const summary = $("#assignResult");
+            summary.innerHTML = `<section class="roster-assignment-summary roster-result-compact" role="status" aria-label="Assignment results">
+              <div class="roster-compact-heading"><span aria-hidden="true">&#10003;</span><h3>Assignment completed</h3></div>
+              <div class="roster-compact-counts">${[['Medics', 'Medics'], ['MP', 'MP']].map(([key, label]) => `<p><strong>${label}</strong><span>${esc(result.unitAssigned[key])} assigned <span class="roster-compact-divider">&middot;</span> ${esc(result.overflow[key])} moved to regular platoons</span></p>`).join('')}</div>
+              <p class="roster-compact-note">Each unit has 50 slots, filled alphabetically by name. All enrollments remain approved.</p>
+              <button type="button" class="btn primary" id="viewAssignedRoster">View Updated Roster</button>
+            </section>`;
+
+            assign.textContent = 'Platoons Already Assigned';
+            $('#viewAssignedRoster').onclick = () => location.reload();
+          } else {
+            setTimeout(() => location.reload(), 700);
+          }
         } catch (error) {
           $("#assignResult").innerHTML = `<div class="assignment-result error">${esc(error.message === "Access denied." ? "Your current session does not have ROTC administrator access. Log in to the ROTC Admin portal and try again." : error.message)}</div>`;
           assign.disabled = false;
@@ -1566,12 +1623,13 @@ async function renderROTCRoster(c, specialOnly = false) {
 }
 
 async function renderCWTSCompanyRoster(c) {
+  c.classList.add('cwts-company-roster');
   const [allCycleRows, schedules, enrollments] = await Promise.all([
     API.get("/api/admin/cwts/roster?all_cycles=1"),
     API.get("/api/admin/cwts/enrollment-schedule"),
     API.get("/api/admin/cwts/enrollments"),
   ]);
-  const companies = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
+  let companies = await API.get("/api/admin/cwts/companies");
   const limit = 60;
   const latest = [...schedules].sort((a, b) => Number(b.id) - Number(a.id))[0];
   let selectedLevel = String(latest?.ms_level || "1");
@@ -1631,20 +1689,84 @@ async function renderCWTSCompanyRoster(c) {
         : "Waiting to close";
     const scheduleTone = alreadyAssigned ? "green" : closed && pendingReview === 0 ? "green" : "amber";
 
-    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, "6 companies", "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index])).join("")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, `${companies.length} companies`, "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index % 6])).join("")}</div>`;
 
+    companies.forEach(company => {
+      const card = c.querySelector('[data-expand-card="cwts-' + CSS.escape(company) + '"]');
+      if (!card) return;
+      const hasAssignedStudents = allCycleRows.some(row => row.company === company);
+      if (hasAssignedStudents) return;
+      card.classList.add('cwts-company-menu-card');
+      const menu = document.createElement('div');
+      menu.className = 'cwts-company-actions';
+      menu.innerHTML = `<button class="enrollment-menu-toggle" type="button" aria-label="More actions for ${esc(company)} Company" aria-expanded="false">&#8942;</button><div class="cwts-company-menu" hidden><button type="button" ${hasAssignedStudents ? 'disabled title="Move assigned students before deleting this company."' : ''}>Delete Company</button>${hasAssignedStudents ? '<small>Students are assigned to this company.</small>' : ''}</div>`;
+      card.appendChild(menu);
+      const toggle = menu.querySelector('button');
+      const dropdown = menu.querySelector('.cwts-company-menu');
+      toggle.onclick = event => {
+        event.stopPropagation();
+        const opening = dropdown.hidden;
+        c.querySelectorAll('.cwts-company-menu').forEach(node => { node.hidden=true; node.previousElementSibling.setAttribute('aria-expanded','false'); });
+        dropdown.hidden=!opening; toggle.setAttribute('aria-expanded',String(opening));
+      };
+      menu.onkeydown = event => { if(event.key==='Escape'){ dropdown.hidden=true; toggle.setAttribute('aria-expanded','false'); toggle.focus(); } };
+      dropdown.querySelector('button').onclick = () => {
+        if (hasAssignedStudents) return;
+        dropdown.hidden=true; toggle.setAttribute('aria-expanded','false');
+        const dialog=document.createElement('dialog'); dialog.className='logout-dialog';
+        dialog.setAttribute('aria-label','Delete company');
+        dialog.innerHTML=`<form class="logout-dialog-content"><h2>Delete ${esc(company)} Company?</h2><p>This removes 60 CWTS slots. Companies with assignment records or required capacity cannot be deleted.</p><p data-error role="alert" hidden></p><div class="logout-dialog-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn danger">Delete Company</button></div></form>`;
+        dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
+        dialog.addEventListener('close',()=>{dialog.remove();toggle.focus();},{once:true});
+        dialog.querySelector('form').onsubmit=async event=>{
+          event.preventDefault(); const button=dialog.querySelector('[type="submit"]');button.disabled=true;
+          try { const result=await API.req('/api/admin/cwts/companies/'+encodeURIComponent(company), {method:'DELETE'});companies=result.companies;notifyCwtsCompanyChange();dialog.close();draw();toast(result.message); }
+          catch(error){const node=dialog.querySelector('[data-error]');node.hidden=false;node.textContent=error.message;button.disabled=false;}
+        };
+        document.body.appendChild(dialog);dialog.showModal();
+      };
+    });
+    const addCompanyButton = document.createElement('button');
+    addCompanyButton.type = 'button';
+    addCompanyButton.className = 'btn small primary';
+    addCompanyButton.textContent = '+ Add Company';
+    const filterCard = c.querySelector('.section-card');
+    filterCard.classList.add('cwts-company-toolbar');
+    const filterHeading = filterCard.querySelector('.section-heading');
+    const filterCopy = document.createElement('div');
+    while (filterHeading.firstChild) filterCopy.appendChild(filterHeading.firstChild);
+    filterHeading.append(filterCopy, addCompanyButton);
+    addCompanyButton.onclick = () => {
+      const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel','India','Juliet','Kilo','Lima','Mike','November','Oscar','Papa','Quebec','Romeo','Sierra','Tango','Uniform','Victor','Whiskey','Xray','Yankee','Zulu'];
+      const suggested = names.find(name => !companies.some(c => c.toLowerCase() === name.toLowerCase())) || '';
+      const dialog = document.createElement('dialog');
+      dialog.className = 'logout-dialog';
+      dialog.setAttribute('aria-label', 'Add CWTS company');
+      dialog.innerHTML = `<form class="logout-dialog-content"><h2>Add CWTS Company</h2><p>Each company adds 60 slots to CWTS enrollment capacity.</p><label class="field" style="text-align:left;margin-top:18px">Company name<input name="name" value="${esc(suggested)}" maxlength="30" pattern="[A-Za-z][A-Za-z -]{0,29}" required></label><p class="company-create-error" role="alert" hidden></p><div class="logout-dialog-actions"><button class="btn" type="button" data-cancel>Cancel</button><button class="btn primary" type="submit">Add Company</button></div></form>`;
+      dialog.querySelector('[data-cancel]').onclick = () => dialog.close();
+      dialog.addEventListener('close', () => { dialog.remove(); addCompanyButton.focus(); }, {once:true});
+      dialog.querySelector('form').onsubmit = async event => {
+        event.preventDefault();
+        const submit = dialog.querySelector('[type="submit"]'); submit.disabled = true;
+        try {
+          const result = await API.post('/api/admin/cwts/companies', {name:dialog.querySelector('[name="name"]').value.trim()});
+          companies = result.companies; notifyCwtsCompanyChange(); dialog.close(); draw(); toast(result.message);
+        } catch(error) { const node=dialog.querySelector('.company-create-error'); node.hidden=false; node.textContent=error.message; submit.disabled=false; }
+      };
+      document.body.appendChild(dialog); dialog.showModal();
+    };
     const companyTones = ["blue", "green", "amber", "purple", "rose", "cyan"];
     const companyTotalsMarkup = `
       <div class="roster-section-title">
         <h3>Assigned per Company</h3>
         <small>${total} students total</small>
       </div>
-      <div class="roster-summary-grid six">
+      <div class="roster-summary-grid six company-count-grid">
         ${companies.map((company, index) => rosterSummary(
           company,
           shown[company].length,
           `of ${limit} assigned`,
-          companyTones[index]
+          companyTones[index % companyTones.length]
         )).join("")}
       </div>
     `;
@@ -1665,7 +1787,7 @@ async function renderCWTSCompanyRoster(c) {
     const assign = $("#assignCompanies");
     if (assign && canAssign) {
       assign.onclick = async () => {
-        if (!confirm(`Assign approved CWTS ${selectedLevel} students for SY ${selectedYear} alphabetically from Alpha through Foxtrot?`)) return;
+        if (!await confirmRosterAssignment('CWTS', selectedLevel, selectedYear)) return;
         assign.disabled = true;
         assign.textContent = "Assigning Companies...";
         try {
