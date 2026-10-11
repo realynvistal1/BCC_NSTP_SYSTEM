@@ -1,6 +1,8 @@
+const cwtsCompanies = require('../services/cwtsCompanyService');
 const path = require('path');
 const XLSX = require('xlsx');
 const db = require('../config/database');
+const { seedScheduleStudents } = require('../database/seed-students');
 const certificateService = require('../services/certificateService');
 const gradesService = require('../services/gradesService');
 const gradeAttemptService = require('../services/gradeAttemptService');
@@ -652,12 +654,26 @@ exports.schedules = async (req, res) => {
       });
     }
 
-    await db.execute(
-      'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
-      [programCode, normalizedLevel, normalizedYear, openDate, deadline]
-    );
-
-    return res.json({ message: `${programCode} enrollment schedule created successfully.` });
+    const connection = await db.getConnection();
+    let seededStudents = 0;
+    try {
+      await connection.beginTransaction();
+      const [created] = await connection.execute(
+        'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
+        [programCode, normalizedLevel, normalizedYear, openDate, deadline]
+      );
+      if (normalizedLevel === '1' && process.env.AUTO_SEED_LEVEL1_TEST_STUDENTS === 'true') {
+        seededStudents = await seedScheduleStudents(connection, programCode, created.insertId);
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+    return res.json({ message: programCode + ' enrollment schedule created successfully.' +
+      (seededStudents ? ' Added ' + seededStudents + ' pending test students.' : ''), seededStudents });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
@@ -882,6 +898,44 @@ exports.enrollmentDetail = async (req, res) => {
   }
 };
 
+async function specialCapacityWarnings(scheduleId, level) {
+  const [[counts]] = await db.execute(
+    `SELECT SUM(CASE WHEN COALESCE(s.has_medical_condition,0)=0 AND s.willing_to_be_medics=1 THEN 1 ELSE 0 END) medics,
+            SUM(CASE WHEN COALESCE(s.has_medical_condition,0)=0 AND COALESCE(s.willing_to_be_medics,0)=0 AND s.willing_to_be_military_police=1 THEN 1 ELSE 0 END) mp
+     FROM student_ms_records r JOIN students s ON s.id=r.student_id
+     WHERE r.program='ROTC' AND r.schedule_id=? AND r.ms_level=? AND r.status='approved'`,
+    [String(scheduleId), String(level)]
+  );
+  return [['Medics', Number(counts.medics || 0)], ['MP', Number(counts.mp || 0)]]
+    .filter(([, count]) => count > 50)
+    .map(([unit, count]) => unit + ' has ' + count + ' approved candidates for 50 slots. The first 50 alphabetically will get slots; ' + (count - 50) + ' extra student(s) will go to regular platoons during assignment.');
+}
+
+async function approveCwtsWithinCapacity(recordId, scheduleId) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    // Serialize approvals for this schedule so simultaneous requests cannot take the last slot twice.
+    const [[schedule]] = await connection.execute("SELECT id FROM enrollment_schedules WHERE id=? AND program='CWTS' FOR UPDATE", [scheduleId]);
+    if (!schedule) throw new Error('Enrollment schedule not found.');
+    const [[record]] = await connection.execute("SELECT status FROM student_ms_records WHERE id=? AND schedule_id=? AND program='CWTS' FOR UPDATE", [recordId, String(scheduleId)]);
+    if (!record || ['withdrawn', 'dropped'].includes(record.status)) throw new Error('Enrollment is not available for approval.');
+    const companyNames = await cwtsCompanies.list(connection);
+    const capacity = companyNames.length * 60;
+    const [[count]] = await connection.execute("SELECT COUNT(*) total FROM student_ms_records WHERE schedule_id=? AND program='CWTS' AND status='approved'", [String(scheduleId)]);
+    if (record.status !== 'approved' && Number(count.total) >= capacity) {
+      await connection.rollback();
+      return { approved: false, full: true, capacity };
+    }
+    await connection.execute("UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?", [recordId]);
+    await connection.commit();
+    return { approved: true, full: Number(count.total) + (record.status === 'approved' ? 0 : 1) >= capacity, capacity };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally { connection.release(); }
+}
+
 exports.updateEnrollment = async (req, res) => {
   try {
     const programCode = program(req);
@@ -928,17 +982,26 @@ exports.updateEnrollment = async (req, res) => {
       });
     }
 
+    let cwtsCapacityReached = false;
+    let cwtsCapacity = 360;
+    if (programCode === 'CWTS' && status === 'approved') {
+      const result = await approveCwtsWithinCapacity(recordId, record.schedule_id);
+      if (!result.approved) return res.status(409).json({ message: `CWTS enrollment is full. This schedule allows ${result.capacity} approved students (60 per company). This enrollment was not approved. Add a company for 60 more slots, or review and reject remaining enrollments with a reason.`, capacityReached: true });
+      cwtsCapacityReached = result.full;
+      cwtsCapacity = result.capacity;
+    } else {
     await db.execute(
       'UPDATE student_ms_records SET status=?,rejection_reason=? WHERE id=?',
       [status, status === 'rejected' ? (safeRejectionReason || 'Please contact your NSTP administrator.') : null, recordId]
     );
+    }
 
     if (status !== 'approved') {
       return res.json({ message: `Enrollment ${status}.` });
     }
 
     if (record.platoons_assigned_at) {
-      return res.json({ message: 'Enrollment approved. Existing assignment retained.' });
+      return res.json({ message: 'Enrollment approved. Existing assignment retained.' + (cwtsCapacityReached ? ' CWTS has reached its ' + cwtsCapacity + '-student limit. Further approvals are blocked.' : ''), capacityReached: cwtsCapacityReached });
     }
 
     if (programCode === 'CWTS') {
@@ -947,7 +1010,8 @@ exports.updateEnrollment = async (req, res) => {
         [record.student_id]
       );
       return res.json({
-        message: 'Enrollment approved. The student will appear in the Company List after enrollment closes and company assignment is completed.',
+        message: 'Enrollment approved. The student will appear in the Company List after enrollment closes and company assignment is completed.' + (cwtsCapacityReached ? ' CWTS has reached its ' + cwtsCapacity + '-student limit. Further approvals are blocked. Review or reject the remaining pending enrollments.' : ''),
+        capacityReached: cwtsCapacityReached,
       });
     }
 
@@ -956,8 +1020,10 @@ exports.updateEnrollment = async (req, res) => {
       [record.student_id]
     );
 
+    const capacityWarnings = await specialCapacityWarnings(record.schedule_id, record.ms_level);
     return res.json({
-      message: 'Enrollment approved. Cadet will appear in the roster after enrollment closes and platoon assignment is completed.',
+      message: 'Enrollment approved. Cadet will appear in the roster after enrollment closes and platoon assignment is completed.' + (capacityWarnings.length ? ' ' + capacityWarnings.join(' ') : ''),
+      capacityWarnings,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
@@ -973,6 +1039,10 @@ exports.bulkApprove = async (req, res) => {
       return res.status(400).json({ message: 'No pending enrollment records selected.' });
     }
 
+    const reviewedCycles = new Map();
+    let cwtsCapacityReached = false;
+    let capacitySkipped = 0;
+    let cwtsCapacity = 360;
     let approved = 0;
     let skipped = 0;
     let failed = 0;
@@ -1005,10 +1075,10 @@ exports.bulkApprove = async (req, res) => {
         }
 
         if (programCode === 'CWTS') {
-          await db.execute(
-            "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
-            [id]
-          );
+          const result = await approveCwtsWithinCapacity(id, record.schedule_id);
+          cwtsCapacityReached ||= result.full;
+          cwtsCapacity = result.capacity;
+          if (!result.approved) { skipped += 1; capacitySkipped += 1; continue; }
           if (!record.platoons_assigned_at) {
             await db.execute(
               'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
@@ -1029,6 +1099,7 @@ exports.bulkApprove = async (req, res) => {
           }
         }
 
+        if (programCode === 'ROTC' && !record.platoons_assigned_at) reviewedCycles.set(String(record.schedule_id), record.ms_level);
         approved += 1;
       } catch (error) {
         failed += 1;
@@ -1036,8 +1107,26 @@ exports.bulkApprove = async (req, res) => {
       }
     }
 
+    const capacityWarnings = [];
+    if (cwtsCapacityReached) capacityWarnings.push('CWTS has reached the ' + cwtsCapacity + '-student approval limit. ' + capacitySkipped + ' selected enrollment(s) could not be approved and remain pending. Review or reject remaining pending enrollments with a reason.');
+    for (const [scheduleId, level] of reviewedCycles) capacityWarnings.push(...await specialCapacityWarnings(scheduleId, level));
     return res.json({
-      message: `Bulk review complete: ${approved} approved, ${skipped} skipped, ${failed} failed.`,
+      capacityWarnings,
+      capacity: programCode === 'CWTS' ? cwtsCapacity : null,
+      capacitySkipped,
+      message: programCode === 'CWTS'
+        ? [
+          approved + ' student' + (approved === 1 ? '' : 's') + ' approved.',
+          capacitySkipped ? capacitySkipped + ' selected enrollment' + (capacitySkipped === 1 ? '' : 's') + ' remain pending because CWTS has reached its ' + cwtsCapacity + '-student capacity (' + (cwtsCapacity / 60) + ' companies with 60 slots each).' : '',
+          cwtsCapacityReached && !capacitySkipped ? 'CWTS has reached its ' + cwtsCapacity + '-student capacity. Further approvals require additional company slots.' : '',
+          capacitySkipped ? 'Add a company to increase capacity by 60, or review and reject the remaining pending enrollments with a reason.' : '',
+          skipped - capacitySkipped ? (skipped - capacitySkipped) + ' enrollment(s) were not eligible or already reviewed.' : '',
+          failed ? failed + ' enrollment(s) could not be processed. Please try again.' : '',
+        ].filter(Boolean).join(' ')
+        : approved + ' student' + (approved === 1 ? '' : 's') + ' approved.' +
+          (skipped ? ' ' + skipped + ' enrollment(s) were not eligible or already reviewed.' : '') +
+          (failed ? ' ' + failed + ' enrollment(s) could not be processed. Please try again.' : '') +
+          (capacityWarnings.length ? ' ' + capacityWarnings.join(' ') : ''),
       approved,
       skipped,
       failed,
@@ -1250,7 +1339,7 @@ exports.autoAssign = async (req, res) => {
     }
 
     if (programCode === 'CWTS') {
-      const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+      const companies = await cwtsCompanies.list(connection);
       const companyCapacity = 60;
       const totalCapacity = companies.length * companyCapacity;
       const [students] = await connection.execute(
@@ -1300,7 +1389,7 @@ exports.autoAssign = async (req, res) => {
       transactionOpen = false;
 
       return res.json({
-        message: `CWTS company assignment complete for CWTS ${msLevel} (${selectedSchedule.year}). ${students.length} student(s) assigned alphabetically from Alpha through Foxtrot.`,
+        message: `CWTS company assignment complete for CWTS ${msLevel} (${selectedSchedule.year}). ${students.length} student(s) assigned alphabetically across ${companies.length} companies.`,
         assigned: students.length,
       });
     }
@@ -1334,21 +1423,26 @@ exports.autoAssign = async (req, res) => {
       const middle = String(a.middle_name || '').localeCompare(String(b.middle_name || ''), undefined, { sensitivity: 'base' });
       return middle || Number(a.id) - Number(b.id);
     });
-    const specialAssignments = orderedRows
-      .map((student) => ({ student, unit: platoonService.specialUnitForStudent(student) }))
-      .filter((entry) => entry.unit);
-    const medicsTotal = specialAssignments.filter((entry) => entry.unit === 'Medics').length;
-    const militaryPoliceTotal = specialAssignments.filter((entry) => entry.unit === 'MP').length;
-
-    if (medicsTotal > 37 || militaryPoliceTotal > 37) {
-      return res.status(409).json({
-        message: `Special Platoon capacity exceeded. Medics: ${medicsTotal}/37; Military Police: ${militaryPoliceTotal}/37.`,
-      });
+    const specialAssignments = [];
+    const overflowIds = new Set();
+    const overflow = { Medics: 0, MP: 0 };
+    const unitCounts = { Medics: 0, MP: 0 };
+    for (const student of orderedRows) {
+      const unit = platoonService.specialUnitForStudent(student);
+      if (!unit) continue;
+      if (unit !== 'HQ' && unitCounts[unit] >= 50) {
+        overflowIds.add(Number(student.id));
+        overflow[unit] += 1;
+      } else {
+        specialAssignments.push({ student, unit });
+        if (unit !== 'HQ') unitCounts[unit] += 1;
+      }
     }
 
     const specialIds = new Set(specialAssignments.map((entry) => Number(entry.student.id)));
     const advanceCadets = orderedRows.filter((student) => (
       !specialIds.has(Number(student.id))
+      && !overflowIds.has(Number(student.id))
       && Number(student.willing_to_take_advance_course || 0) === 1
     ));
     const advanceIds = new Set(advanceCadets.map((student) => Number(student.id)));
@@ -1440,11 +1534,13 @@ exports.autoAssign = async (req, res) => {
     transactionOpen = false;
 
     return res.json({
-      message: `ROTC assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${rows.length} cadet(s) assigned across battalions, Advance Course, and Special Platoon.`,
+      message: `ROTC assignment complete for MS ${msLevel}${selectedSchedule?.year ? ` (${selectedSchedule.year})` : requestedYear ? ` (${requestedYear})` : ''}. ${rows.length} cadet(s) assigned across battalions, Advance Course, and Special Platoon.${overflow.Medics + overflow.MP ? ` Medics: ${unitCounts.Medics} assigned to Medics; ${overflow.Medics} extra student(s) assigned to regular platoons. MP: ${unitCounts.MP} assigned to MP; ${overflow.MP} extra student(s) assigned to regular platoons. Each unit accepts up to 50 students, selected alphabetically by last name, then first and middle name. Extra students were placed in regular platoons by sex and available slots. Their enrollments remain approved.` : ''}`,
       assigned: rows.length,
       battalionAssigned: battalionOneAssigned + battalionTwoAssigned,
       advanceAssigned: advanceCadets.length,
       specialAssigned: specialAssignments.length,
+      overflow,
+      unitAssigned: unitCounts,
     });
   } catch (error) {
     console.error(error);
@@ -2683,7 +2779,7 @@ exports.attendanceSummary = async (req, res) => {
       rosterGroup,
     ];
 
-    const [students] = await db.execute(
+    let [students] = await db.execute(
       `SELECT
          s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,s.sex,
          s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
@@ -2717,10 +2813,17 @@ exports.attendanceSummary = async (req, res) => {
       params
     );
 
+    if (programCode === 'CWTS' && group.startsWith('company-')) {
+      const companyNames = await cwtsCompanies.list();
+      const company = companyNames.find(name => name.toLowerCase() === group.slice(8));
+      if (!company) return res.status(400).json({message:'This CWTS company is no longer available. Select another company.'});
+      students = students.filter(student => String(student.company || '').toLowerCase() === company.toLowerCase());
+    }
     const graceOver = attendanceService.getEffectiveStatus(session) === 'closed';
     const normalized = await decorateAttendanceUpdates(students.map((student) => ({
       ...student,
       attendance_status: student.attendance_status || (graceOver ? 'absent' : 'unmarked'),
+      session_close_date: session.close_date,
     })));
 
     const counts = { present: 0, late: 0, absent: 0, unmarked: 0 };
@@ -2782,4 +2885,41 @@ exports.verifyAttendance = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
+};
+
+exports.cwtsCompanyList = async (req,res) => {
+  try { res.json(await cwtsCompanies.list()); } catch(error) { res.status(500).json({message:'Unable to load companies.'}); }
+};
+exports.addCwtsCompany = async (req,res) => {
+  const name = String(req.body.name || '').trim();
+  if (!/^[A-Za-z][A-Za-z -]{0,29}$/.test(name)) return res.status(400).json({message:'Enter a company name of up to 30 letters.'});
+  try {
+    await db.execute('INSERT INTO cwts_companies(name) VALUES(?)',[name]);
+    const companies = await cwtsCompanies.list();
+    res.status(201).json({message:name+' Company added with 60 slots. Total CWTS capacity is now '+companies.length*60+' students.',companies});
+  } catch(error) { res.status(error.code==='ER_DUP_ENTRY'?409:500).json({message:error.code==='ER_DUP_ENTRY'?'This company already exists.':'Unable to add company.'}); }
+};
+
+exports.deleteCwtsCompany = async (req,res) => {
+  const name = String(req.params.name || '').trim();
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute("SELECT id FROM enrollment_schedules WHERE program='CWTS' ORDER BY id FOR UPDATE");
+    const names = await cwtsCompanies.list(connection);
+    if (!names.includes(name)) { await connection.rollback(); return res.status(404).json({message:'Company not found.'}); }
+    if (names.length <= 1) { await connection.rollback(); return res.status(409).json({message:'Keep at least one CWTS company.'}); }
+    const [[usage]] = await connection.execute(
+      `SELECT (SELECT COUNT(*) FROM students WHERE nstp_component='CWTS' AND company=?) +
+       (SELECT COUNT(*) FROM student_ms_records WHERE program='CWTS' AND assignment_company=?) +
+       (SELECT COUNT(*) FROM cwts_instructor_assignments WHERE company=?) total`,[name,name,name]);
+    if (Number(usage.total)) { await connection.rollback(); return res.status(409).json({message:'This company has student or instructor assignment records. Clear its assignments before deleting it.'}); }
+    const capacity = (names.length - 1) * 60;
+    const [overCapacity] = await connection.execute("SELECT schedule_id FROM student_ms_records WHERE program='CWTS' AND status='approved' GROUP BY schedule_id HAVING COUNT(*) > ?",[capacity]);
+    if (overCapacity.length) { await connection.rollback(); return res.status(409).json({message:'This company is needed for the approved students. Deleting it would reduce capacity below the approved enrollment count.'}); }
+    await connection.execute('DELETE FROM cwts_companies WHERE name=?',[name]);
+    await connection.commit();
+    res.json({message:name+' Company deleted. Total capacity is now '+capacity+' students.',companies:names.filter(n=>n!==name)});
+  } catch(error) { await connection.rollback(); res.status(500).json({message:'Unable to delete company.'}); }
+  finally { connection.release(); }
 };
