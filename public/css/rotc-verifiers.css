@@ -359,3 +359,25 @@ body[data-page="rotc-verifiers"] #content > .verifier-history-panel { border-top
   .verifier-pagination { flex-wrap: wrap; }
   .verifier-pagination > div { flex-wrap: wrap; }
 }
+
+.verifier-picker-search { position:relative; margin-bottom:10px; }
+.verifier-picker-search > span { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b; pointer-events:none; }
+.verifier-picker-search svg { width:18px; height:18px; }
+#verifierAssignmentForm .verifier-picker-search input { width:100%; padding-left:39px; background:#fff; border:1px solid #cbd5e1; border-radius:10px; min-height:42px; }
+#verifierAssignmentForm .verifier-picker-label { font-size:12px; color:#64748b; margin-bottom:6px; }
+#verifierAssignmentForm select.verifier-candidate-list { height:190px; min-height:190px; padding:6px; background:#fff; background-image:none; border:1px solid #dbe4ef; border-radius:10px; color:#17324d; font-size:13px; overflow-y:auto; }
+.verifier-candidate-list option { padding:9px 11px; border-radius:6px; }
+.verifier-candidate-list option:checked { background:#e7f0ff; color:#1d4ed8; font-weight:600; }
+.verifier-candidate-list option:disabled { color:#94a3b8; }
+#verifierCandidateCount { display:block; margin-top:8px; color:#64748b; font-size:12px; }
+
+.attendance-status-filters { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+.attendance-status-filter { --filter-color:#315d9c; --filter-bg:#edf4ff; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid #dbe4ee; border-radius:9px; background:#fff; color:var(--filter-color); font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+.attendance-status-filter.present { --filter-color:#087657; --filter-bg:#e7f7ef; }
+.attendance-status-filter.late { --filter-color:#97600c; --filter-bg:#fff4dc; }
+.attendance-status-filter.absent { --filter-color:#b62e55; --filter-bg:#fff0f4; }
+.attendance-status-filter.unmarked { --filter-color:#7955a5; --filter-bg:#f1ebfa; }
+.attendance-status-filter span { padding:2px 6px; border-radius:6px; background:var(--filter-bg); font-size:11px; }
+.attendance-status-filter:hover { background:var(--filter-bg); }
+.attendance-status-filter[aria-pressed="true"] { background:var(--filter-bg); border-color:var(--filter-color); box-shadow:inset 0 0 0 1px var(--filter-color); }
+.attendance-status-filter:focus-visible { outline:3px solid #91b7df; outline-offset:3px; }
