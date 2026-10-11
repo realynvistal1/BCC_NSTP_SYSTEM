@@ -27,7 +27,8 @@
     "verify:serial-format": "node scripts/verify-serial-number-format.js",
     "verify:schedule-progression": "node scripts/verify-schedule-progression.js",
     "verify:roster-cycles": "node scripts/verify-roster-cycle-assignments.js",
-    "verify:dos": "node scripts/verify-dos-hardening.js"
+    "verify:dos": "node scripts/verify-dos-hardening.js",
+    "db:migrate:cwts-companies": "node database/migrate-cwts-companies.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
