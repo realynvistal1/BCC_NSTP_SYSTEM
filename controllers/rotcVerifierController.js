@@ -51,7 +51,7 @@ exports.management = endpoint(async (req,res) => {
   const [assignments]=await db.execute(`SELECT a.*,s.student_id,s.first_name,s.last_name,
     (${eligible}) eligible FROM rotc_verifier_assignments a JOIN students s ON s.id=a.verifier_id
     ORDER BY a.school_year DESC,a.battalion,a.company,a.platoon`);
-  const [candidates]=await db.execute(`SELECT DISTINCT s.id,s.student_id,s.first_name,s.last_name,s.sex
+  const [candidates]=await db.execute(`SELECT DISTINCT s.id,s.student_id,s.first_name,s.last_name,s.sex,s.course,s.year_level
     FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
     WHERE s.role='student' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1
       AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1
