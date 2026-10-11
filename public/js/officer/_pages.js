@@ -251,13 +251,13 @@ async function officerPageBase(page,c){
     return
   }
   if(page==='cwts'){
-    const rows=await API.get('/api/officer/roster/cwts'),companies=['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot'],cap=companies.length*60,state={level:'',schoolYear:''};
+    const rows=await API.get('/api/officer/roster/cwts'),companies=await API.get('/api/officer/cwts-companies'),cap=companies.length*60,state={level:'',schoolYear:''};
     const render=()=>{
       const filtered=filterRosterRows(rows,state);
       const grouped={};
       companies.forEach(x=>grouped[x]=[]);
       filtered.forEach(x=>{if(grouped[x.company])grouped[x.company].push(x)});
-      c.innerHTML=`<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div>${officerRosterFilterBar(rows,'CWTS',state)}<div class="roster-summary-grid four">${rosterSummary('Total Assigned',filtered.length,'students','slate')}${rosterSummary('Total Capacity',cap,'6 companies','slate')}${rosterSummary('Available Slots',cap-filtered.length,'remaining','green')}${rosterSummary('Companies',companies.length,'60 slots each','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${co}`,co,grouped[co],60,['blue','green','amber','purple','rose','cyan'][i])).join('')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div>${officerRosterFilterBar(rows,'CWTS',state)}<div class="roster-summary-grid four">${rosterSummary('Total Assigned',filtered.length,'students','slate')}${rosterSummary('Total Capacity',cap,companies.length+' companies','slate')}${rosterSummary('Available Slots',cap-filtered.length,'remaining','green')}${rosterSummary('Companies',companies.length,'60 slots each','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${co}`,co,grouped[co],60,['blue','green','amber','purple','rose','cyan'][i])).join('')}</div>`;
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
@@ -288,7 +288,7 @@ async function officerPageBase(page,c){
       const medicsRows=filtered.filter(x=>x.special_unit==='Medics');
       const hqRows=filtered.filter(x=>x.special_unit==='HQ');
       const mpRows=filtered.filter(x=>x.special_unit==='MP');
-      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Members',filtered.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,Infinity,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,Infinity,'green')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Members',filtered.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,50,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,50,'green')}</div>`;
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
@@ -333,7 +333,8 @@ async function officerPage(page, c) {
   ]);
 
   const battalionCap = 4 * 4 * 37;
-  const cwtsCap = 6 * 60;
+  const cwtsCompanyNames = await API.get('/api/officer/cwts-companies');
+  const cwtsCap = cwtsCompanyNames.length * 60;
   const rotcTotal = Number(d.rotc || 0);
   const cwtsTotal = Number(d.cwts || 0);
   const allStudents = rotcTotal + cwtsTotal;
@@ -373,7 +374,7 @@ async function officerPage(page, c) {
         ${directorCard('ROTC - Battalion 2', 'Female cadettes battalion', b2.length, `/ ${battalionCap} slots`, '/officer/rotc/battalion-2', 'users', 'purple', '4 companies - 4 platoons each', b2Pct)}
         ${directorCard('Advance Course', 'Cadets for advance ROTC', adv.length, 'cadets', '/officer/rotc/advance-course', 'platoon', 'orange', `Male: ${advMale} - Female: ${advFemale}`)}
         ${directorCard('Special Platoon', 'Medics, HQ, and MP roster', special.length, specialLabel, '/officer/rotc/special-platoon', 'platoon', 'green', 'Special ROTC unit assignments')}
-        ${directorCard('CWTS', 'Company roster overview', cwts.length, `/ ${cwtsCap} slots`, '/officer/cwts', 'users', 'green', '6 companies - 60 slots each', cwtsPct)}
+        ${directorCard('CWTS', 'Company roster overview', cwts.length, `/ ${cwtsCap} slots`, '/officer/cwts', 'users', 'green', cwtsCompanyNames.length + ' companies - 60 slots each', cwtsPct)}
         ${dashCard('Create Attendance', 'Set Location & Time', 'Record attendance for ROTC or CWTS.', '/officer/create-attendance', 'location', 'indigo')}
         ${dashCard('View Attendance', 'Review Sessions', 'Review sessions and student records.', '/officer/view-attendance', 'attendance', 'green')}
         ${dashCard('View Student Records', 'ROTC & CWTS', 'View complete student records.', '/officer/view-records', 'records', 'indigo')}
