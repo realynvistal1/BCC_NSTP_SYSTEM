@@ -1,10 +1,10 @@
+const cwtsCompanies=require('../services/cwtsCompanyService');
 const db=require('../config/database');
 const service=require('../services/cwtsInstructorService');
 const offenses=require('../services/offenseService');
 const attendance=require('../services/attendanceService');
 const {decorateAttendanceUpdates}=require('../services/attendanceUpdateService');
 const {parsePositiveInt,isReasonableEmail}=require('../services/requestValidationService');
-const companies=['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot'];
 const endpoint=handler=>async(req,res)=>{try{await handler(req,res);}catch(error){
   if(!error.status)console.error('CWTS instructor:',error.code||error.message);
   res.status(error.status||500).json({message:error.status?error.message:'Unable to complete this request. Please refresh and try again.'});
@@ -22,7 +22,7 @@ exports.management=endpoint(async(req,res)=>{
     ses.mi_number,ses.mi_type,ses.ms_level,ses.school_year,ses.open_date
     FROM cwts_instructor_assignments a JOIN cwts_instructors i ON i.id=a.instructor_id
     JOIN attendance_sessions ses ON ses.id=a.attendance_session_id ORDER BY a.updated_at DESC,a.id DESC`);
-  res.json({instructors,sessions,assignments,companies,email_ready:service.invitationReady()});
+  res.json({instructors,sessions,assignments,companies:await cwtsCompanies.list(),email_ready:service.invitationReady()});
 });
 exports.create=endpoint(async(req,res)=>{
   const first=String(req.body.first_name||'').trim(),last=String(req.body.last_name||'').trim(),email=String(req.body.email||'').trim().toLowerCase();
@@ -50,7 +50,7 @@ exports.setStatus=endpoint(async(req,res)=>{
 });
 exports.assign=endpoint(async(req,res)=>{
   const instructorId=parsePositiveInt(req.body.instructor_id),sessionId=parsePositiveInt(req.body.session_id),company=String(req.body.company||'');
-  if(!instructorId||!sessionId||!companies.includes(company))fail(400,'Select an instructor, company and CWTS session.');
+  if(!instructorId||!sessionId||!(await cwtsCompanies.list()).includes(company))fail(400,'Select an instructor, company and CWTS session.');
   const connection=await db.getConnection();
   try{
     await connection.beginTransaction();
