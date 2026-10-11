@@ -32,7 +32,7 @@ function makeAttendanceSummary(_programKey) {
   let allStudents = [];
   let currentSummary = null;
   let summaryRequest = 0;
-  const cwtsCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+  let cwtsCompanyOptions = [];
   const rotcCompanyOptions = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
 
   const cycleKeyFor = (session) => `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}`;
@@ -50,6 +50,12 @@ function makeAttendanceSummary(_programKey) {
   const fmtTime = (value) => value
     ? new Date(value).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     : '—';
+
+  const studentAttendanceTime = (student) => {
+    const status = String(student.attendance_status || student.status || '').toLowerCase();
+    if (status === 'absent') return student.session_close_date ? fmtTime(student.session_close_date) : '';
+    return student.attendance_time ? fmtTime(student.attendance_time) : '';
+  };
 
   const fmtDate = (value) => value
     ? new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -543,7 +549,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
         <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         <td>
@@ -676,7 +682,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—'}</td>
         <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         ${aggregateMode
@@ -743,7 +749,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(student.course || '—')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : '—'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
       </tr>
     `);
@@ -771,7 +777,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(student.course || 'â€”')}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(assignment(student))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : 'â€”'}</td>
         <td>${badge(student.attendance_status)}${attendanceUpdateDetails(student)}</td>
         ${aggregateMode
@@ -833,7 +839,7 @@ function makeAttendanceSummary(_programKey) {
         </td>
         <td>${esc(compactAttendanceCourse(student.course))}<small>${esc(student.year_level || '')}</small></td>
         <td>${esc(compactAttendanceAssignment(assignment(student)))}</td>
-        <td>${student.attendance_time ? fmtTime(student.attendance_time) : 'â€”'}</td>
+        <td>${studentAttendanceTime(student)}</td>
         <td>${badge(student.attendance_status)}</td><td class="summary-update-cell">${compactAttendanceUpdate(student)}</td>
       </tr>
     `);
@@ -943,7 +949,7 @@ function makeAttendanceSummary(_programKey) {
         student.course || '',
         student.year_level || '',
         assignment(student),
-        student.attendance_time ? fmtTime(student.attendance_time) : '',
+        studentAttendanceTime(student),
         student.distance_meters != null ? `${Math.round(Number(student.distance_meters))} m` : '',
         student.attendance_status === 'unmarked' ? 'Not Yet Marked' : String(student.attendance_status || '').toUpperCase(),
       ]),
@@ -1108,7 +1114,7 @@ function makeAttendanceSummary(_programKey) {
       const course = truncate(student.course || '', 12).padEnd(12);
       const year = truncate(student.year_level || '', 6).padEnd(6);
       const assign = truncate(assignment(student), 29).padEnd(29);
-      const time = (student.attendance_time ? fmtTime(student.attendance_time) : '—').padEnd(10);
+      const time = (studentAttendanceTime(student)).padEnd(10);
       const distance = (student.distance_meters != null ? `${Math.round(Number(student.distance_meters))}m` : '—').padEnd(10);
       const status = student.attendance_status === 'unmarked' ? 'NOT YET' : String(student.attendance_status || '').toUpperCase();
 
@@ -1286,7 +1292,7 @@ function makeAttendanceSummary(_programKey) {
           truncate(`${student.last_name || ''}, ${student.first_name || ''}`, 28).padEnd(28),
           truncate(student.student_id || '', 12).padEnd(12),
           truncate(statusText(student), 13).padEnd(13),
-          truncate(student.attendance_time ? fmtTime(student.attendance_time) : '-', 10),
+          truncate(studentAttendanceTime(student), 10),
         ].join(' ');
         lines.push({ x: 40, y, size: 8, text: row });
         y -= 10;
@@ -1356,7 +1362,7 @@ function makeAttendanceSummary(_programKey) {
           <td>${esc(`${student.last_name || ''}, ${student.first_name || ''} ${student.middle_name || ''}`.trim())}</td>
           <td>${esc(student.student_id || '')}</td>
           <td>${esc(statusText(student))}</td>
-          <td>${esc(student.attendance_time ? fmtTime(student.attendance_time) : '—')}</td>
+          <td>${esc(studentAttendanceTime(student))}</td>
         </tr>
       `;
     }
@@ -1694,6 +1700,18 @@ function makeAttendanceSummary(_programKey) {
       auth
     );
 
+    if (isCwts) {
+      cwtsCompanyOptions = await API.get('/api/admin/cwts/companies');
+      const updateCompanyGroups = () => {
+        const select = $('#summaryGroup'), selected = select.value;
+        select.innerHTML = '<option value="overall">Overall Summary</option>' + cwtsCompanyOptions.map(name => '<option value="company-' + esc(name.toLowerCase()) + '">' + esc(name) + ' Company</option>').join('');
+        select.value = Array.from(select.options).some(option=>option.value===selected) ? selected : 'overall';
+      };
+      updateCompanyGroups();
+      watchCwtsCompanyChanges('/api/admin/cwts/companies',cwtsCompanyOptions,async names=>{
+        cwtsCompanyOptions=names;updateCompanyGroups();await loadSelected();syncSummaryRosterFilters();renderRows();
+      });
+    }
     const data = await API.get(`/api/admin/${apiProgram}/attendance-summary`);
     sessions = data.sessions || [];
 
