@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `photo` LONGTEXT DEFAULT NULL,
   `cor_file` LONGTEXT DEFAULT NULL,
   -- CWTS Assignment
-  `company` ENUM('Alpha','Bravo','Charlie','Delta','Echo','Foxtrot') DEFAULT NULL,
+  `company` VARCHAR(30) DEFAULT NULL,
   -- ROTC Assignment
   `battalion` TINYINT UNSIGNED DEFAULT NULL,
   `rotc_company` ENUM('Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel') DEFAULT NULL,
@@ -368,3 +368,6 @@ CREATE TABLE IF NOT EXISTS grade_change_log (
     FOREIGN KEY (enrollment_record_id) REFERENCES student_ms_records(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS cwts_companies (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,name VARCHAR(30) NOT NULL UNIQUE,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
+INSERT IGNORE INTO cwts_companies(name) VALUES ('Alpha'),('Bravo'),('Charlie'),('Delta'),('Echo'),('Foxtrot');
