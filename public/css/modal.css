@@ -399,3 +399,85 @@ button.document-thumb {
 }
 
 
+
+/* Roster assignment confirmation */
+.roster-confirm-dialog { width:min(460px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:0; margin:auto; border:1px solid #dbe6f2; border-radius:24px; background:#fff; color:#17324d; box-shadow:0 28px 90px #10243f40; overflow:auto; }
+.roster-confirm-dialog::backdrop { background:rgba(15,30,50,.55); backdrop-filter:blur(5px); }
+.roster-confirm-content { padding:28px; }
+.roster-confirm-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.roster-confirm-icon { display:grid; place-items:center; width:56px; height:56px; border-radius:18px; background:#eaf3ff; color:#2563eb; }
+.roster-confirm-icon svg { width:28px; height:28px; }
+.roster-confirm-eyebrow { font-size:10px; font-weight:800; letter-spacing:.14em; color:#2563eb; }
+.roster-confirm-content h2 { margin:8px 0 10px; font-size:26px; }
+.roster-confirm-content > p { color:#64748b; font-size:14px; line-height:1.65; margin:0 0 20px; }
+.roster-confirm-cycle { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px; background:#f1f6fc; border:1px solid #dbe6f2; border-radius:14px; font-size:14px; }
+.roster-confirm-cycle span { color:#2563eb; font-weight:800; }
+.roster-confirm-note { padding:14px 16px; margin-top:16px; background:#fffbeb; border:1px solid #fde68a; border-radius:14px; color:#92400e; font-size:12px; }
+.roster-confirm-note p { margin:6px 0 0; line-height:1.6; }
+.roster-confirm-actions { display:flex; gap:10px; margin-top:24px; }
+.roster-confirm-actions .btn { flex:1; justify-content:center; border-radius:12px; padding:12px; }
+@media(max-width:480px) { .roster-confirm-content { padding:20px; } }
+
+/* Shared logout confirmation for every portal */
+.logout-dialog { box-sizing:border-box; width:min(400px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); margin:auto; padding:0; border:1px solid #e2e8f0; border-radius:20px; background:#fff; color:#17324d; box-shadow:0 24px 80px rgba(15,23,42,.24); overflow:auto; }
+.logout-dialog::backdrop { background:rgba(15,23,42,.5); backdrop-filter:blur(4px); }
+.logout-dialog-content { padding:24px; }
+.logout-dialog-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.logout-dialog-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; color:#2563eb; background:#eff6ff; }
+.logout-dialog-icon svg { width:24px; height:24px; }
+.logout-dialog-close { width:30px; height:30px; border:0; border-radius:8px; background:#f1f5f9; color:#64748b; font-size:23px; cursor:pointer; }
+.logout-dialog-content h2 { margin:0 0 9px; font-size:21px; line-height:1.35; color:#17324d; }
+.logout-dialog-content p { margin:0; color:#64748b; font-size:14px; line-height:1.6; }
+.logout-dialog-actions { display:flex; gap:10px; margin-top:24px; }
+.logout-dialog-actions .btn { flex:1; justify-content:center; padding:11px 14px; border-radius:10px; font-size:14px; }
+.logout-dialog-cancel { background:#f8fafc; border:1px solid #e2e8f0; color:#475569; }
+.logout-dialog button:focus-visible { outline:3px solid #93c5fd; outline-offset:3px; }
+
+/* Refined logout card */
+.logout-dialog { width:min(380px,calc(100vw - 32px)); border-radius:24px; border:1px solid #e5edf6; box-shadow:0 24px 70px rgba(13,35,62,.28); }
+.logout-dialog::backdrop { background:rgba(13,28,48,.48); backdrop-filter:blur(5px); }
+.logout-dialog-content { position:relative; padding:30px 28px 26px; text-align:center; background:linear-gradient(180deg,#f4f8ff 0,#fff 45%); }
+.logout-dialog-top { display:flex; justify-content:center; margin-bottom:17px; }
+.logout-dialog-icon { width:62px; height:62px; border-radius:20px; background:#e5efff; color:#2563eb; border:1px solid #d8e6ff; box-shadow:0 5px 14px rgba(37,99,235,.08); }
+.logout-dialog-icon svg { width:29px; height:29px; }
+.logout-dialog-close { position:absolute; top:14px; right:14px; background:transparent; color:#8493a7; }
+.logout-dialog-close:hover { background:#e8eef7; color:#334155; }
+.logout-dialog-eyebrow { display:block; color:#6b7f98; font-size:10px; font-weight:800; letter-spacing:.14em; margin-bottom:8px; }
+.logout-dialog-content h2 { font-size:23px; font-weight:750; letter-spacing:-.4px; margin:0 0 10px; }
+.logout-dialog-content p { max-width:290px; margin:0 auto; font-size:14px; line-height:1.65; color:#65768c; }
+.logout-dialog-actions { margin-top:25px; gap:10px; }
+.logout-dialog-actions .btn { min-height:43px; font-size:13px; font-weight:700; border-radius:12px; }
+.logout-dialog-actions .logout-dialog-cancel { background:#fff; border:1px solid #dce5ef; box-shadow:none; }
+.logout-dialog-actions .logout-dialog-cancel:hover { background:#f3f6fa; }
+.logout-dialog-actions .btn.primary { color:#fff; background:#2563eb; border:1px solid #2563eb; box-shadow:0 4px 10px rgba(37,99,235,.18); }
+.logout-dialog-actions .btn.primary:hover { background:#1d4ed8; border-color:#1d4ed8; }
+@media(max-width:420px) { .logout-dialog-content { padding:28px 22px 22px; } }
+
+.enrollment-result-dialog { width:min(420px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:0; margin:auto; overflow:auto; border:1px solid #dde6f0; border-radius:18px; background:#fff; color:#17324d; box-shadow:0 24px 80px #0f172a40; }
+.enrollment-result-dialog::backdrop { background:#0f172a80; backdrop-filter:blur(4px); }
+.enrollment-result-content { position:relative; padding:28px; text-align:center; }
+.enrollment-result-close { position:absolute; top:12px; right:12px; width:30px; height:30px; background:#f1f5f9; border:0; border-radius:8px; color:#64748b; font-size:22px; cursor:pointer; }
+.enrollment-result-icon { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 14px; border-radius:14px; background:#dcfce7; color:#15803d; font-size:26px; font-weight:800; }
+.enrollment-result-icon.warning { background:#fff4d6; color:#b45309; }
+.enrollment-result-eyebrow { font-size:10px; color:#71839a; letter-spacing:.12em; font-weight:800; }
+.enrollment-result-content h2 { margin:7px 0 18px; font-size:21px; }
+.enrollment-result-totals { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.enrollment-result-totals > div { padding:13px 8px; background:#f7f9fc; border:1px solid #e2e8f0; border-radius:10px; }
+.enrollment-result-totals strong { display:block; font-size:25px; color:#1d4ed8; }
+.enrollment-result-totals span { display:block; margin-top:4px; font-size:11px; color:#64748b; }
+.enrollment-result-content > p { margin:0 0 22px; font-size:13px; color:#526477; line-height:1.7; text-align:left; }
+.enrollment-result-done { width:100%; justify-content:center; min-height:40px; border-radius:10px; }
+
+.enrollment-result-dialog { width:min(410px,calc(100vw - 32px)); border-radius:18px; }
+.enrollment-result-content { padding:26px; }
+.enrollment-result-content h2 { font-size:20px; margin:0 0 20px; }
+.enrollment-result-icon { width:44px; height:44px; margin-bottom:14px; }
+.enrollment-result-totals > div { background:#eef7f2; border-color:#d9eade; }
+.enrollment-result-totals strong { color:#15803d; }
+.enrollment-result-totals .pending { background:#fffbeb; border-color:#f4e4b6; }
+.enrollment-result-totals .pending strong { color:#b45309; }
+.enrollment-result-totals span { font-size:12px; }
+.enrollment-result-content .enrollment-result-explanation { font-size:14px; line-height:1.65; margin:16px 0; }
+.enrollment-result-next { text-align:left; padding:14px; border-radius:10px; background:#f5f7fa; margin-bottom:20px; color:#475569; }
+.enrollment-result-next > strong { font-size:12px; color:#17324d; }
+.enrollment-result-next p { font-size:13px; line-height:1.6; margin:5px 0 0; }
