@@ -997,3 +997,14 @@ exports.recordDetail = async (req, res) => {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
 };
+
+exports.certificate = async (req, res) => {
+  const programCode = String(req.query.program || '').toUpperCase();
+  if (!['ROTC', 'CWTS'].includes(programCode)) {
+    return res.status(400).json({ message: 'Valid program is required.' });
+  }
+  // Use the same issued-serial and certificate-settings checks as the program administrators.
+  return require('./sharedAdminController').certificate({
+    ...req, params: { ...req.params, program: programCode },
+  }, res);
+};
