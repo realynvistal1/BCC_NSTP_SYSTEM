@@ -14,6 +14,7 @@ router.patch('/cwts-instructor-assignments/:id/revoke',cwtsInstructors.revoke);
 router.get('/cwts-verification-log',cwtsInstructors.audit);
 
 router.get("/dashboard", controller.dashboard);
+router.get("/cwts-companies", require("../controllers/sharedAdminController").cwtsCompanyList);
 router.get('/rotc-verifiers', verifiers.management);
 router.post('/rotc-verifiers', verifiers.assign);
 router.patch('/rotc-verifiers/:id/revoke', verifiers.revoke);
@@ -23,6 +24,7 @@ router.get("/records", controller.records);
 router.get("/records/filter-options", controller.recordFilterOptions);
 router.get("/records/download/profiles", controller.downloadRecordProfiles);
 router.get("/records/:studentId", controller.recordDetail);
+router.get("/certificates/:studentId", controller.certificate);
 router.get("/roster/:group", controller.roster);
 
 router.get("/attendance/progress", controller.attendanceProgress);
