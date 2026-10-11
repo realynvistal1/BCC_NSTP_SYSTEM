@@ -195,16 +195,25 @@ function startAttendanceRefresh(user, refresh) {
 }
 
 function preparePortalShell(role) {
-  if(role==='officer'&&!document.querySelector('a[href="/officer/cwts-instructors"]')){
-    const nav=document.querySelector('.sidebar .nav');
-    if(nav){const link=document.createElement('a');link.className='nav-link';link.href='/officer/cwts-instructors';link.textContent='CWTS Instructors';nav.appendChild(link);}
-  }
-  if (role === 'officer' && !document.querySelector('a[href="/officer/rotc-verifiers"]')) {
-    const nav=document.querySelector('.sidebar .nav');
-    if (nav) {
-      const link=document.createElement('a');link.className='nav-link';
-      link.href='/officer/rotc-verifiers';link.textContent='ROTC Verifiers';nav.appendChild(link);
-    }
+  if (role === 'officer') {
+    const nav = document.querySelector('.sidebar .nav');
+    const items = [
+      ['/officer/dashboard', 'Dashboard'],
+      ['/officer/rotc/battalion-1', 'ROTC Battalion 1'],
+      ['/officer/rotc/battalion-2', 'ROTC Battalion 2'],
+      ['/officer/rotc/advance-course', 'Advance Course'],
+      ['/officer/rotc/special-platoon', 'Special Platoon'],
+      ['/officer/cwts', 'CWTS'],
+      ['/officer/create-attendance', 'Create Attendance'],
+      ['/officer/view-attendance', 'View Attendance'],
+      ['/officer/cwts-instructors', 'CWTS Attendance Verifiers'],
+      ['/officer/rotc-verifiers', 'ROTC Attendance Verifiers'],
+      ['/officer/view-records', 'View Student Records'],
+      ['/officer/settings', 'Settings'],
+    ];
+    if (nav) nav.innerHTML = items.map(([href, label]) =>
+      '<a class="nav-link" href="' + href + '">' + esc(label) + '</a>'
+    ).join('');
   }
   decorateSidebar(role);
 
@@ -633,8 +642,34 @@ async function fileAsDataUrl(file) {
   });
 }
 
+function confirmLogout() {
+  if (document.getElementById('logoutDialog')) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const previousFocus = document.activeElement;
+    const dialog = document.createElement('dialog');
+    dialog.id = 'logoutDialog';
+    dialog.className = 'logout-dialog';
+    dialog.setAttribute('aria-labelledby', 'logoutDialogTitle');
+    dialog.setAttribute('aria-describedby', 'logoutDialogDescription');
+    dialog.innerHTML = `<form method="dialog" class="logout-dialog-content"><div class="logout-dialog-top"><span class="logout-dialog-icon" aria-hidden="true">${icon('logout')}</span><button type="submit" value="cancel" class="logout-dialog-close" aria-label="Close">&times;</button></div><span class="logout-dialog-eyebrow">BCC NSTP PORTAL</span><h2 id="logoutDialogTitle">Ready to log out?</h2><p id="logoutDialogDescription">Your session will end and you will return to the login page.</p><div class="logout-dialog-actions"><button type="submit" value="cancel" class="btn logout-dialog-cancel" autofocus>Cancel</button><button type="submit" value="logout" class="btn primary">Log Out</button></div></form>`;
+    dialog.addEventListener('close', () => {
+      const confirmed = dialog.returnValue === 'logout';
+      dialog.remove();
+      if (previousFocus?.isConnected) previousFocus.focus();
+      resolve(confirmed);
+    }, { once: true });
+    dialog.addEventListener('click', event => {
+      if (event.target !== dialog) return;
+      const bounds = dialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close('cancel');
+    });
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  });
+}
+
 async function logout() {
-  if (!confirm('Are you sure you want to log out?')) return;
+  if (!await confirmLogout()) return;
 
   const path = location.pathname;
   const destination = path.startsWith('/admin/rotc')
