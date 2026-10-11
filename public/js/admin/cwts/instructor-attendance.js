@@ -1,4 +1,4 @@
-let cwtsInstructorGeneration=0,cwtsSelectedAssignment='',cwtsStudentSearch='',cwtsStudentPage=1;
+let cwtsInstructorGeneration=0,cwtsSelectedAssignment='',cwtsStudentSearch='',cwtsStudentPage=1,cwtsStudentStatus='all';
 function cwtsAssignmentCard(a,selected,multiple){
   return `<article class="attendance-assignment-card cwts-duty-card ${selected?'selected':''}"><div class="cwts-duty-title"><div><span class="attendance-eyebrow">Assigned company</span><h3>Company ${esc(a.company)}</h3></div>${multiple?`<button type="button" class="btn small" data-cwts-assignment="${esc(a.id)}" aria-pressed="${selected}">${selected?'Viewing attendance':'View attendance'}</button>`:''}</div><dl class="attendance-assignment-details"><div class="cwts-duty-session"><dt>Attendance session</dt><dd>CS ${esc(a.mi_number)} <span class="cwts-duty-type">${esc(String(a.mi_type).toUpperCase())}</span></dd></div><div class="cwts-duty-cycle"><dt>Level &amp; school year</dt><dd>CWTS ${esc(a.ms_level)} &middot; ${esc(a.school_year)}</dd></div><div class="cwts-duty-date"><dt>Session date</dt><dd>${esc(attendanceUpdateDate(a.open_date))}</dd></div></dl></article>`;
 }
@@ -10,7 +10,7 @@ function cwtsInstructorView(assignments,selected,rows){
     ${selected?`<section class="panel cwts-blue"><div class="verifier-section-heading">${heading('attendance','Company roster','Attendance records','Check physical attendance. Enter a reason for each correction.')}</div>
     <div class="verifier-summary"><span class="verifier-stat total"><span class="verifier-stat-icon" aria-hidden="true">${icon('users')}</span><span><strong>${rows.length}</strong><small>Students</small></span></span>${['present','late','absent','unmarked'].map(status=>`<span class="verifier-stat ${status}"><span class="verifier-stat-dot" aria-hidden="true"></span><span><strong>${rows.filter(r=>r.status===status).length}</strong><small>${status[0].toUpperCase()+status.slice(1)}</small></span></span>`).join('')}</div>
     <details class="cwts-attendance-guide"><summary>How to check attendance</summary><ul><li>Marked Present and physically attending: leave the record unchanged.</li><li>Marked Present but physically absent: change to Absent and give a reason. A false-claim offense is recorded.</li><li>Physically attending but unable to submit: record attendance and give a reason.</li></ul></details>
-    <div class="cwts-toolbar"><label for="cwtsStudentSearch">Find a student<input id="cwtsStudentSearch" type="search" placeholder="Name or student ID" value="${esc(cwtsStudentSearch)}"></label></div><div id="cwtsStudentRows"></div><div class="cwts-pagination" id="cwtsStudentPages"></div></section>`:''}</div>`;
+    <div class="cwts-toolbar"><label for="cwtsStudentSearch">Find a student<input id="cwtsStudentSearch" type="search" placeholder="Name or student ID" value="${esc(cwtsStudentSearch)}"></label></div>${attendanceStatusFilters(rows,cwtsStudentStatus)}<div id="cwtsStudentRows"></div><div class="cwts-pagination" id="cwtsStudentPages"></div></section>`:''}</div>`;
 }
 async function loadCwtsAssignedAttendance(){
   const generation=++cwtsInstructorGeneration;
@@ -24,18 +24,21 @@ async function loadCwtsAssignedAttendance(){
   const reload=()=>loadCwtsAssignedAttendance().catch(error=>{if(error.status===401)location.assign('/admin/cwts/login');else toast(error.message,true);});
   $('#cwtsRefreshAssigned').onclick=reload;
   if(!selected)return;
-  document.querySelectorAll('[data-cwts-assignment]').forEach(button=>button.onclick=()=>{cwtsSelectedAssignment=button.dataset.cwtsAssignment;cwtsStudentSearch='';cwtsStudentPage=1;reload();});
+  document.querySelectorAll('[data-cwts-assignment]').forEach(button=>button.onclick=()=>{cwtsSelectedAssignment=button.dataset.cwtsAssignment;cwtsStudentSearch='';cwtsStudentStatus='all';cwtsStudentPage=1;reload();});
   function renderRows(){
-    const query=cwtsStudentSearch.trim().toLowerCase();const filtered=rows.filter(r=>`${r.first_name} ${r.last_name} ${r.student_id}`.toLowerCase().includes(query));
+    const query=cwtsStudentSearch.trim().toLowerCase();const filtered=rows.filter(r=>`${r.first_name} ${r.last_name} ${r.student_id}`.toLowerCase().includes(query)&&(cwtsStudentStatus==='all'||r.status===cwtsStudentStatus));
+    document.querySelectorAll('[data-attendance-status]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.attendanceStatus===cwtsStudentStatus)));
     const pages=Math.max(1,Math.ceil(filtered.length/10));cwtsStudentPage=Math.min(cwtsStudentPage,pages);
     const visible=filtered.slice((cwtsStudentPage-1)*10,cwtsStudentPage*10);
     $('#cwtsStudentRows').innerHTML=table(['Student','Attendance','Last update','Action'],visible.map(r=>`<tr><td><strong>${esc(r.first_name+' '+r.last_name)}</strong><small>${esc(r.student_id)}</small></td><td>${badge(r.status)}</td><td>${attendanceUpdateDetails(r)||'—'}</td><td><button class="btn small primary" data-student="${r.student_internal_id}">Update attendance</button></td></tr>`));
+    if(!filtered.length)$('#cwtsStudentRows').innerHTML='<div class="notice" role="status">No students match your search and attendance filter.</div>';
     $('#cwtsStudentPages').innerHTML=`<span>${filtered.length} students</span><div><button class="btn small" data-prev ${cwtsStudentPage===1?'disabled':''}>Previous</button><span>Page ${cwtsStudentPage} of ${pages}</span><button class="btn small" data-next ${cwtsStudentPage===pages?'disabled':''}>Next</button></div>`;
     $('#cwtsStudentPages [data-prev]').onclick=()=>{cwtsStudentPage--;renderRows();};$('#cwtsStudentPages [data-next]').onclick=()=>{cwtsStudentPage++;renderRows();};
     $('#cwtsStudentRows').querySelectorAll('[data-student]').forEach(button=>button.onclick=()=>{
       const row=rows.find(r=>String(r.student_internal_id)===button.dataset.student);openCwtsCorrection(row,selected,reload,button);
     });
   }
+  document.querySelectorAll('[data-attendance-status]').forEach(button=>button.onclick=()=>{cwtsStudentStatus=button.dataset.attendanceStatus;cwtsStudentPage=1;renderRows();});
   $('#cwtsStudentSearch').oninput=e=>{cwtsStudentSearch=e.target.value;cwtsStudentPage=1;renderRows();};renderRows();
 }
 function openCwtsCorrection(row,assignment,reload,trigger){
