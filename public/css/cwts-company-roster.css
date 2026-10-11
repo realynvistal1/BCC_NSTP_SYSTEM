@@ -1,0 +1,41 @@
+
+/* CWTS company roster: consistent layout across filters, totals and lists. */
+#content.cwts-company-roster .page-intro-banner { padding:22px 24px; border-radius:16px; margin-bottom:18px; gap:20px; }
+#content.cwts-company-roster .page-intro-banner h2 { font-size:24px; margin:4px 0 7px; }
+#content.cwts-company-roster .page-intro-kicker { font-size:11px; font-weight:800; letter-spacing:.1em; }
+#content.cwts-company-roster .page-intro-banner p { font-size:13px; line-height:1.6; }
+#content.cwts-company-roster .filter-row { display:flex; flex-wrap:wrap; gap:8px; margin:0; }
+#content.cwts-company-roster .filter-row select { min-height:38px; font-size:12px; border-radius:9px; padding:8px 12px; }
+#content.cwts-company-roster .cwts-company-toolbar { padding:16px 20px; margin:0 0 16px; border-radius:14px; min-height:0; }
+#content.cwts-company-roster .cwts-company-toolbar .section-heading { display:flex; flex-direction:row; align-items:center; justify-content:space-between; margin:0; gap:16px; }
+#content.cwts-company-roster .cwts-company-toolbar h2 { margin:0 0 4px; font-size:14px; }
+#content.cwts-company-roster .cwts-company-toolbar p { margin:0; font-size:12px; }
+#content.cwts-company-roster .cwts-company-toolbar .btn { width:auto; margin:0; background:#16846b; border-color:#16846b; font-size:12px; padding:9px 14px; min-height:36px; border-radius:9px; box-shadow:none; }
+#content.cwts-company-roster .roster-summary-grid.four { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 22px; }
+#content.cwts-company-roster .roster-stat { padding:16px; border-radius:13px; border:1px solid #dceae5; background:#fff; min-width:0; box-shadow:none; }
+#content.cwts-company-roster .roster-stat-label { font-size:10px; letter-spacing:.05em; }
+#content.cwts-company-roster .roster-stat-value { font-size:24px; margin:6px 0 4px; }
+#content.cwts-company-roster .roster-stat small { font-size:11px; line-height:1.5; }
+#content.cwts-company-roster .roster-section-title { margin:20px 0 12px; display:flex; align-items:center; gap:8px; }
+#content.cwts-company-roster .roster-section-title h3 { font-size:14px; margin:0; }
+#content.cwts-company-roster .company-count-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:10px; margin-bottom:20px; }
+#content.cwts-company-roster .company-count-grid .roster-stat { padding:13px; }
+#content.cwts-company-roster .company-count-grid .roster-stat-value { font-size:22px; }
+#content.cwts-company-roster .assignment-box { padding:18px; border-radius:14px; margin:0 0 20px; }
+#content.cwts-company-roster .assignment-copy p { font-size:13px; line-height:1.6; }
+#content.cwts-company-roster .assign-wide { margin-top:14px; min-height:40px; border-radius:10px; font-size:13px; }
+#content.cwts-company-roster .roster-stack { gap:10px; }
+@media(max-width:850px) { #content.cwts-company-roster .roster-summary-grid.four { grid-template-columns:repeat(2,minmax(0,1fr)); } #content.cwts-company-roster .page-intro-banner { flex-wrap:wrap; } }
+@media(max-width:480px) { #content.cwts-company-roster .page-intro-banner { padding:18px; } #content.cwts-company-roster .cwts-company-toolbar .section-heading { flex-wrap:wrap; } #content.cwts-company-roster .company-count-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+#content.cwts-company-roster .cwts-company-menu-card { position:relative; overflow:visible; }
+#content.cwts-company-roster .cwts-company-menu-card .roster-expand-head { padding-right:62px; }
+.cwts-company-actions { position:absolute; top:13px; right:14px; z-index:2; }
+.cwts-company-actions > button { width:30px; height:30px; background:#fff; border:1px solid #dce7e3; border-radius:8px; color:#526f65; }
+.cwts-company-menu { position:absolute; right:0; top:36px; min-width:150px; padding:5px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 24px #163c2920; }
+.cwts-company-menu[hidden] { display:none; }
+.cwts-company-menu button { width:100%; padding:10px; border:0; border-radius:6px; background:#fff; color:#b91c1c; text-align:left; font-size:12px; cursor:pointer; }
+.cwts-company-menu button:hover { background:#fef2f2; }
+
+.cwts-company-menu button:disabled { color:#94a3b8; cursor:not-allowed; background:#f8fafc; }
+.cwts-company-menu small { display:block; padding:5px 10px 8px; font-size:11px; line-height:1.5; color:#718096; max-width:180px; }
