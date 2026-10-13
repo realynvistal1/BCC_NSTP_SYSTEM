@@ -72,8 +72,20 @@ function decorateSidebar(role) {
 
   const mobileMenuButton = document.getElementById('mobileMenuButton');
   if (mobileMenuButton && mobileMenuButton.dataset.enhanced !== 'true') {
-    mobileMenuButton.innerHTML = `${icon('dashboard')}<span>Menu</span>`;
+    const studentHeader = document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance';
+    const menuIcon = studentHeader
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
+      : icon('dashboard');
+    mobileMenuButton.innerHTML = `${menuIcon}<span>Menu</span>`;
     mobileMenuButton.dataset.enhanced = 'true';
+  }
+  if (document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') {
+    const mobileBrand = document.querySelector('.top-mobile > strong');
+    if (mobileBrand && mobileBrand.dataset.enhanced !== 'true') {
+      mobileBrand.classList.add('student-mobile-brand');
+      mobileBrand.innerHTML = `<img src="/assets/images/bcclogo-removebg-preview.png" alt=""><span>BCC NSTP<small>${document.body.dataset.page === 'cwts-instructor-attendance' ? 'CWTS Instructor' : 'Student Portal'}</small></span>`;
+      mobileBrand.dataset.enhanced = 'true';
+    }
   }
 }
 
@@ -91,6 +103,59 @@ function roleEmblem(role) {
   return '/assets/images/bcclogo-removebg-preview.png';
 }
 
+function setStudentMobileMenu(open, restoreFocus = false) {
+  const sidebar = document.getElementById('sidebar');
+  const button = document.getElementById('mobileMenuButton');
+  const mobile = window.matchMedia('(max-width: 800px)').matches;
+  const expanded = Boolean(open && mobile);
+  sidebar?.classList.toggle('open', expanded);
+  if (sidebar) sidebar.inert = mobile && !expanded;
+  button?.setAttribute('aria-expanded', String(expanded));
+  document.body.classList.toggle('student-menu-open', expanded);
+  const backdrop = document.getElementById('studentMenuBackdrop');
+  if (backdrop) backdrop.hidden = !expanded;
+  if (expanded) sidebar?.querySelector('button, a[href]')?.focus();
+  else if (restoreFocus && mobile) button?.focus();
+}
+
+function setupStudentMobileMenu() {
+  const sidebar = document.getElementById('sidebar');
+  const button = document.getElementById('mobileMenuButton');
+  if (!sidebar || !button || button.dataset.mobileBound) return;
+  button.dataset.mobileBound = 'true';
+  button.setAttribute('aria-controls', 'sidebar');
+  button.setAttribute('aria-label', 'Open student navigation');
+  const backdrop = document.createElement('button');
+  backdrop.id = 'studentMenuBackdrop';
+  backdrop.className = 'student-menu-backdrop';
+  backdrop.type = 'button';
+  backdrop.tabIndex = -1;
+  backdrop.setAttribute('aria-label', 'Close student navigation');
+  backdrop.hidden = true;
+  document.body.appendChild(backdrop);
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'student-menu-close';
+  close.setAttribute('aria-label', 'Close student navigation');
+  close.textContent = '\u00d7';
+  sidebar.prepend(close);
+  button.addEventListener('click', () => setStudentMobileMenu(!sidebar.classList.contains('open')));
+  backdrop.addEventListener('click', () => setStudentMobileMenu(false, true));
+  close.addEventListener('click', () => setStudentMobileMenu(false, true));
+  document.addEventListener('keydown', event => {
+    if (!sidebar.classList.contains('open')) return;
+    if (event.key === 'Escape') setStudentMobileMenu(false, true);
+    if (event.key !== 'Tab') return;
+    const focusable = [...sidebar.querySelectorAll('a[href], button:not(:disabled)')]
+      .filter(element => element.getClientRects().length > 0);
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
+  window.matchMedia('(max-width: 800px)').addEventListener('change', () => setStudentMobileMenu(false));
+  setStudentMobileMenu(false);
+}
+
 function shell(role, title, subtitle, auth) {
   if (!document.querySelector('link[data-attendance-design]')) {
     const style = document.createElement('link');
@@ -101,7 +166,8 @@ function shell(role, title, subtitle, auth) {
   document.getElementById('pageSubtitle').textContent = subtitle;
   preparePortalShell(role);
 
-  document.getElementById('mobileMenuButton')?.addEventListener('click', () => {
+  if (role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') setupStudentMobileMenu();
+  else document.getElementById('mobileMenuButton')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('open');
   });
 
@@ -326,7 +392,13 @@ async function guard(expected) {
 function table(headers, rows) {
   const headerHtml = headers.map((header) => `<th>${header}</th>`).join('');
   const bodyHtml = rows.length
-    ? rows.join('')
+    ? rows.map(row => {
+      let column = 0;
+      return row.replace(/<td\b([^>]*)>/g, (cell, attributes) => {
+        const label = headers[column++];
+        return /\bdata-label=/.test(attributes) ? cell : `<td data-label="${esc(label || '')}"${attributes}>`;
+      });
+    }).join('')
     : `<tr><td class="empty" colspan="${headers.length}"><div class="empty-icon">${icon('records')}</div>No records found.</td></tr>`;
 
   return `
@@ -817,7 +889,8 @@ document.addEventListener('click', (event) => {
   const link = event.target.closest('.nav-link');
   if (!link) return;
 
-  document.getElementById('sidebar')?.classList.remove('open');
+  if (document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') setStudentMobileMenu(false);
+  else document.getElementById('sidebar')?.classList.remove('open');
 
   const href = link.getAttribute('href');
   if (!href) return;
