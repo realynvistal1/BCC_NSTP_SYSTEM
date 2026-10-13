@@ -1,0 +1,326 @@
+/* Student portal: keep wide records inside their own scroll area. */
+.student-record-list { display: grid; gap: 12px; }
+.student-record-disclosure { min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: #f8fbff; }
+.student-record-disclosure > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px; cursor: pointer; list-style: none; }
+.student-record-disclosure > summary::-webkit-details-marker { display: none; }
+.student-record-disclosure > summary::marker { content: ''; }
+.student-record-title { flex: 1 1 140px; min-width: 0; }
+.student-record-title strong { display: block; font-size: 15px; overflow-wrap: anywhere; }
+.student-record-title small { display: block; color: var(--muted); margin-top: 5px; font-size: 11px; line-height: 1.5; }
+.student-record-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid #d5e6f5; border-radius: 10px; background: #fff; color: #214d79; font-size: 12px; font-weight: 700; }
+.student-record-disclosure .when-open { display: none; }
+.student-record-disclosure[open] .when-closed { display: none; }
+.student-record-disclosure[open] .when-open { display: inline; }
+.student-record-disclosure > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 14px; }
+.student-record-details { margin: 0; padding: 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.student-record-details > div { min-width: 0; }
+.student-record-details > div.full, .student-record-details > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.student-record-details dt { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+.student-record-details dd { font-size: 13px; margin: 0; overflow-wrap: anywhere; }
+@media(max-width:600px) { .student-record-toggle { flex-basis: 100%; } }
+body[data-role="student"] .main,
+body[data-role="student"] #content,
+body[data-role="student"] .panel,
+body[data-role="student"] .dashboard-card,
+body[data-role="student"] .field {
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  body[data-role="student"] { overflow-y: auto; }
+  body[data-role="student"] .top-mobile {
+    padding: 8px 12px;
+    min-height: 56px;
+    justify-content: space-between;
+    box-shadow: 0 2px 10px rgba(33, 77, 121, .05);
+    gap: 12px;
+  }
+  body[data-role="student"] .top-mobile .btn {
+    padding: 8px 12px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: #eef6ff;
+    color: #214d79;
+    border-color: #d5e6f5;
+  }
+  body[data-role="student"] .student-mobile-brand { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: #214d79; }
+  body[data-role="student"] .student-mobile-brand img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+  body[data-role="student"] .student-mobile-brand small { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: #64748b; }
+  body[data-role="student"] .main {
+    margin-left: 0;
+    width: 100%;
+    padding: 16px 12px 28px;
+  }
+  body[data-role="student"] .sidebar {
+    width: min(280px, 85vw);
+    max-height: 100dvh;
+    overscroll-behavior: contain;
+  }
+  body[data-role="student"] .intro {
+    padding: 16px;
+    border-radius: 18px;
+  }
+  body[data-role="student"] .intro-brand-row {
+    align-items: flex-start;
+  }
+  body[data-role="student"] .intro-brand-row img {
+    flex: 0 0 39px;
+  }
+  body[data-role="student"] :is(h1, h2, h3, p, .dash-value, .serial-code, .profile-row strong) {
+    overflow-wrap: anywhere;
+  }
+  body[data-role="student"] .intro h1 {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+  body[data-role="student"] .intro-kicker {
+    font-size: 9px;
+    letter-spacing: .1em;
+  }
+  body[data-role="student"] .intro p {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  body[data-role="student"] .panel {
+    padding: 16px 12px;
+  }
+  body[data-role="student"] :is(.panel-head, .content-head, .table-tools) {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  body[data-role="student"] :is(.panel-head, .content-head) > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  body[data-role="student"] :is(.table-wrap, .table-scroll, .roster-table-wrap) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  body[data-role="student"] .field :is(input, select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+  body[data-role="student"] .btn {
+    min-height: 44px;
+    white-space: normal;
+    text-align: center;
+  }
+  body[data-role="student"] .app-dialog {
+    padding: 12px;
+  }
+  body[data-role="student"] :is(.app-dialog-card, dialog) {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+  body[data-role="student"] .footer-note {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  body[data-role="student"].student-menu-open {
+    overflow: hidden;
+  }
+  .student-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    border: 0;
+    background: rgba(15, 23, 42, .45);
+  }
+  .student-menu-close {
+    display: block;
+    margin: 0 0 8px auto;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, .4);
+    border-radius: 12px;
+    color: #fff;
+    background: rgba(255, 255, 255, .12);
+    font-size: 26px;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-role="student"] .student-grade-panel .table-wrap { overflow: visible; border: 0; }
+  body[data-role="student"] .student-grade-table { display: block; min-width: 0; }
+  body[data-role="student"] .student-grade-table thead { display: none; }
+  body[data-role="student"] .student-grade-table tbody { display: grid; gap: 12px; }
+  body[data-role="student"] .student-grade-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #f8fbff;
+  }
+  body[data-role="student"] .student-grade-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+  }
+  body[data-role="student"] .student-grade-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  body[data-role="student"] .student-grade-table :is(td:nth-child(1), td:nth-child(2), td:last-child) { grid-column: 1 / -1; }
+  body[data-role="student"] .student-grade-table td:first-child strong { font-size: 16px; }
+  body[data-role="student"] .attendance-state-card {
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+  body[data-role="student"] .attendance-state-card h3 { margin: 0 0 8px; font-size: 16px; }
+  body[data-role="student"] .attendance-state-card p { margin: 0; font-size: 13px; line-height: 1.6; }
+  body[data-role="student"] .attendance-history-section { padding: 16px 12px; margin-top: 12px; }
+  body[data-role="student"] .attendance-history-section .section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  body[data-role="student"] .attendance-history-section .section-heading > div { flex: 1 1 160px; min-width: 0; }
+  body[data-role="student"] .attendance-history-section .section-heading h2 { font-size: 18px; }
+  body[data-role="student"] #studentAttendanceHistory .table-wrap { border: 0; overflow: visible; }
+  body[data-role="student"] #studentAttendanceHistory table { display: block; min-width: 0; }
+  body[data-role="student"] #studentAttendanceHistory thead { display: none; }
+  body[data-role="student"] #studentAttendanceHistory tbody { display: grid; gap: 12px; }
+  body[data-role="student"] #studentAttendanceHistory tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #f8fbff;
+    padding: 12px;
+    gap: 12px;
+  }
+  body[data-role="student"] #studentAttendanceHistory td {
+    display: block;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+  }
+  body[data-role="student"] #studentAttendanceHistory td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    font-weight: 700;
+  }
+  body[data-role="student"] #studentAttendanceHistory td:last-child { grid-column: 1 / -1; }
+  body[data-role="student"] :is(.portal-dashboard-grid, .summary-grid, .grid, .form-grid, .re-enroll-section-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-role="student"] .student-dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+  }
+  body[data-role="student"] .student-dashboard-grid .dashboard-card {
+    min-height: 168px;
+    padding: 14px 12px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-top {
+    margin: 0 0 4px;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-icon {
+    width: 40px;
+    height: 40px;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-arrow {
+    display: none;
+  }
+  body[data-role="student"] .student-dashboard-grid :is(.dash-label, .dash-value, .dash-desc) {
+    margin: 0;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-label {
+    font-size: 10px;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-desc {
+    margin-top: auto;
+    padding-top: 4px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  body[data-role="student"] .student-dashboard-grid .dash-value {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  body[data-role="student"] .summary-tile {
+    padding: 14px;
+    border-radius: 14px;
+    min-width: 0;
+  }
+  body[data-role="student"] .summary-number {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+  body[data-role="student"] .summary-helper {
+    line-height: 1.5;
+  }
+  body[data-role="student"] .re-enroll-section {
+    padding: 16px 12px;
+    border-radius: 14px;
+  }
+  body[data-role="student"] .re-enroll-section-head h3 {
+    font-size: 16px;
+  }
+  body[data-role="student"] .panel-head h2 {
+    font-size: 18px;
+  }
+  body[data-role="student"] .dash-value {
+    font-size: 22px;
+  }
+  body[data-role="student"] .profile-hero {
+    flex-wrap: wrap;
+  }
+  body[data-role="student"] .actions > .btn {
+    flex: 1 1 140px;
+  }
+  body[data-role="student"] .app-dialog-actions {
+    flex-wrap: wrap;
+  }
+  body[data-role="student"] .app-dialog-actions > .btn {
+    flex: 1 1 120px;
+  }
+  /* Enrollment details have only two columns; don't force a 760px table. */
+  body[data-role="student"][data-page="enrollment-status"] table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+  body[data-role="student"][data-page="enrollment-status"] :is(th, td) {
+    overflow-wrap: anywhere;
+    padding: 12px 10px;
+  }
+  body[data-role="student"][data-page="enrollment-status"] :is(th, td):first-child {
+    width: 38%;
+  }
+}
+
+@media (min-width: 360px) and (max-width: 600px) {
+  body[data-role="student"] .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+@media (min-width: 801px) {
+  .student-menu-close, .student-menu-backdrop { display: none; }
+}
