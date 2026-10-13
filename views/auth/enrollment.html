@@ -8,9 +8,13 @@
   </title>
   <link href="/assets/css/global.css" rel="stylesheet"/>
   <link href="/assets/css/enrollment.css" rel="stylesheet"/>
+  <link href="/assets/css/student-auth-mobile.css?v=20261013" rel="stylesheet"/>
  </head>
  <body class="enrollment-page">
   <main class="enrollment-shell">
+   <a class="enrollment-back-login" href="/student/login">
+    <span aria-hidden="true">&larr;</span> Back to Login
+   </a>
    <header class="enrollment-header">
     <div class="enrollment-header-content">
      <div class="enrollment-brand-block">
@@ -98,7 +102,7 @@
        </path>
       </svg>
      </div>
-     <h2 id="stepHeading">
+     <h2 id="stepHeading" tabindex="-1">
       Academic Information
      </h2>
     </div>
@@ -589,7 +593,7 @@
         <label>
          Email
         </label>
-        <input name="email" placeholder="you@example.com" required="" type="email"/>
+        <input name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required="" type="email"/>
        </div>
        <div class="enrollment-two-col">
         <div class="enrollment-field">
@@ -597,7 +601,7 @@
           Password
          </label>
          <div class="enrollment-password-field">
-          <input minlength="6" name="password" placeholder="Min. 6 characters" required="" type="password"/>
+          <input minlength="8" autocomplete="new-password" name="password" placeholder="Min. 8 characters" required="" type="password"/>
           <button aria-label="Show password" class="enrollment-password-toggle" data-password-target="password" type="button">
            <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
           </button>
@@ -608,7 +612,7 @@
           Confirm Password
          </label>
          <div class="enrollment-password-field">
-          <input minlength="6" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
+          <input minlength="8" autocomplete="new-password" name="confirm_password" placeholder="Re-enter password" required="" type="password"/>
           <button aria-label="Show confirm password" class="enrollment-password-toggle" data-password-target="confirm_password" type="button">
            <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
           </button>
@@ -651,7 +655,7 @@
       </div>
      </section>
     </form>
-    <div class="enrollment-form-error hidden" id="enrollMsg">
+    <div class="enrollment-form-error hidden" id="enrollMsg" role="alert">
     </div>
     <div class="enrollment-actions">
      <button class="enrollment-nav-btn enrollment-back-btn hidden" id="backBtn" type="button">
@@ -674,7 +678,7 @@
   </main>
   <script src="/assets/js/shared/api.js"></script>
   <script src="/assets/js/shared/layout.js"></script>
-  <script src="/assets/js/auth/enrollment.js">
+  <script src="/assets/js/auth/enrollment.js?v=20261013-mobile">
   </script>
  </body>
 </html>
