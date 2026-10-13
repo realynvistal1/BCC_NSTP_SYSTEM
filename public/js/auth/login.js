@@ -1,5 +1,6 @@
 async function initLogin() {
   const form = $('#loginForm');
+  let submitting = false;
   let checkboxId = null;
   let checkboxRequired = false;
   const checkboxReady = (async () => {
@@ -27,6 +28,8 @@ async function initLogin() {
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (submitting) return;
+    submitting = true;
 
     const button = form.querySelector('button[type="submit"],button');
     const previousText = button?.textContent;
@@ -58,6 +61,7 @@ async function initLogin() {
         : error.message;
       $('#msg').className = 'notice error';
     } finally {
+      submitting = false;
       if (button) {
         button.disabled = false;
         button.textContent = previousText;
