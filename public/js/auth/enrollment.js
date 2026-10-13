@@ -1,5 +1,6 @@
 ﻿async function initEnrollment(){
   let step=0;
+  let busy=false;
   const labels=['Academic Information','Personal Information','Physical & Health','Account Setup'];
   const sections=$$('.enroll-step'),progress=$$('.enrollment-progress-item'),f=$('#enrollmentForm'),msg=$('#enrollMsg');
   const MAX_FILE=5*1024*1024;
@@ -32,7 +33,7 @@
           'error-callback':()=>showError('Unable to load security check. Please refresh and try again.'),
         });
       })();
-      checkboxReady.catch(error=>showError(error.message));
+      checkboxReady.catch(error=>{checkboxReady=null;showError(error.message)});
     }
     return checkboxReady;
   }
@@ -91,6 +92,10 @@
   function show(){
     sections.forEach((x,i)=>x.classList.toggle('hidden',i!==step));
     progress.forEach((x,i)=>{x.classList.toggle('active',i===step);x.classList.toggle('complete',i<step);const c=x.querySelector('.enrollment-progress-circle');if(c)c.innerHTML=i<step?'<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:3"><path d="M5 13l4 4L19 7"/></svg>':String(i+1)});
+    progress.forEach((item,index)=>{
+      if(index===step)item.setAttribute('aria-current','step');
+      else item.removeAttribute('aria-current');
+    });
     $('#backBtn').classList.toggle('hidden',step===0);
     $('#nextBtn').textContent=step===sections.length-1?'Submit Enrollment':'Next';
     $('#stepHeading').textContent=labels[step];
@@ -99,9 +104,23 @@
     headerStepBadge.innerHTML=`<span>Current step</span><strong>${step+1} of ${sections.length}</strong>`;
     headerStepBadge.style.setProperty('--header-progress',`${((step+1)/sections.length)*100}%`);
     clearError();
-    if(step===sections.length-1)prepareCheckbox();
+    if(step===sections.length-1){
+      let review=$('#enrollmentReview');
+      if(!review){
+        review=document.createElement('aside');
+        review.id='enrollmentReview';
+        review.className='enrollment-review';
+        sections[step].prepend(review);
+      }
+      const reviewRows=[['Program',`${program()} 1`],['Course',course()],['Student ID',f.student_id.value],['Name',[f.first_name.value,f.middle_name.value,f.last_name.value].filter(Boolean).join(' ')]];
+      review.innerHTML=`<h3>Review before submitting</h3><p>Check your details below. Use Back to make changes, then complete your account and upload the required documents. Your request will be reviewed by the administrator.</p><dl>${reviewRows.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`;
+      prepareCheckbox();
+    }
     updateConditionalFields();
-    window.scrollTo({top:0,behavior:'smooth'});
+    if(step>0){
+      $('#stepHeading').focus({preventScroll:true});
+      $('#stepHeading').scrollIntoView({behavior:'smooth',block:'start'});
+    }else window.scrollTo({top:0,behavior:'smooth'});
   }
   function customValidate(){
     if(step===0){
@@ -124,7 +143,7 @@
       if(program()==='ROTC'&&!f.xray_file_input.files[0])return 'X-ray is required.';
     }
     if(step===3){
-      if(f.password.value.length<6)return 'Password must be at least 6 characters.';
+      if(f.password.value.length<8)return 'Password must be at least 8 characters.';
       if(f.password.value!==f.confirm_password.value)return 'Passwords do not match.';
       if(!f.photo_file.files[0])return '2x2 photo is required.';
       if(!f.cor_file_input.files[0])return 'Certificate of Registration (COR) is required.';
@@ -216,6 +235,7 @@
   f.photo_file.addEventListener('change',()=>{try{const file=checkFile(f.photo_file,$('#photoLabel'));if(file){const img=$('#photoPreview');img.src=URL.createObjectURL(file);img.classList.remove('hidden')}clearError()}catch(e){showError(e.message)}});
   f.querySelectorAll('input[name="willingness_option"]').forEach(r=>r.addEventListener('change',()=>{}));
   $('#backBtn').onclick=()=>{
+    if(busy)return;
     if(step>0){
       step--;
       show()
@@ -223,19 +243,22 @@
   }
   ;
   $('#nextBtn').onclick=async()=>{
+    if(busy)return;
     const err=customValidate();
     if(err){
       showError(err);
       return
     }
     clearError();
+    busy=true;
+    $('#nextBtn').disabled=true;
+    $('#backBtn').disabled=true;
+    f.setAttribute('aria-busy','true');
     try{
       if(step===0){
         $('#nextBtn').disabled=true;
         $('#nextBtn').textContent='Loading...';
         const check=await API.get(`/api/student/enrollment-schedule?program=${encodeURIComponent(program())}&ms_level=1`);
-        $('#nextBtn').disabled=false;
-        $('#nextBtn').textContent='Next';
         if(!check.open){
           $('#scheduleHint').textContent=check.message||`No enrollment schedule is currently open for ${program()}.`;
           $('#scheduleHint').classList.remove('hidden');
@@ -259,7 +282,7 @@
       data.willing_to_be_military_police=w==='military_police'?1:0;
       data.has_medical_condition=Number(f.has_medical_condition.value||0);
       data.medical_certificate=await fileAsDataUrl(f.medical_certificate_file.files[0]);
-      data.xray_file=await fileAsDataUrl(f.xray_file_input.files[0]);
+      data.xray_file=program()==='ROTC'?await fileAsDataUrl(f.xray_file_input.files[0]):null;
       data.photo=await fileAsDataUrl(f.photo_file.files[0]);
       data.cor_file=await fileAsDataUrl(f.cor_file_input.files[0]);
       await prepareCheckbox();
@@ -275,7 +298,8 @@
       btn.disabled=true;
       btn.textContent='Submitting...';
       await API.post('/api/student/register',data);
-      $('#enrollWrap').innerHTML=`<div class="enrollment-success-page"><div class="enrollment-success-card"><div class="enrollment-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Successfully Enrolled!</h2><p>Login to check your Enrollment status</p><a href="/student/login">Login</a></div></div>`;
+      $('#enrollWrap').innerHTML=`<div class="enrollment-success-page"><div class="enrollment-success-card" role="status" tabindex="-1"><div class="enrollment-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Enrollment submitted</h2><p>Your request is pending administrator review. Sign in to check your enrollment status.</p><a href="/student/login">Go to Student Login</a></div></div>`;
+      $('.enrollment-success-card')?.focus();
       $('.enrollment-signin-note')?.classList.add('hidden');
     }  catch(e){
       if(step===sections.length-1&&checkboxId!==null)window.grecaptcha.reset(checkboxId);
@@ -286,9 +310,21 @@
       }
       showError(e.message);
       toast(e.message,true)
+    } finally {
+      busy=false;
+      f.setAttribute('aria-busy','false');
+      const next=$('#nextBtn'),back=$('#backBtn');
+      if(next){next.disabled=false;next.textContent=step===sections.length-1?'Submit Enrollment':'Next';}
+      if(back)back.disabled=false;
     }
   }
   ;
+  f.addEventListener('submit',event=>{event.preventDefault();$('#nextBtn')?.click();});
+  f.addEventListener('keydown',event=>{
+    if(event.key==='Enter'&&!event.isComposing&&event.target.matches('input:not([type="file"]):not([type="radio"]):not([type="checkbox"])')){
+      event.preventDefault();$('#nextBtn')?.click();
+    }
+  });
   show();
 }
 document.addEventListener("DOMContentLoaded", () => { initEnrollment(); });
