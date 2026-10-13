@@ -273,37 +273,27 @@ async function loadStudentAttendance() {
 function renderStudentAttendanceHistory(history, studentProgram) {
   const historyNode = $('#studentAttendanceHistory');
   if (!historyNode) return;
+  const opened = new Set([...(historyNode.querySelectorAll?.('details[open]') || [])].map(item => item.dataset.recordKey));
   const rows = history.map((row) => {
     const rowProgram = String(row.program || studentProgram).toUpperCase();
     const isCwts = rowProgram === 'CWTS';
 
-    return `
-      <tr>
-        <td><strong>${isCwts ? 'CWTS' : 'MS'} ${esc(row.ms_level || '-')}</strong></td>
-        <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
-        <td>${isCwts ? 'CS' : 'MI'} ${esc(row.mi_number || '-')}</td>
-        <td>${String(row.mi_type || '').toUpperCase()}</td>
-        <td>${fmtA(row.open_date)}</td>
-        <td>${fmtT(row.created_at)}</td>
-        <td>${badge(row.status)}</td>
-        <td>${attendanceUpdateDetails(row) || '—'}</td>
-      </tr>
-    `;
+    const key = String(row.id || [rowProgram,row.ms_level,row.school_year,row.mi_number,row.mi_type,row.open_date,row.created_at].join('|'));
+    const values = [
+      ['Level',`${isCwts ? 'CWTS' : 'MS'} ${esc(row.ms_level || '-')}`],
+      ['School year',row.school_year ? `SY ${esc(row.school_year)}` : '-'],
+      ['Session',`${isCwts ? 'CS' : 'MI'} ${esc(row.mi_number || '-')}`],
+      ['Type',esc(String(row.mi_type || '').toUpperCase())],
+      ['Date',esc(fmtA(row.open_date))], ['Marked at',esc(fmtT(row.created_at))],
+      ['Attendance update',attendanceUpdateDetails(row) || 'No corrections recorded'],
+    ];
+    return `<details class="student-record-disclosure" data-record-key="${esc(key)}" ${opened.has(key)?'open':''}>
+      <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))} &middot; ${isCwts?'CWTS':'MS'} ${esc(row.ms_level || '-')}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
+      <dl class="student-record-details">${values.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`).join('')}</dl>
+    </details>`;
   });
 
-  historyNode.innerHTML = table(
-    [
-      studentProgram === 'CWTS' ? 'CWTS Level' : studentProgram === 'ROTC' ? 'MS Level' : 'NSTP Level',
-      'School Year',
-      'Session',
-      'Type',
-      'Date',
-      'Marked At',
-      'Status',
-      'Attendance Update',
-    ],
-    rows
-  );
+  historyNode.innerHTML = rows.length ? `<div class="student-record-list">${rows.join('')}</div>` : '<div class="notice" role="status">No attendance records yet.</div>';
 }
 
 function markStudentAttendance(session) {
