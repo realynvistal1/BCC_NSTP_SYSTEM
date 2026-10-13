@@ -1,0 +1,54 @@
+/* Shared phone layout for CWTS instructors and advance-course verifiers. */
+@media (max-width: 800px) {
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .main {
+    margin-left: 0; width: 100%; min-width: 0; padding: 16px 12px 28px;
+  }
+  body[data-page="cwts-instructor-attendance"] .top-mobile {
+    padding: 8px 12px; min-height: 56px; justify-content: space-between; gap: 12px;
+  }
+  body[data-page="cwts-instructor-attendance"] .student-mobile-brand { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #17604e; }
+  body[data-page="cwts-instructor-attendance"] .student-mobile-brand img { width: 32px; height: 32px; object-fit: contain; }
+  body[data-page="cwts-instructor-attendance"] .student-mobile-brand small { display: block; font-size: 10px; font-weight: 500; margin-top: 2px; }
+  body[data-page="cwts-instructor-attendance"].student-menu-open { overflow: hidden; }
+  body[data-page="cwts-instructor-attendance"] .sidebar { width: min(280px, 85vw); max-height: 100dvh; overscroll-behavior: contain; }
+  body[data-page="cwts-instructor-attendance"] .student-menu-backdrop { position: fixed; inset: 0; z-index: 25; border: 0; background: rgba(15,23,42,.45); }
+  body[data-page="cwts-instructor-attendance"] .student-menu-close { display: block; margin: 0 0 8px auto; width: 44px; height: 44px; border: 1px solid #ffffff66; border-radius: 12px; color: #fff; background: #ffffff20; font-size: 26px; cursor: pointer; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) :is(#content, .panel, .field) { min-width: 0; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .intro { padding: 16px; border-radius: 18px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .intro h1 { font-size: 20px; line-height: 1.3; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .intro p { font-size: 12px; line-height: 1.5; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) #content > .panel,
+  body[data-page="cwts-instructor-attendance"] .cwts-workspace > .panel { padding: 16px 12px; border-radius: 16px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .verifier-section-heading { flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) #content h2 { font-size: 18px; overflow-wrap: anywhere; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .verifier-summary { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; overflow: visible; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .verifier-stat { padding: 12px; gap: 10px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .verifier-stat strong { font-size: 22px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .btn { min-height: 44px; white-space: normal; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) :is(input, select, textarea) { min-width: 0; max-width: 100%; font-size: 16px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .attendance-assignment-details { grid-template-columns: minmax(0,1fr); }
+  body[data-page="cwts-instructor-attendance"] .cwts-duty-title { flex-wrap: wrap; gap: 10px; }
+  body[data-page="cwts-instructor-attendance"] .cwts-pagination > div { flex-wrap: wrap; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .attendance-update-dialog { width: calc(100vw - 24px); max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) :is(.attendance-dialog-header,.attendance-dialog-body,.attendance-dialog-footer) { padding: 16px; }
+  body:is([data-page="cwts-instructor-attendance"], [data-page="verify-attendance"]) .attendance-dialog-footer { flex-wrap: wrap; gap: 10px; }
+}
+@media (max-width: 600px) {
+  :is(#cwtsStudentRows, #verifierRecords) .table-wrap { overflow: visible; border: 0; }
+  :is(#cwtsStudentRows, #verifierRecords) table { display: block; min-width: 0; }
+  :is(#cwtsStudentRows, #verifierRecords) thead { display: none; }
+  :is(#cwtsStudentRows, #verifierRecords) tbody { display: grid; gap: 12px; }
+  :is(#cwtsStudentRows, #verifierRecords) tr {
+    display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px;
+    padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #f8fbff;
+  }
+  :is(#cwtsStudentRows, #verifierRecords) td { display: block; min-width: 0; border: 0; padding: 0; font-size: 13px; overflow-wrap: anywhere; }
+  :is(#cwtsStudentRows, #verifierRecords) td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; font-size: 10px; color: var(--muted); font-weight: 700; }
+  :is(#cwtsStudentRows, #verifierRecords) :is(td:first-child, td:last-child) { grid-column: 1 / -1; }
+  :is(#cwtsStudentRows, #verifierRecords) td:last-child .btn { width: 100%; }
+  :is(#cwtsStudentRows, #verifierRecords) td .attendance-update-meta { max-width: 100%; }
+  :is(#cwtsStudentRows, #verifierRecords) tr[hidden] { display: none; }
+}
+@media (min-width: 801px) {
+  body[data-page="cwts-instructor-attendance"] :is(.student-menu-close,.student-menu-backdrop) { display: none; }
+}
