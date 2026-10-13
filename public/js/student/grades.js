@@ -44,16 +44,16 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     }
 
     const rowTemplate = (label, grade) => `
-      <tr>
-        <td><strong>${label}</strong></td>
-        <td>${esc(description)}</td>
-        <td class="center">${grade?.midterm != null ? Number(grade.midterm).toFixed(2) : '-'}</td>
-        <td class="center">${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</td>
-        <td class="center"><strong>${grade?.grade != null ? Number(grade.grade).toFixed(2) : '-'}</strong></td>
-        <td class="center">3</td>
-        <td class="center">${grade ? badge(grade.status) : 'Pending release'}</td>
-      </tr>
-    `;
+      <details class="student-record-disclosure">
+        <summary><div class="student-record-title"><strong>${esc(label)}</strong><small>Average: ${grade?.grade != null ? Number(grade.grade).toFixed(2) : 'Pending release'}</small></div>${grade ? badge(grade.status) : '<span class="badge">Pending release</span>'}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
+        <dl class="student-record-details">
+          <div class="full"><dt>Description</dt><dd>${esc(description)}</dd></div>
+          <div><dt>Midterm</dt><dd>${grade?.midterm != null ? Number(grade.midterm).toFixed(2) : '-'}</dd></div>
+          <div><dt>Final term</dt><dd>${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</dd></div>
+          <div><dt>Average</dt><dd>${grade?.grade != null ? Number(grade.grade).toFixed(2) : '-'}</dd></div>
+          <div><dt>Units</dt><dd>3</dd></div>
+        </dl>
+      </details>`;
 
     content.innerHTML = `
       <section class="panel" style="margin-bottom:18px;border-left:4px solid ${failed ? '#f59e0b' : '#3b82f6'}">
@@ -64,24 +64,9 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
       <section class="panel student-grade-panel">
         <h2 style="margin:0 0 8px">Current Results</h2>
         <p class="muted" style="margin:0 0 18px">Your latest released grade for each level. Enrollment approval does not mean you passed the subject.</p>
-        <div class="table-wrap">
-          <table class="data-table student-grade-table">
-            <thead>
-              <tr>
-                <th>Subject</th>
-                <th>Description</th>
-                <th>Midterm</th>
-                <th>Final Term</th>
-                <th>Average</th>
-                <th>Unit</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="student-record-list">
               ${rowTemplate(levelName('1'), ms1)}
               ${rowTemplate(levelName('2'), ms2)}
-            </tbody>
-          </table>
         </div>
       </section>
     `;
