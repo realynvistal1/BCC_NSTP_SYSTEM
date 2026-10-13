@@ -4,7 +4,7 @@ const vm = require('node:vm');
 let assignments=[{id:1},{id:2}],records=[],patchError,patchBody,dialog;
 const requests=[];
 const nodes={'#refreshVerifierRecords':{},'#verifierSearch':{}};
-const roster={innerHTML:'',querySelectorAll(selector){
+const roster={innerHTML:'',append(){},querySelectorAll(selector){
   if(selector!=='[data-update]')return [];
   return [...this.innerHTML.matchAll(/data-update="([^"]+)"/g)].map(match=>({dataset:{update:match[1]}}));
 }};
@@ -29,6 +29,8 @@ const context={console,$:selector=>nodes[selector],esc:value=>String(value??''),
   }}
 };
 vm.createContext(context);
+const sharedApiSource=fs.readFileSync('public/js/shared/api.js','utf8');
+vm.runInContext(sharedApiSource.slice(sharedApiSource.indexOf('function attendanceStatusFilters(')),context);
 vm.runInContext(fs.readFileSync('public/js/shared/rotc-verifiers.js','utf8'),context);
 (async()=>{
   await context.renderAssignedAttendance(content,'2');
