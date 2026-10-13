@@ -4,6 +4,8 @@ const vm=require('node:vm');
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 const context={esc,icon:()=>'',attendanceUpdateDate:()=> 'Session date',document:{addEventListener(){}}};
 vm.createContext(context);
+const sharedApiSource=fs.readFileSync('public/js/shared/api.js','utf8');
+vm.runInContext(sharedApiSource.slice(sharedApiSource.indexOf('function attendanceStatusFilters(')),context);
 vm.runInContext(fs.readFileSync('public/js/admin/cwts/instructor-attendance.js','utf8'),context);
 const assignment={id:1,company:'Alpha',mi_number:1,mi_type:'in',ms_level:1,school_year:'2026-2027'};
 let html=context.cwtsInstructorView([assignment],assignment,[{status:'present'},{status:'absent'},{status:'unmarked'}]);
