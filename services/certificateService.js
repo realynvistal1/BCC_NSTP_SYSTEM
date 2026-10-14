@@ -79,10 +79,10 @@ function ordinal(number) {
 }
 
 function fullName(student) {
-  const surname = String(student.last_name || '').trim();
-  const givenNames = [student.first_name, student.middle_name, student.suffix]
+  const middle = String(student.middle_name || '').trim();
+  const initials = middle.split(/\s+/).filter(Boolean).map(part => `${part.charAt(0).toUpperCase()}.`).join(' ');
+  return [student.first_name, initials, student.last_name, student.suffix]
     .map(value => String(value || '').trim()).filter(Boolean).join(' ');
-  return [surname, givenNames].filter(Boolean).join(', ');
 }
 
 function formatCeremonyDate(settings, serial) {
@@ -120,7 +120,7 @@ function drawRecipientLine(doc, text, x, y, width) {
   while (doc.widthOfString(recipient) > width && doc._fontSize > 12) {
     doc.fontSize(doc._fontSize - 1);
   }
-  doc.text(recipient, x, y, { width, align: 'center' });
+  doc.text(recipient, x, y, { width, align: 'center', underline: true });
 
 }
 
