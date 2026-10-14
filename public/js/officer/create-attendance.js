@@ -9,6 +9,15 @@ let selectedNumber = 0;
 let selectedType = "in";
 const DEFAULT_ATTENDANCE_RADIUS = 100;
 
+function readAttendanceLocation() {
+  const latitude = document.getElementById('attendanceLatitude').value.trim();
+  const longitude = document.getElementById('attendanceLongitude').value.trim();
+  if (!latitude || !longitude) return null;
+  const lat = Number(latitude), lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { latitude: lat, longitude: lng };
+}
+
 function formatAttendanceTime(value) {
   if (!value) return "—";
   return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -235,10 +244,9 @@ function validateAttendanceForm() {
   const program = document.getElementById("attendanceProgram").value;
   const openDate = document.getElementById("attendanceOpenDate").value;
   const closeDate = document.getElementById("attendanceCloseDate").value;
-  const lat = Number(document.getElementById("attendanceLatitude").value);
-  const lng = Number(document.getElementById("attendanceLongitude").value);
+  const location = readAttendanceLocation();
   const validDates = openDate && closeDate && new Date(closeDate) > new Date(openDate);
-  const ready = Boolean(program && selectedNumber && selectedType && validDates && Number.isFinite(lat) && Number.isFinite(lng) && !blockingAttendanceSession);
+  const ready = Boolean(program && selectedNumber && selectedType && validDates && location && !blockingAttendanceSession);
   document.getElementById("createAttendanceButton").disabled = !ready;
   const validation = document.getElementById("attendanceValidation");
   validation.classList.toggle("blocked", Boolean(blockingAttendanceSession));
@@ -282,6 +290,12 @@ function showAttendanceSuccess(message) {
 }
 
 async function createAttendanceSession() {
+  const location = readAttendanceLocation();
+  if (!location) {
+    toast('Select a location on the map or capture your current location before saving.', true);
+    validateAttendanceForm();
+    return;
+  }
   const button = document.getElementById("createAttendanceButton");
   button.disabled = true;
   button.textContent = "Saving...";
@@ -292,8 +306,8 @@ async function createAttendanceSession() {
       mi_type: selectedType,
       open_date: document.getElementById("attendanceOpenDate").value,
       close_date: document.getElementById("attendanceCloseDate").value,
-      latitude: Number(document.getElementById("attendanceLatitude").value),
-      longitude: Number(document.getElementById("attendanceLongitude").value),
+      latitude: location.latitude,
+      longitude: location.longitude,
       ms_level: attendanceProgress?.cycle?.ms_level || null,
       school_year: attendanceProgress?.cycle?.school_year || null,
     };
