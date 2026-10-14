@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/assets/css/forms.css">
   <link rel="stylesheet" href="/assets/css/tables.css">
   <link rel="stylesheet" href="/assets/css/modal.css">
-  <link rel="stylesheet" href="/assets/css/attendance.css">
+  <link rel="stylesheet" href="/assets/css/attendance.css?v=20261014-session-details">
   <link rel="stylesheet" href="/assets/css/director-attendance.css">
 </head>
 <body class="director-attendance" data-role="officer" data-page="view-attendance" data-title="View Attendance" data-subtitle="Monitor ROTC, CWTS, and Advance Course attendance sessions.">
@@ -37,7 +37,7 @@
       <section class="attendance-toolbar-card">
         <div class="attendance-toolbar-grid">
           <label><span>Program</span><select id="viewProgram"><option value="ROTC">ROTC</option><option value="CWTS">CWTS</option></select></label>
-          <label><span>School Year / Level</span><select id="viewCycle"><option value="">All cycles</option></select></label>
+          <label><span>School Year / Level</span><select id="viewCycle"><option value="">Select school year / level</option></select></label>
           <label><span>MI / CS</span><select id="viewMI"><option value="">All</option></select></label>
           <label><span>IN / OUT</span><select id="viewType"><option value="">Both</option><option value="in">Time In</option><option value="out">Time Out</option></select></label>
         </div>
@@ -56,6 +56,6 @@
     </div>
   </div>
   <div id="toast" class="hidden"></div>
-  <script src="/assets/js/shared/api.js"></script><script src="/assets/js/shared/layout.js"></script><script src="/assets/js/shared/ui.js"></script><script src="/assets/js/officer/view-attendance.js?v=20260916-director-attendance-groups-ui"></script>
+  <script src="/assets/js/shared/api.js"></script><script src="/assets/js/shared/layout.js"></script><script src="/assets/js/shared/ui.js"></script><script src="/assets/js/officer/view-attendance.js?v=20261014-cycle-filter"></script>
 </body>
 </html>
