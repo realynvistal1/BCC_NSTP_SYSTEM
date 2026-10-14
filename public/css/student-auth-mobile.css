@@ -47,16 +47,22 @@
   .theme-student .mobile-auth-hero {
     background-image: linear-gradient(rgba(8, 27, 44, .78), rgba(8, 27, 44, .93)), var(--hero);
   }
-  .theme-student .auth-card { margin-top: 0; padding: 24px; border-radius: 22px; }
+  .theme-student .auth-card { margin-top: 0; padding: 24px; border-radius: 22px; border: 1px solid #d8e5f2; }
   .theme-student .mobile-brand {
-    margin: 0 0 22px;
-    gap: 10px;
+    margin: 0 0 24px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
     color: #214d79;
-    padding-bottom: 18px;
-    border-bottom: 1px solid #e7eef7;
+    padding: 14px 12px;
+    border: 1px solid #cddff1;
+    border-radius: 16px;
+    background: linear-gradient(120deg, #eaf4ff, #f7fbff);
   }
-  .theme-student .mobile-brand img { width: 64px; height: 64px; padding: 4px; background: #f0f7ff; border-radius: 16px; }
-  .theme-student .mobile-brand strong { font-size: 14px; text-shadow: none; text-align: center; }
+  .theme-student .mobile-brand img { width: 56px; height: 56px; flex: 0 0 56px; padding: 4px; background: #fff; border: 1px solid #d8e5f2; border-radius: 14px; }
+  .theme-student .student-login-brand-copy { min-width: 0; }
+  .theme-student .student-login-brand-copy small { display: block; font-size: 10px; font-weight: 700; line-height: 1.5; color: #526d88; margin-bottom: 4px; }
+  .theme-student .mobile-brand strong { display: block; font-size: 15px; line-height: 1.4; color: #214d79; text-shadow: none; text-align: left; }
   .theme-student .auth-heading { align-items: flex-start; margin-bottom: 20px; }
   .theme-student .auth-heading h2 { font-size: 22px; }
   .theme-student .auth-heading p { line-height: 1.5; }
