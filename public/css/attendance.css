@@ -215,6 +215,23 @@
   margin: 14px 0;
   background: #eef2f7
 }
+.attendance-session-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.attendance-session-breakdown > div {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #cbdff2;
+  border-radius: 12px;
+  background: #f4f9ff;
+  color: #214d79;
+}
+.attendance-session-breakdown strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.attendance-session-breakdown span { display: block; margin-top: 5px; font-size: 12px; color: #60758d; }
 .attendance-map.compact {
   height: 260px
 }
