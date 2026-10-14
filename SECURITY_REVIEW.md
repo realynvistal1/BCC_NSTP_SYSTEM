@@ -39,7 +39,7 @@ Sources:
 ## Deployment checks still needed
 
 - Enable and verify upstream DDoS protection and proxy rate limits. App limits cannot prevent bandwidth exhaustion and do not cover static assets or page requests.
-- Confirm TRUST_PROXY_HOPS matches the actual network topology and that clients cannot reach the origin through a shorter path or forge trusted forwarding headers. render.yaml declares one hop, but the live deployment was not inspected. See https://expressjs.com/en/guide/behind-proxies/.
+- Confirm TRUST_PROXY_HOPS matches the actual network topology and that clients cannot reach the origin through a shorter path or forge trusted forwarding headers. The example environment declares one hop, but the live deployment was not inspected. See https://expressjs.com/en/guide/behind-proxies/.
 - If running several app processes, use shared rate-limit storage; the current maps are process-local and reset on restart.
 - Use a restricted runtime database account. The code defaults to root if DB_USER is absent; the deployed database account privileges were not inspected. Prefer separate migration and runtime credentials.
 - Bound expensive exports, bulk actions and query execution based on realistic data volumes. List/export paths can still retrieve large datasets.
@@ -65,4 +65,4 @@ Ordinary API traffic now has a fixed 10-second per-IP window allowing 200 reques
 
 API concurrency remains 30 per IP and 30 total per process. Authentication concurrency is now 20 per IP (previously 5) and remains 20 total per process. Concurrency rejection advises a retry after one second. These are initial test settings, not verified capacity for 1,000 active users. Existing account/identifier-based protection still locks login after five failed attempts for five minutes.
 
-Updated .env, .env.example and render.yaml consistently. Restart locally to apply; live hosting environment settings must also be updated when deploying. No deployment or student/database mutation was performed for this change. SQL and DoS regressions passed, including recovery after a 10-second burst without a long IP block.
+Updated environment configuration consistently. Restart locally to apply; live hosting environment settings must also be updated when deploying. No deployment or student/database mutation was performed for this change. SQL and DoS regressions passed, including recovery after a 10-second burst without a long IP block.
