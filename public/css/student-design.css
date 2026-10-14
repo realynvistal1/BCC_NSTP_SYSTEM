@@ -1,0 +1,74 @@
+/* Shared student portal color treatment. Mobile sizing stays in student-mobile.css. */
+html:not([data-theme="dark"]) body[data-role="student"] {
+  --line: #dbe8f5;
+  --muted: #60758d;
+  background: radial-gradient(ellipse at top right, #dceeff, transparent 55%), #f2f7fd;
+}
+html:not([data-theme="dark"]) body[data-role="student"] :is(.panel, .settings-card, .attendance-history-section) {
+  border: 1px solid #dbe8f5;
+  border-top: 4px solid #6ba9e2;
+  background: linear-gradient(135deg, #f4f9ff, #fff 45%);
+  box-shadow: 0 8px 24px rgba(35, 83, 136, .07);
+}
+html:not([data-theme="dark"]) body[data-role="student"] .settings-card {
+  --section-accent: #4c90d4;
+  border-top-color: var(--section-accent);
+}
+html:not([data-theme="dark"]) body[data-role="student"] .settings-card:nth-child(3n+2) { --section-accent: #279987; }
+html:not([data-theme="dark"]) body[data-role="student"] .settings-card:nth-child(3n+3) { --section-accent: #8270ce; }
+html:not([data-theme="dark"]) body[data-role="student"] .student-profile-settings {
+  background: linear-gradient(120deg, #e4f1ff, #f0faff);
+}
+html:not([data-theme="dark"]) body[data-role="student"] :is(.settings-card h2, .panel-head h2, .re-enroll-section-head h3) {
+  color: #214d79;
+}
+body[data-role="student"] .settings-card > h2 {
+  font-size: 18px;
+  line-height: 1.4;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+html:not([data-theme="dark"]) body[data-role="student"] .profile-row {
+  padding: 12px;
+  border-radius: 10px;
+  border-bottom: 0;
+  margin-top: 6px;
+}
+html:not([data-theme="dark"]) body[data-role="student"] .profile-row:nth-of-type(odd) { background: #edf5fc; }
+html:not([data-theme="dark"]) body[data-role="student"] .profile-row span { color: #55718e; }
+html:not([data-theme="dark"]) body[data-role="student"] :is(.form-grid, .email-wizard-panel) {
+  padding: 16px;
+  border: 1px solid #dbe8f5;
+  border-radius: 14px;
+  background: #eef5fc;
+}
+html:not([data-theme="dark"]) body[data-role="student"] .re-enroll-section {
+  border-left: 4px solid #6ba9e2;
+  background: linear-gradient(120deg, #f0f7ff, #fff);
+}
+html:not([data-theme="dark"]) body[data-role="student"] .field label { color: #345b80; }
+html:not([data-theme="dark"]) body[data-role="student"] .field :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: #c8dced;
+  background: #fff;
+  min-height: 44px;
+}
+html:not([data-theme="dark"]) body[data-role="student"] .field :is(input, select, textarea):focus {
+  border-color: #3987cf;
+  box-shadow: 0 0 0 3px rgba(57, 135, 207, .16);
+}
+html:not([data-theme="dark"]) body[data-role="student"] .field :is(input, select, textarea):disabled {
+  background: #e5edf5;
+  color: #587088;
+}
+body[data-role="student"] .btn.primary {
+  background: linear-gradient(135deg, #347fc6, #245ea3);
+  color: #fff;
+  border-color: #245ea3;
+  box-shadow: 0 4px 12px rgba(36, 94, 163, .18);
+}
+body[data-role="student"] .btn.primary:hover { background: #245ea3; }
+body[data-role="student"] .btn:focus-visible { outline: 3px solid #6ba9e2; outline-offset: 3px; }
+@media (max-width: 600px) {
+  body[data-role="student"] .settings-card { padding: 16px 12px; }
+  body[data-role="student"] :is(.form-grid, .email-wizard-panel) { padding: 12px; }
+}
