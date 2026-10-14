@@ -16,6 +16,7 @@
     "db:migrate:rotc-verifiers": "node database/migrate-rotc-verifiers.js",
     "verify:rotc-verifiers": "node scripts/verify-rotc-verifiers.js",
     "dev": "node --watch server.js",
+    "prestart": "node scripts/verify-student-assets.js",
     "start": "node server.js",
     "db:setup": "node database/setup.js",
     "db:seed": "node database/seed-admins.js",
