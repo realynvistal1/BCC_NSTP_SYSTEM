@@ -3,6 +3,7 @@ const db = require('../config/database');
 const { schedules } = require('../controllers/sharedAdminController');
 
 const originalExecute = db.execute;
+const originalGetConnection = db.getConnection;
 
 function response() {
   return {
@@ -30,6 +31,13 @@ async function submit(program, level, year, existing = [], dates = {}) {
     }
     throw new Error(`Unexpected SQL: ${sql}`);
   };
+  db.getConnection = async () => ({
+    execute: (...args) => db.execute(...args),
+    beginTransaction: async () => {},
+    commit: async () => {},
+    rollback: async () => {},
+    release() {},
+  });
 
   const res = response();
   await schedules({
@@ -93,5 +101,6 @@ async function submit(program, level, year, existing = [], dates = {}) {
   process.exitCode = 1;
 }).finally(() => {
   db.execute = originalExecute;
+  db.getConnection = originalGetConnection;
   db.end();
 });
