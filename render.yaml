@@ -44,6 +44,12 @@ services:
         sync: false
       - key: GOOGLE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS
         value: false
+      - key: GOOGLE_RECAPTCHA_ROTC_V2_ENABLED
+        value: true
+      - key: GOOGLE_RECAPTCHA_ROTC_V2_SITE_KEY
+        sync: false
+      - key: GOOGLE_RECAPTCHA_ROTC_V2_SECRET_KEY
+        sync: false
       - key: RATE_LIMIT_WINDOW_MS
         value: 10000
       - key: RATE_LIMIT_MAX_REQUESTS
