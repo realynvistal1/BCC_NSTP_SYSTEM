@@ -2,7 +2,6 @@ const cwtsCompanies = require('../services/cwtsCompanyService');
 const path = require('path');
 const XLSX = require('xlsx');
 const db = require('../config/database');
-const { seedScheduleStudents } = require('../database/seed-students');
 const certificateService = require('../services/certificateService');
 const gradesService = require('../services/gradesService');
 const gradeAttemptService = require('../services/gradeAttemptService');
@@ -655,16 +654,12 @@ exports.schedules = async (req, res) => {
     }
 
     const connection = await db.getConnection();
-    let seededStudents = 0;
     try {
       await connection.beginTransaction();
-      const [created] = await connection.execute(
+      await connection.execute(
         'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
         [programCode, normalizedLevel, normalizedYear, openDate, deadline]
       );
-      if (normalizedLevel === '1' && process.env.AUTO_SEED_LEVEL1_TEST_STUDENTS === 'true') {
-        seededStudents = await seedScheduleStudents(connection, programCode, created.insertId);
-      }
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -672,8 +667,7 @@ exports.schedules = async (req, res) => {
     } finally {
       connection.release();
     }
-    return res.json({ message: programCode + ' enrollment schedule created successfully.' +
-      (seededStudents ? ' Added ' + seededStudents + ' pending test students.' : ''), seededStudents });
+    return res.json({ message: programCode + ' enrollment schedule created successfully.' });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
