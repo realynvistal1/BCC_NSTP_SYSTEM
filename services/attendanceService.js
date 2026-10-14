@@ -2,6 +2,15 @@ const ATTENDANCE_RADIUS_METERS = 100;
 const LATE_THRESHOLD_MINUTES = 15;
 const SESSION_COUNT = 15;
 
+function parseCoordinates(latitude, longitude) {
+  const numeric = value => (typeof value === 'number' || (typeof value === 'string' && value.trim() !== ''))
+    ? Number(value) : NaN;
+  const lat = numeric(latitude);
+  const lng = numeric(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { latitude: lat, longitude: lng };
+}
+
 function toDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -57,6 +66,7 @@ module.exports = {
   ATTENDANCE_RADIUS_METERS,
   LATE_THRESHOLD_MINUTES,
   SESSION_COUNT,
+  parseCoordinates,
   getEffectiveStatus,
   attendanceStatusForMark,
   haversineMeters,
