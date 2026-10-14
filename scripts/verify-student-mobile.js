@@ -73,7 +73,7 @@ assert.equal(sidebar.inert, true);
 
 for (const name of fs.readdirSync('views/student').filter(name => name.endsWith('.html'))) {
   const html = fs.readFileSync(`views/student/${name}`, 'utf8');
-  assert.match(html, /student-mobile\.css\?v=20261013/);
+  assert.match(html, /student-mobile\.css\?v=20261014/);
   assert.match(html, /name="viewport"/);
 }
 console.log('PASS: mobile menu opening, closing, focus, resize, duplicate setup, and all student stylesheet links.');
