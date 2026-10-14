@@ -887,8 +887,11 @@ exports.markAttendance = async (req, res) => {
       });
     }
 
-    const lat = Number(latitude);
-    const lng = Number(longitude);
+    const coordinates = attendanceService.parseCoordinates(latitude, longitude);
+    if (!coordinates) {
+      return res.status(400).json({ message: 'A valid device location is required.' });
+    }
+    const { latitude: lat, longitude: lng } = coordinates;
     const meters = attendanceService.haversineMeters(
       lat,
       lng,
