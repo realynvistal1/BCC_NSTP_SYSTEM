@@ -214,24 +214,31 @@ function summarizeStudents(rows) {
   });
 }
 
+function attendanceCycleKey(session) {
+  const year = String(session.school_year || '').trim();
+  const level = String(session.ms_level || '').trim();
+  return year && level ? `${year}__${level}` : '';
+}
+
 function buildCycles(sessions) {
   const seen = new Map();
 
   sessions.forEach((session) => {
-    const key = `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}`;
+    const key = attendanceCycleKey(session);
+    if (!key) return;
 
     if (!seen.has(key)) {
       seen.set(key, {
         key,
-        school_year: session.school_year || 'Unknown',
-        ms_level: session.ms_level || '',
+        school_year: String(session.school_year).trim(),
+        ms_level: String(session.ms_level).trim(),
       });
     }
   });
 
   return [...seen.values()].sort(
     (a, b) => b.school_year.localeCompare(a.school_year)
-      || String(a.ms_level).localeCompare(String(b.ms_level))
+      || String(b.ms_level).localeCompare(String(a.ms_level))
   );
 }
 
@@ -254,22 +261,23 @@ function populateOfficerFilters() {
   const cycle = $('#viewCycle');
   const previousCycle = cycle.value;
 
-  cycle.innerHTML = '<option value="">All cycles</option>'
-    + cycles.map((item) => `
+  cycle.innerHTML = cycles.length ? cycles.map((item) => `
       <option value="${esc(item.key)}">
         ${program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(item.ms_level || '-')} - SY ${esc(item.school_year)}
       </option>
-    `).join('');
+    `).join('') : '<option value="">No school year / level available</option>';
 
   if ([...cycle.options].some((option) => option.value === previousCycle)) {
     cycle.value = previousCycle;
+  } else if (cycles.length) {
+    cycle.value = cycles[0].key;
   }
 
   const mi = $('#viewMI');
   const selectedCycle = cycle.value;
   const selectedType = $('#viewType').value;
   const matchingSessions = sessions.filter((session) => (
-    (!selectedCycle || `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}` === selectedCycle)
+    (selectedCycle && attendanceCycleKey(session) === selectedCycle)
     && (!selectedType || session.mi_type === selectedType)
   ));
   const numbers = [...new Set(
@@ -300,7 +308,7 @@ function filteredOfficerSessions() {
       return false;
     }
 
-    if (cycle && `${session.school_year || 'Unknown'}__${session.ms_level || 'all'}` !== cycle) {
+    if (!cycle || attendanceCycleKey(session) !== cycle) {
       return false;
     }
 
@@ -468,6 +476,9 @@ function renderOfficerAttendanceTable(container, sessions, program) {
     <div class="attendance-session-summary">
       <strong>${sessionCountLabel(sessions.length)}</strong>
       <span>${esc(program === 'ADVANCE_COURSE' ? 'Advance Course' : program)} attendance results</span>
+    </div>
+    <div class="attendance-session-breakdown" aria-label="Matching attendance sessions">
+      ${sessions.map(session => `<div><strong>${esc(session.program === 'CWTS' ? 'CWTS' : Number(session.is_advance_course || 0) === 1 ? 'Advance Course' : 'Regular ROTC')} · ${esc(session.program === 'CWTS' ? 'CS' : 'MI')} ${esc(session.mi_number)} ${esc(session.mi_type === 'out' ? 'Time Out' : 'Time In')}</strong><span>Session #${esc(session.id)} · ${esc(new Date(session.open_date).toLocaleString('en-PH'))}</span></div>`).join('')}
     </div>
     <section class="attendance-summary-card officer-session-table-card">
       <div class="director-attendance-heading"><h2>Attendance Overview</h2></div>
