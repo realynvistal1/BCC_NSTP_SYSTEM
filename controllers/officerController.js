@@ -439,14 +439,13 @@ exports.createAttendance = async (req, res) => {
       });
     }
 
-    const latitude = Number(body.latitude);
-    const longitude = Number(body.longitude);
-
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    const coordinates = attendance.parseCoordinates(body.latitude, body.longitude);
+    if (!coordinates) {
       return res.status(400).json({
         message: 'Capture or enter a valid attendance location.',
       });
     }
+    const { latitude, longitude } = coordinates;
 
     const cycle = await currentCycle(program);
     const msLevel = body.ms_level == null || String(body.ms_level).trim() === ''
