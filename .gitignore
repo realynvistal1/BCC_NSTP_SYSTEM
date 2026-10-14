@@ -7,3 +7,14 @@ uploads/*
 !uploads/**/.gitkeep
 npm-debug.log*
 .DS_Store
+
+# Generated previews, deployment copies, and local diagnostics
+/output/
+/outputs/**/*.inspect.ndjson
+/outputs/**/*-preview.png
+/gcm-diagnose.log
+/%SystemDrive%/
+/.tmp/
+/tmp/
+/outputs/serial-upload-*/
+/outputs/**/*_preview.png
