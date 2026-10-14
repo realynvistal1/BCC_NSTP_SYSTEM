@@ -137,7 +137,7 @@ function setupStudentMobileMenu() {
   close.type = 'button';
   close.className = 'student-menu-close';
   close.setAttribute('aria-label', 'Close student navigation');
-  close.textContent = '\u00d7';
+  close.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg>';
   sidebar.prepend(close);
   button.addEventListener('click', () => setStudentMobileMenu(!sidebar.classList.contains('open')));
   backdrop.addEventListener('click', () => setStudentMobileMenu(false, true));
