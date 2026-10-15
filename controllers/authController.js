@@ -306,6 +306,7 @@ async function clearSecurityEvent(eventKey) {
 }
 
 async function findAdmin(identifier, portal) {
+  if (portal === 'cwts-instructor') return require('../services/cwtsInstructorService').findLogin(identifier);
   const scope = {
     'rotc-admin': "role='admin' AND program='ROTC'",
     'cwts-admin': "role='admin' AND program='CWTS'",
@@ -320,7 +321,7 @@ async function findAdmin(identifier, portal) {
     [identifier, identifier]
   );
 
-  return rows[0] || (portal==='cwts-admin' ? await require('../services/cwtsInstructorService').findLogin(identifier) : null);
+  return rows[0] || null;
 }
 
 async function findStudent(identifier) {
@@ -349,7 +350,7 @@ exports.login = async (req, res) => {
     const plainPassword = String(password || '');
 
     if (typeof requestedPortal !== 'string'
-      || !['student', 'rotc-admin', 'cwts-admin', 'officer'].includes(requestedPortal)) {
+      || !['student', 'rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(requestedPortal)) {
       return res.status(400).json({ message: 'Select a valid login portal and try again.' });
     }
 
@@ -408,7 +409,12 @@ exports.login = async (req, res) => {
     }
 
     const accountPortal = source === 'student' ? 'student' : adminPortal(user.program, user.role);
-    if (accountPortal !== requestedPortal) {
+    // Instructors retain their existing attendance session scope, but must use
+    // their own login entry point. Admin login never searches instructor accounts.
+    const expectedPortal = requestedPortal === 'cwts-instructor' ? 'cwts-admin' : requestedPortal;
+    if (accountPortal !== expectedPortal
+      || (requestedPortal === 'cwts-instructor' && user.role !== 'instructor')
+      || (requestedPortal === 'cwts-admin' && user.role !== 'admin')) {
       await recordFailedLogin(loginKey);
       return res.status(403).json({ message: 'This account cannot log in to the selected portal.' });
     }
@@ -750,7 +756,7 @@ exports.requestAdminResetCode = async (req, res) => {
       return;
     }
 
-    if (!['rotc-admin', 'cwts-admin', 'officer'].includes(portal)) {
+    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });
     }
 
@@ -778,16 +784,16 @@ exports.requestAdminResetCode = async (req, res) => {
     }
 
     const lookup = adminResetLookup(portal);
-    const [rows] = await db.execute(lookup.selectByEmail, [email]);
+    const [rows] = portal === 'cwts-instructor' ? [[]] : await db.execute(lookup.selectByEmail, [email]);
 
-    if (!rows[0] && portal === 'cwts-admin') {
+    if (portal === 'cwts-instructor') {
       const result = await require('../services/cwtsInstructorResetService').handle(email);
       if (result) return res.status(result.status).json({message:result.message});
     }
     if (!rows[0]) {
       const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
-        message: portal === 'cwts-admin' ? 'No active CWTS admin or instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
+        message: portal === 'cwts-instructor' ? 'No active instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
@@ -836,7 +842,7 @@ exports.resetAdminPassword = async (req, res) => {
       return;
     }
 
-    if (!['rotc-admin', 'cwts-admin', 'officer'].includes(portal)) {
+    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });
     }
 
@@ -875,10 +881,10 @@ exports.resetAdminPassword = async (req, res) => {
     await ensureAdminResetTable();
 
     const lookup = adminResetLookup(portal);
-    const [admins] = await db.execute(lookup.selectAccount, [email]);
+    const [admins] = portal === 'cwts-instructor' ? [[]] : await db.execute(lookup.selectAccount, [email]);
 
     const admin = admins[0];
-    if (!admin && portal === 'cwts-admin') {
+    if (portal === 'cwts-instructor') {
       const result = await require('../services/cwtsInstructorResetService').handle(email,newPassword,code);
       if (result) {
         if (result.status !== 200) await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
@@ -889,7 +895,7 @@ exports.resetAdminPassword = async (req, res) => {
     if (!admin) {
       const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
-        message: portal === 'cwts-admin' ? 'No active CWTS admin or instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
+        message: portal === 'cwts-instructor' ? 'No active instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
