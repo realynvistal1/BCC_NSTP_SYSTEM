@@ -381,3 +381,25 @@ body[data-page="rotc-verifiers"] #content > .verifier-history-panel { border-top
 .attendance-status-filter:hover { background:var(--filter-bg); }
 .attendance-status-filter[aria-pressed="true"] { background:var(--filter-bg); border-color:var(--filter-color); box-shadow:inset 0 0 0 1px var(--filter-color); }
 .attendance-status-filter:focus-visible { outline:3px solid #91b7df; outline-offset:3px; }
+
+/* Compact student assignment popup. */
+.attendance-assignment-dialog { width: min(480px, calc(100vw - 24px)); border-radius: 16px; }
+.attendance-assignment-dialog .attendance-dialog-header { padding: 14px; gap: 10px; }
+.attendance-assignment-dialog .attendance-dialog-header > div:nth-child(2) { min-width: 0; flex: 1; }
+.attendance-assignment-dialog .attendance-dialog-header h2 { font-size: 16px; line-height: 1.3; }
+.attendance-assignment-dialog .attendance-eyebrow { font-size: 9px; letter-spacing: .06em; margin-bottom: 4px; }
+.attendance-assignment-dialog .attendance-dialog-icon { width: 34px; height: 34px; flex-basis: 34px; border-radius: 10px; }
+.attendance-assignment-dialog .attendance-dialog-icon svg { width: 18px; height: 18px; }
+.attendance-assignment-dialog .attendance-dialog-body { padding: 14px; gap: 12px; grid-auto-rows: max-content; align-content: start; }
+.attendance-assignment-dialog .attendance-dialog-body > p { font-size: 12px; line-height: 1.5; }
+.attendance-assignment-dialog .attendance-assignment-card { padding: 12px; border-radius: 12px; border-left-width: 3px; }
+.attendance-assignment-dialog .attendance-assignment-card h3 { font-size: 14px; line-height: 1.4; }
+.attendance-assignment-dialog .attendance-assignment-details { grid-template-columns: 1fr 1.25fr; gap: 8px; margin-top: 10px; }
+.attendance-assignment-dialog .attendance-assignment-details > div { padding: 8px; border-radius: 8px; min-width: 0; }
+.attendance-assignment-dialog .attendance-assignment-details > div:last-child { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.attendance-assignment-dialog .attendance-assignment-details dt { font-size: 10px; margin-bottom: 3px; }
+.attendance-assignment-dialog .attendance-assignment-details > div:last-child dt { margin-bottom: 0; }
+.attendance-assignment-dialog .attendance-assignment-details dd { font-size: 12px; }
+.attendance-assignment-dialog .notice { padding: 10px; margin: 0; font-size: 11px; line-height: 1.5; border-radius: 8px; }
+.attendance-assignment-dialog .attendance-dialog-footer { padding: 12px 14px; gap: 8px; }
+.attendance-assignment-dialog .attendance-dialog-footer .btn { padding: 9px 12px; min-height: 40px; font-size: 12px; border-radius: 10px; }
