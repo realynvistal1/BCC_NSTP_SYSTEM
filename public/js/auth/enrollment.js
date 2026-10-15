@@ -23,12 +23,15 @@
         if(!config.loginCheckbox.siteKey)throw new Error('Security check is not configured correctly. Please contact the administrator.');
         const container=document.createElement('div');
         container.className='enrollment-captcha';
+        const widget=document.createElement('div');
+        widget.className='enrollment-captcha-widget';
+        container.append(widget);
         sections[sections.length-1].append(container);
         await Captcha.load('explicit');
         await new Promise(resolve=>window.grecaptcha.ready(resolve));
-        checkboxId=window.grecaptcha.render(container,{
+        checkboxId=window.grecaptcha.render(widget,{
           sitekey:config.loginCheckbox.siteKey,
-          size:window.matchMedia('(max-width: 380px)').matches?'compact':'normal',
+          size:'normal',
           'expired-callback':()=>showError('Security check expired. Please check the box again.'),
           'error-callback':()=>showError('Unable to load security check. Please refresh and try again.'),
         });
@@ -39,7 +42,7 @@
   }
   const program=()=>f.nstp_component.value;
   const course=()=>f.course.value;
-  const isMedicalNA=()=>course()==='BS Criminology'||(program()==='ROTC'&&f.querySelector('input[name="willingness_option"]:checked')?.value==='advance');
+  const isMedicalNA=()=>program()==='ROTC'&&['advance','medics','military_police'].includes(f.querySelector('input[name="willingness_option"]:checked')?.value);
   const checkFile=(input,label)=>{
     const file=input?.files?.[0];
     if(file&&file.size>MAX_FILE){
@@ -105,15 +108,6 @@
     headerStepBadge.style.setProperty('--header-progress',`${((step+1)/sections.length)*100}%`);
     clearError();
     if(step===sections.length-1){
-      let review=$('#enrollmentReview');
-      if(!review){
-        review=document.createElement('aside');
-        review.id='enrollmentReview';
-        review.className='enrollment-review';
-        sections[step].prepend(review);
-      }
-      const reviewRows=[['Program',`${program()} 1`],['Course',course()],['Student ID',f.student_id.value],['Name',[f.first_name.value,f.middle_name.value,f.last_name.value].filter(Boolean).join(' ')]];
-      review.innerHTML=`<h3>Review before submitting</h3><p>Check your details below. Use Back to make changes, then complete your account and upload the required documents. Your request will be reviewed by the administrator.</p><dl>${reviewRows.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`;
       prepareCheckbox();
     }
     updateConditionalFields();
