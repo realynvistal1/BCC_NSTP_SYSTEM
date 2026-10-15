@@ -38,7 +38,7 @@ async function session(year,type='in',program='CWTS'){
   const instructor=await createInstructor('Maria'),firstToken=inviteToken();
   const [[pending]]=await db.execute('SELECT * FROM cwts_instructors WHERE id=?',[instructor]);
   assert.equal(pending.status,'pending');assert.equal(pending.password,null);assert.notEqual(pending.invitation_hash,firstToken);assert(!messages[0].url.includes('password'));
-  assert.equal((await request('/api/auth/login','POST',{portal:'cwts-admin',email:pending.email,password:'Test-password-123'},null)).status,401);
+  assert.equal((await request('/api/auth/login','POST',{portal:'cwts-instructor',email:pending.email,password:'Test-password-123'},null)).status,401);
   assert.equal((await request(`/api/officer/cwts-instructors/${instructor}/invitation`,'POST',{})).status,429);
   await db.execute('UPDATE cwts_instructors SET invitation_sent_at=0 WHERE id=?',[instructor]);
   assert.equal((await request(`/api/officer/cwts-instructors/${instructor}/invitation`,'POST',{})).status,200);
@@ -46,7 +46,7 @@ async function session(year,type='in',program='CWTS'){
   const acceptanceToken=inviteToken();
   const accepted=await Promise.all([request('/api/auth/cwts-instructor/accept-invitation','POST',{token:acceptanceToken,password:'Test-password-123'},null),request('/api/auth/cwts-instructor/accept-invitation','POST',{token:acceptanceToken,password:'Test-password-123'},null)]);
   assert.deepEqual(accepted.map(r=>r.status).sort(),[200,400],'Only one use of an invitation can succeed');
-  const login=await request('/api/auth/login','POST',{portal:'cwts-admin',email:pending.email,password:'Test-password-123'},null);
+  const login=await request('/api/auth/login','POST',{portal:'cwts-instructor',email:pending.email,password:'Test-password-123'},null);
   assert.equal(login.status,200,JSON.stringify(login.data));assert.equal(login.data.user.role,'instructor');assert.equal(login.data.redirect,'/admin/cwts/my-attendance');
   const teacherToken=login.cookie.match(/nstp_token=([^;]+)/)[1];
   assert.equal((await request('/api/auth/me','GET',undefined,teacherToken)).data.user.name,'Maria Instructor Test');
@@ -113,18 +113,18 @@ async function session(year,type='in',program='CWTS'){
   email.sendPasswordResetCode=async message=>{resetCode=message.code;};
   try {
     const [[account]]=await db.execute('SELECT email FROM cwts_instructors WHERE id=?',[secondInstructor]);
-    const loginBefore=await request('/api/auth/login','POST',{portal:'cwts-admin',email:account.email,password:'Test-password-456'},null);
+    const loginBefore=await request('/api/auth/login','POST',{portal:'cwts-instructor',email:account.email,password:'Test-password-456'},null);
     const oldToken=loginBefore.cookie.match(/nstp_token=([^;]+)/)[1];
-    const requestCode=()=>request('/api/auth/forgot-password/request-code','POST',{portal:'cwts-admin',email:account.email},null);
+    const requestCode=()=>request('/api/auth/forgot-password/request-code','POST',{portal:'cwts-instructor',email:account.email},null);
     assert.equal((await requestCode()).status,200);
     assert.equal((await requestCode()).status,429);
-    const resetBody={portal:'cwts-admin',email:account.email,verification_code:resetCode,newPassword:'Changed-password-987',confirmPassword:'Changed-password-987'};
+    const resetBody={portal:'cwts-instructor',email:account.email,verification_code:resetCode,newPassword:'Changed-password-987',confirmPassword:'Changed-password-987'};
     const reset=()=>request('/api/auth/forgot-password/reset-admin','POST',resetBody,null);
     assert.equal((await request('/api/auth/forgot-password/reset-admin','POST',{...resetBody,verification_code:'000000'},null)).status,400);
     const resets=await Promise.all([reset(),reset()]);
     assert.deepEqual(resets.map(r=>r.status).sort(),[200,400]);
     assert.equal((await request('/api/auth/me','GET',undefined,oldToken)).status,401);
-    const loginAfter=await request('/api/auth/login','POST',{portal:'cwts-admin',email:account.email,password:resetBody.newPassword},null);
+    const loginAfter=await request('/api/auth/login','POST',{portal:'cwts-instructor',email:account.email,password:resetBody.newPassword},null);
     assert.equal(loginAfter.status,200);assert.equal(loginAfter.data.user.role,'instructor');
     assert.equal((await request('/api/auth/forgot-password/request-code','POST',{portal:'rotc-admin',email:account.email},null)).status,404);
     assert.equal((await request('/api/officer/cwts-instructor-assignments/'+assignment+'/revoke','PATCH',{})).status,200);
