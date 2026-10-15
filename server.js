@@ -112,6 +112,7 @@ const publicPages = {
   "/student/login": "views/auth/student-login.html",
   "/admin/rotc/login": "views/auth/rotc-login.html",
   "/admin/cwts/login": "views/auth/cwts-login.html",
+  '/cwts/instructor/login': 'views/auth/cwts-instructor-login.html',
   '/admin/cwts/accept-invitation':'views/auth/cwts-instructor-invitation.html',
   "/officer/login": "views/auth/officer-login.html",
 }
@@ -179,7 +180,7 @@ mountPages("/officer", [
 ], requirePagePortal("officer"));
 const instructorAuth=require('./middleware/authMiddleware');
 app.get('/admin/cwts/my-attendance',
-  (req,res,next)=>readSession(req)?.role==='instructor'?next():res.redirect('/admin/cwts/login'),
+  (req,res,next)=>readSession(req)?.role==='instructor'?next():res.redirect('/cwts/instructor/login'),
   instructorAuth.requireAuth,instructorAuth.requireRole('instructor'),instructorAuth.requirePortal('cwts-admin'),
   (req,res)=>res.sendFile(path.join(__dirname,'views/admin/cwts/my-attendance.html')));
 for (const page of ["rotc", "cwts", "advance-course", "special-platoon"]) {
