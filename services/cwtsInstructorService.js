@@ -53,7 +53,7 @@ async function acceptInvitation(token,password){
     if(!account)fail(400,'This invitation is expired, already used, or unavailable. Ask the Director for a new invitation.');
     await connection.execute("UPDATE cwts_instructors SET password=?,status='active',session_version=session_version+1,invitation_hash=NULL,invitation_expires=0,delivery_status='accepted' WHERE id=?",[passwordHash,account.id]);
     await connection.commit();
-    return {message:'Your password is set. Sign in through the CWTS login with your email and new password.',redirect:'/admin/cwts/login'};
+    return {message:'Your password is set. Sign in through the CWTS Instructor login with your email and new password.',redirect:'/cwts/instructor/login'};
   }catch(error){await connection.rollback();throw error;}finally{connection.release();}
 }
 async function findLogin(emailAddress){
