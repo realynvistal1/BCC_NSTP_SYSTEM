@@ -487,8 +487,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'X-ray is required for ROTC enrollment.' });
     }
 
-    const skipMedicalQuestion = isCriminologyCourse(body.course)
-      || (body.nstp_component === 'ROTC' && Number(body.willing_to_take_advance_course) === 1);
+    const skipMedicalQuestion = body.nstp_component === 'ROTC'
+      && [body.willing_to_take_advance_course, body.willing_to_be_medics, body.willing_to_be_military_police]
+        .some(value => Number(value) === 1);
     const hasMedicalCondition = skipMedicalQuestion ? 0 : enrollmentService.normalizeMedicalCondition(body.has_medical_condition);
     if (hasMedicalCondition === 1 && !String(body.medical_condition || '').trim()) {
       return res.status(400).json({
