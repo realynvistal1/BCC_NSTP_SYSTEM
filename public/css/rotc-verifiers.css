@@ -403,3 +403,25 @@ body[data-page="rotc-verifiers"] #content > .verifier-history-panel { border-top
 .attendance-assignment-dialog .notice { padding: 10px; margin: 0; font-size: 11px; line-height: 1.5; border-radius: 8px; }
 .attendance-assignment-dialog .attendance-dialog-footer { padding: 12px 14px; gap: 8px; }
 .attendance-assignment-dialog .attendance-dialog-footer .btn { padding: 9px 12px; min-height: 40px; font-size: 12px; border-radius: 10px; }
+
+/* Compact attendance correction form. */
+.attendance-update-dialog.student-attendance-edit-dialog { width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); border-radius: 16px; }
+.student-attendance-edit-dialog .attendance-dialog-header { padding: 12px 14px; gap: 10px; }
+.student-attendance-edit-dialog .attendance-dialog-header h2 { font-size: 16px; }
+.student-attendance-edit-dialog .attendance-eyebrow { font-size: 9px; margin-bottom: 3px; }
+.student-attendance-edit-dialog .attendance-dialog-icon { width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; }
+.student-attendance-edit-dialog .attendance-dialog-icon svg { width: 18px; height: 18px; }
+.student-attendance-edit-dialog .attendance-dialog-body { padding: 14px; gap: 12px; grid-auto-rows: max-content; align-content: start; }
+.student-attendance-edit-dialog .attendance-edit-student { padding: 10px; border-radius: 10px; flex-wrap: nowrap; align-items: center; gap: 8px; }
+.student-attendance-edit-dialog .attendance-edit-student > div { min-width: 0; flex: 1; }
+.student-attendance-edit-dialog .attendance-edit-student h3 { font-size: 14px; margin: 0 0 3px; }
+.student-attendance-edit-dialog .attendance-edit-student > div > span { font-size: 11px; }
+.student-attendance-edit-dialog .badge { font-size: 10px; padding: 4px 8px; }
+.student-attendance-edit-dialog .attendance-dialog-body .field { font-size: 12px; gap: 6px; }
+.student-attendance-edit-dialog .attendance-dialog-body select,
+.student-attendance-edit-dialog .attendance-dialog-body textarea { padding: 9px 10px; font-size: 16px; font-weight: 400; border-radius: 9px; }
+.student-attendance-edit-dialog .attendance-dialog-body textarea { min-height: 76px; line-height: 1.4; }
+.student-attendance-edit-dialog .attendance-save-note { padding: 9px 10px; gap: 7px; font-size: 11px; line-height: 1.5; border-radius: 8px; }
+.student-attendance-edit-dialog .attendance-save-note svg { width: 14px; height: 14px; flex: 0 0 14px; }
+.student-attendance-edit-dialog .attendance-dialog-footer { padding: 10px 14px; gap: 8px; }
+.student-attendance-edit-dialog .attendance-dialog-footer .btn { min-height: 40px; padding: 8px 14px; font-size: 12px; border-radius: 9px; }
