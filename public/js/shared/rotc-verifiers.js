@@ -211,6 +211,18 @@ function renderVerifierManagementLists(content,assignments,log,state) {
   $('#verifierHistoryDisclosure').ontoggle=event=>{state.historyOpen=event.target.open;};
   drawAssignments();drawHistory();
 }
+function assignedAttendanceRow(record) {
+  const key = esc(record.row_key);
+  const update = attendanceUpdateDetails(record);
+  return `<tr data-record="${key}">
+    <td class="verifier-record-student"><strong>${esc([record.first_name,record.last_name].filter(Boolean).join(' '))}</strong><small>${esc(record.student_id)}</small><details class="verifier-record-details"><summary>Details</summary><div>MI ${esc(record.mi_number)} / ${esc(String(record.mi_type).toUpperCase())}<br>${esc(attendanceUpdateDate(record.open_date))}${update ? `<div>${update}</div>` : ''}</div></details></td>
+    <td class="verifier-record-session"><strong>MI ${esc(record.mi_number)} / ${esc(String(record.mi_type).toUpperCase())}</strong><small>${esc(attendanceUpdateDate(record.open_date))}</small></td>
+    <td class="verifier-record-status">${badge(record.status)}</td>
+    <td class="verifier-record-history${update ? '' : ' is-empty'}">${update || '<small>No changes yet</small>'}</td>
+    <td class="verifier-record-action"><button class="btn small primary" type="button" data-update="${key}" aria-label="Update attendance for ${esc([record.first_name,record.last_name].filter(Boolean).join(' '))}">Update</button></td>
+  </tr>`;
+}
+
 async function renderAssignedAttendance(content, preferredAssignmentId = '') {
   const generation = (content.verifierGeneration || 0) + 1;
   content.verifierGeneration = generation;
@@ -223,7 +235,7 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
   }
   let selectedAssignmentId = assignments.some(a => String(a.id) === String(preferredAssignmentId))
     ? String(preferredAssignmentId) : String(assignments[0].id);
-  content.innerHTML = `<section class="panel"><div class="section-heading verifier-section-heading"><span class="verifier-heading-icon" aria-hidden="true">${icon('platoon')}</span><div><span class="attendance-eyebrow">Your verification duty</span><h2>Your assignment${assignments.length > 1 ? 's' : ''}</h2><p>${assignments.length > 1 ? 'Open a box to view attendance for that assignment.' : 'Your assigned group and attendance session.'}</p></div><button class="btn" id="refreshVerifierRecords" type="button">${icon('refresh')} Refresh</button></div><div class="verifier-assignment-boxes">${assignments.map(a => `<div class="verifier-assignment-box" data-assignment-box="${esc(a.id)}">${attendanceAssignmentCard(a)}${assignments.length > 1 ? `<button class="btn small" type="button" data-open-assignment="${esc(a.id)}" aria-pressed="false">View attendance</button>` : ''}</div>`).join('')}</div></section><section class="panel" id="verifierRecords"></section>`;
+  content.innerHTML = `<section class="panel"><div class="section-heading verifier-section-heading"><span class="verifier-heading-icon" aria-hidden="true">${icon('platoon')}</span><div><h2>Your assignment${assignments.length > 1 ? 's' : ''}</h2></div><button class="btn" id="refreshVerifierRecords" type="button">${icon('refresh')} Refresh</button></div><div class="verifier-assignment-boxes">${assignments.map(a => `<div class="verifier-assignment-box" data-assignment-box="${esc(a.id)}">${attendanceAssignmentCard(a)}${assignments.length > 1 ? `<button class="btn small" type="button" data-open-assignment="${esc(a.id)}" aria-pressed="false">View attendance</button>` : ''}</div>`).join('')}</div></section><section class="panel" id="verifierRecords"></section>`;
   let request = 0;
   async function load() {
     const token = ++request;
@@ -239,7 +251,7 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
     records.forEach(r => { r.row_key = r.id || `unmarked-${r.student_internal_id}-${r.session_id}`; });
     if (token !== request || content.verifierGeneration !== generation) return;
     const node = $('#verifierRecords');
-    node.innerHTML = `<div class="section-heading verifier-section-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('attendance')}</span><div><h2>Attendance records</h2><p>Check physical attendance. Update the status and enter a reason for each correction.</p></div></div><div class="verifier-summary"><span class="verifier-stat total"><span class="verifier-stat-icon" aria-hidden="true">${icon('platoon')}</span><span><strong>${records.length}</strong><small>Records</small></span></span>${['present','late','absent','unmarked'].map(status => `<span class="verifier-stat ${status}"><span class="verifier-stat-dot" aria-hidden="true"></span><span><strong>${records.filter(r => r.status === status).length}</strong><small>${status[0].toUpperCase()+status.slice(1)}</small></span></span>`).join('')}</div><div class="verifier-toolbar"><div class="field"><label for="verifierSearch">Find a student</label><input id="verifierSearch" type="search" placeholder="Name or student ID"></div></div>${attendanceStatusFilters(records)}${records.length ? verifierTable(['Student','Session','Attendance','Last update','Action'], records.map(r => `<tr data-record="${r.row_key}"><td><strong>${esc(r.first_name+' '+r.last_name)}</strong><br><small>${esc(r.student_id)}</small></td><td>MI ${esc(r.mi_number)} ${esc(String(r.mi_type).toUpperCase())}<br><small>${esc(attendanceUpdateDate(r.open_date))}</small></td><td>${badge(r.status)}</td><td>${attendanceUpdateDetails(r) || '—'}</td><td><button class="btn small primary" type="button" data-update="${r.row_key}">Update Attendance</button></td></tr>`)) : '<div class="verifier-empty"><span class="verifier-empty-symbol" aria-hidden="true">&#10003;</span><h3>No students for this assignment</h3><p>No approved students match this assigned group and session. Use Refresh to check for new records.</p></div>'}`;
+    node.innerHTML = `<div class="section-heading verifier-section-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('attendance')}</span><div><h2>Attendance records</h2></div></div><div class="verifier-toolbar"><div class="field"><label for="verifierSearch">Find a student</label><input id="verifierSearch" type="search" placeholder="Name or student ID"></div></div>${attendanceStatusFilters(records)}${records.length ? verifierTable(['Student','Session','Attendance','Last update','Action'], records.map(assignedAttendanceRow)) : '<div class="verifier-empty"><span class="verifier-empty-symbol" aria-hidden="true">&#10003;</span><h3>No students for this assignment</h3><p>No approved students match this assigned group and session. Use Refresh to check for new records.</p></div>'}`;
     const emptySearch = document.createElement('div');
     emptySearch.className = 'notice verifier-search-empty';
     emptySearch.setAttribute('role', 'status');
@@ -248,20 +260,36 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
     node.append(emptySearch);
     const recordsByKey = new Map(records.map(record => [String(record.row_key), record]));
     let attendanceStatus = 'all';
+    let recordPage = 1;
+    const pageSize = 10;
+    const pagination = document.createElement('nav');
+    pagination.className = 'verifier-record-pagination';
+    pagination.setAttribute('aria-label', 'Student record pages');
+    node.append(pagination);
     const filterRecords = () => {
       const query = $('#verifierSearch').value;
       node.querySelectorAll('[data-attendance-status]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.attendanceStatus === attendanceStatus)));
-      let matches = 0;
+      const matchedRows = [];
       node.querySelectorAll('[data-record]').forEach(row => {
         const record = recordsByKey.get(row.dataset.record);
         const matched = Boolean(record && verifierSearchMatches(record, query) && (attendanceStatus === 'all' || record.status === attendanceStatus));
-        row.hidden = !matched;
-        if (matched) matches++;
+        row.hidden = true;
+        if (matched) matchedRows.push(row);
       });
-      emptySearch.hidden = !records.length || matches > 0;
+      const pages = Math.max(1, Math.ceil(matchedRows.length / pageSize));
+      recordPage = Math.min(recordPage, pages);
+      matchedRows.slice((recordPage - 1) * pageSize, recordPage * pageSize).forEach(row => { row.hidden = false; });
+      emptySearch.hidden = !records.length || matchedRows.length > 0;
+      pagination.hidden = matchedRows.length <= pageSize;
+      pagination.innerHTML = `<button class="btn small" type="button" data-prev ${recordPage === 1 ? 'disabled' : ''}>Previous</button><span>${recordPage} / ${pages}</span><button class="btn small" type="button" data-next ${recordPage === pages ? 'disabled' : ''}>Next</button>`;
+      const prev = pagination.querySelector('[data-prev]');
+      const next = pagination.querySelector('[data-next]');
+      if (prev) prev.onclick = () => { recordPage--; filterRecords(); };
+      if (next) next.onclick = () => { recordPage++; filterRecords(); };
     };
-    $('#verifierSearch').oninput = filterRecords;
-    node.querySelectorAll('[data-attendance-status]').forEach(button => button.onclick = () => { attendanceStatus = button.dataset.attendanceStatus; filterRecords(); });
+    $('#verifierSearch').oninput = () => { recordPage = 1; filterRecords(); };
+    node.querySelectorAll('[data-attendance-status]').forEach(button => button.onclick = () => { attendanceStatus = button.dataset.attendanceStatus; recordPage = 1; filterRecords(); });
+    filterRecords();
     node.querySelectorAll('[data-update]').forEach(button => button.onclick = () => {
       const record = records.find(r => String(r.row_key) === button.dataset.update);
       const dialog = document.createElement('dialog');
