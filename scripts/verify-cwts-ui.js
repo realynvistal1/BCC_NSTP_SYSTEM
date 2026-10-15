@@ -10,8 +10,9 @@ vm.runInContext(fs.readFileSync('public/js/admin/cwts/instructor-attendance.js',
 const assignment={id:1,company:'Alpha',mi_number:1,mi_type:'in',ms_level:1,school_year:'2026-2027'};
 let html=context.cwtsInstructorView([assignment],assignment,[{status:'present'},{status:'absent'},{status:'unmarked'}]);
 assert(!html.includes('<select'));assert.equal((html.match(/Company Alpha/g)||[]).length,1);
-assert.match(html,/<strong>3<\/strong><small>Students/);
-for(const status of ['present','absent','unmarked'])assert.match(html,new RegExp('verifier-stat '+status+'[\\s\\S]*?<strong>1</strong>'));
+assert(!html.includes('verifier-summary'),'Status counts should appear only once in the filters');
+assert.match(html,/data-attendance-status="all"[^>]*>All students<span>3<\/span>/);
+for(const status of ['present','absent','unmarked'])assert.match(html,new RegExp('data-attendance-status="'+status+'"[^>]*>[^<]+<span>1</span>'));
 html=context.cwtsInstructorView([assignment,{...assignment,id:2,company:'Bravo'}],assignment,[]);
 assert.match(html,/data-cwts-assignment="2" aria-pressed="false"/);
 assert.match(context.cwtsInstructorView([],undefined,[]),/No active assignments yet/);
