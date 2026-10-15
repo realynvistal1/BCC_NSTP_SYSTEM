@@ -52,3 +52,86 @@
 @media (min-width: 801px) {
   body[data-page="cwts-instructor-attendance"] :is(.student-menu-close,.student-menu-backdrop) { display: none; }
 }
+
+/* Compact student attendance workspace. */
+body[data-page="verify-attendance"] .intro { padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; }
+body[data-page="verify-attendance"] .intro :is(.intro-kicker,#pageSubtitle) { display: none; }
+body[data-page="verify-attendance"] .intro h1 { font-size: 18px; line-height: 1.3; margin: 0; }
+body[data-page="verify-attendance"] .intro-brand-row { gap: 10px; }
+body[data-page="verify-attendance"] #portalEmblem { width: 32px; height: 32px; }
+body[data-page="verify-attendance"] #content > .panel { padding: 14px; border-radius: 14px; margin-bottom: 12px; }
+body[data-page="verify-attendance"] .verifier-section-heading { flex-wrap: nowrap; gap: 8px; margin-bottom: 12px; }
+body[data-page="verify-attendance"] #content h2 { font-size: 15px; line-height: 1.35; margin: 0; }
+body[data-page="verify-attendance"] .verifier-heading-icon { width: 30px; height: 30px; flex-basis: 30px; border-radius: 9px; }
+body[data-page="verify-attendance"] .verifier-heading-icon svg { width: 17px; height: 17px; }
+body[data-page="verify-attendance"] .verifier-section-heading > .btn { margin-left: auto; flex-shrink: 0; padding: 7px 10px; font-size: 12px; min-height: 40px; }
+body[data-page="verify-attendance"] .verifier-assignment-box .attendance-assignment-card { padding: 12px; border-radius: 10px; border-left-width: 3px; }
+body[data-page="verify-attendance"] .attendance-assignment-card h3 { font-size: 14px; line-height: 1.4; }
+body[data-page="verify-attendance"] .attendance-assignment-card .attendance-eyebrow { font-size: 9px; margin-bottom: 4px; }
+body[data-page="verify-attendance"] .verifier-assignment-box .attendance-assignment-details { grid-template-columns: 1fr 1.25fr; margin-top: 10px; gap: 8px; }
+body[data-page="verify-attendance"] .verifier-assignment-box .attendance-assignment-details > div { padding: 8px; min-width: 0; }
+body[data-page="verify-attendance"] .attendance-assignment-details > div:last-child { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+body[data-page="verify-attendance"] .attendance-assignment-details dt { font-size: 10px; margin-bottom: 2px; }
+body[data-page="verify-attendance"] .attendance-assignment-details dd { font-size: 12px; }
+body[data-page="verify-attendance"] .verifier-summary { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 5px; margin: 12px 0; overflow: visible; }
+body[data-page="verify-attendance"] .verifier-stat { display: block; padding: 8px 3px; text-align: center; border-radius: 9px; min-width: 0; }
+body[data-page="verify-attendance"] .verifier-stat :is(.verifier-stat-icon,.verifier-stat-dot) { display: none; }
+body[data-page="verify-attendance"] .verifier-stat strong { font-size: 18px; }
+body[data-page="verify-attendance"] .verifier-stat small { font-size: 9px; margin-top: 3px; }
+body[data-page="verify-attendance"] .verifier-toolbar { gap: 8px; margin-bottom: 12px; }
+body[data-page="verify-attendance"] .verifier-toolbar input { min-height: 40px; }
+
+/* One set of counts and filters, followed by compact student records. */
+body[data-page="verify-attendance"] .attendance-status-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+body[data-page="verify-attendance"] .attendance-status-filter { min-height: 38px; padding: 7px 9px; gap: 5px; font-size: 11px; border-radius: 8px; }
+body[data-page="verify-attendance"] .attendance-status-filter span { font-size: 10px; padding: 2px 5px; }
+body[data-page="verify-attendance"] .verifier-toolbar label { font-size: 11px; }
+body[data-page="verify-attendance"] .footer-note { font-size: 10px; margin-top: 16px; }
+@media (max-width: 600px) {
+  body[data-page="verify-attendance"] #verifierRecords tbody { gap: 10px; }
+  body[data-page="verify-attendance"] #verifierRecords tr { padding: 12px; gap: 10px; border-radius: 10px; background: #fff; }
+  body[data-page="verify-attendance"] #verifierRecords td { font-size: 12px; line-height: 1.45; }
+  body[data-page="verify-attendance"] #verifierRecords td small { font-size: 10px; }
+  body[data-page="verify-attendance"] #verifierRecords td[data-label]::before { font-size: 9px; margin-bottom: 3px; }
+  body[data-page="verify-attendance"] #verifierRecords td:first-child::before,
+  body[data-page="verify-attendance"] #verifierRecords td:last-child::before { display: none; }
+  body[data-page="verify-attendance"] #verifierRecords td:last-child { grid-column: 2; align-self: end; }
+  body[data-page="verify-attendance"] #verifierRecords td:last-child .btn { min-height: 38px; padding: 7px 10px; font-size: 12px; }
+  body[data-page="verify-attendance"] #verifierRecords .badge { font-size: 10px; padding: 4px 7px; }
+}
+
+/* Record cards use named areas so student, status and actions stay aligned. */
+body[data-page="verify-attendance"] .verifier-record-student small,
+body[data-page="verify-attendance"] .verifier-record-session small { display: block; margin-top: 3px; color: #64748b; }
+@media (max-width: 600px) {
+  body[data-page="verify-attendance"] #verifierRecords tr {
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-areas: "student status" "session session" "history action";
+    align-items: center; gap: 12px; padding: 14px;
+    border: 1px solid #dce6ef; box-shadow: 0 3px 10px #19345406;
+  }
+  body[data-page="verify-attendance"] #verifierRecords td[data-label]::before { display: none; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-student { grid-area: student; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-student strong { font-size: 13px; color: #183453; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-status { grid-area: status; justify-self: end; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-session { grid-area: session; padding: 9px 10px; border-radius: 8px; background: #f3f7fb; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-session strong { font-size: 11px; font-weight: 600; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-history { grid-area: history; font-size: 10px; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-history.is-empty { color: #64748b; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-action { grid-area: action; justify-self: end; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-action .btn { width: auto; min-width: 80px; }
+  body[data-page="verify-attendance"] .attendance-status-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  body[data-page="verify-attendance"] .attendance-status-filter { justify-content: space-between; }
+}
+
+.verifier-record-details { display: none; }
+body[data-page="verify-attendance"] .verifier-record-pagination { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; font-size: 11px; }
+body[data-page="verify-attendance"] .verifier-record-pagination[hidden] { display: none; }
+@media(max-width:600px) {
+  body[data-page="verify-attendance"] #verifierRecords tr { grid-template-areas: "student status" "student action"; gap: 6px 10px; padding: 10px 12px; }
+  body[data-page="verify-attendance"] #verifierRecords :is(.verifier-record-session,.verifier-record-history) { display: none; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-details { display: block; font-size: 10px; margin-top: 5px; color: #64748b; }
+  body[data-page="verify-attendance"] .verifier-record-details summary { cursor: pointer; color: #356a9f; padding: 5px 0; }
+  body[data-page="verify-attendance"] .verifier-record-details > div { padding: 6px 0; line-height: 1.5; }
+  body[data-page="verify-attendance"] #verifierRecords .verifier-record-action .btn { min-height: 36px; min-width: 66px; padding: 6px 9px; font-size: 11px; }
+}
