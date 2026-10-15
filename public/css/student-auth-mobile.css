@@ -37,6 +37,17 @@
 .enrollment-page :is(input, select, textarea):focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .enrollment-nav-btn:disabled { opacity: .65; cursor: wait; }
 
+/* Keep every enrollment step compact, including the horizontal security check. */
+.enrollment-page .enrollment-captcha { width: 274px; max-width: 100%; height: 71px; margin-top: 12px; }
+.enrollment-page .enrollment-captcha-widget { width: 304px; height: 78px; transform: scale(.9); transform-origin: top left; }
+.enrollment-page .enrollment-field-stack { gap: 10px; }
+.enrollment-page :is(.enrollment-field label, .enrollment-main-label) { font-size: 12px; line-height: 1.45; }
+.enrollment-page .enrollment-step-heading h2 { font-size: 16px; }
+.enrollment-page .enrollment-program-btn { font-size: 13px; padding: 12px; }
+.enrollment-page .enrollment-dropzone { min-height: 58px; }
+.enrollment-page .enrollment-dropzone span { font-size: 12px; overflow-wrap: anywhere; }
+.enrollment-page .enrollment-nav-btn { height: 44px; font-size: 13px; }
+
 @media (max-width: 900px) {
   .theme-student .auth-form-side {
     min-width: 0;
@@ -92,9 +103,9 @@
   .enrollment-page :is(.enrollment-field, .enrollment-form-panel) { min-width: 0; }
   .enrollment-page :is(.enrollment-two-col, .enrollment-three-col) { grid-template-columns: minmax(0, 1fr); }
   .enrollment-page .enrollment-form-panel { padding: 12px; }
-  .enrollment-page .enrollment-field :is(input, select, textarea) { font-size: 16px; min-width: 0; max-width: 100%; }
+  .enrollment-page .enrollment-field :is(input, select, textarea) { font-size: 16px; min-width: 0; max-width: 100%; padding: 9px 10px; }
   .enrollment-page :is(.enrollment-dropzone, .enrollment-program-btn, .enrollment-radio-card) { min-width: 0; }
-  .enrollment-page .enrollment-dropzone { padding: 16px 12px; overflow-wrap: anywhere; }
+  .enrollment-page .enrollment-dropzone { padding: 10px; overflow-wrap: anywhere; }
   .enrollment-page .enrollment-dropzone span { min-width: 0; }
   .enrollment-page .enrollment-photo-upload-row { flex-wrap: wrap; }
   .enrollment-page .enrollment-actions {
@@ -105,11 +116,37 @@
     padding: 12px 0 max(12px, env(safe-area-inset-bottom));
     gap: 10px;
   }
-  .enrollment-page .enrollment-nav-btn { padding: 0 12px; min-width: 0; font-size: 14px; }
+  .enrollment-page .enrollment-nav-btn { padding: 0 10px; min-width: 0; font-size: 13px; }
+  .enrollment-page .enrollment-captcha { width: 259px; height: 67px; }
+  .enrollment-page .enrollment-captcha-widget { transform: scale(.85); }
+  .enrollment-page .enrollment-photo-preview { width: 54px; height: 54px; }
   .enrollment-page .enrollment-review { padding: 12px; }
 }
 
 @media (max-width: 360px) {
   .theme-student .auth-card { padding: 20px 16px; }
   .enrollment-review dl > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+}
+
+/* Compact student sign-in without changing administrator login screens. */
+.theme-student .login-captcha { width: 259px; max-width: 100%; height: 67px; }
+.theme-student .student-login-captcha-widget { width: 304px; height: 78px; transform: scale(.85); transform-origin: top left; }
+.theme-student .auth-heading p { font-size: 12px; }
+.theme-student .auth-form > label { font-size: 12px; }
+.theme-student .auth-card .link-button { font-size: 12px; }
+.theme-student .auth-submit { font-size: 14px; }
+@media (max-width: 900px) {
+  .theme-student .auth-form-side { padding: 16px 12px; }
+  .theme-student .auth-card { padding: 18px 16px; border-radius: 18px; }
+  .theme-student .mobile-brand { padding: 10px; margin-bottom: 16px; gap: 10px; border-radius: 12px; }
+  .theme-student .mobile-brand img { width: 40px; height: 40px; flex-basis: 40px; }
+  .theme-student .mobile-brand strong { font-size: 13px; }
+  .theme-student .student-login-brand-copy small { font-size: 9px; margin-bottom: 2px; }
+  .theme-student .auth-heading { gap: 10px; margin-bottom: 14px; }
+  .theme-student .auth-heading h2 { font-size: 20px; }
+  .theme-student .heading-icon { width: 34px; height: 34px; flex-basis: 34px; }
+  .theme-student .auth-form { gap: 10px; }
+  .theme-student .auth-form .input-shell input { height: 44px; }
+  .theme-student .auth-submit { height: 44px; }
+  .theme-student .auth-divider { margin: 16px 0 12px; }
 }
