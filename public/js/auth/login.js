@@ -11,12 +11,18 @@ async function initLogin() {
     if (!config.loginCheckbox.siteKey) throw new Error('Security check is not configured correctly. Please contact the administrator.');
     const container = document.createElement('div');
     container.className = 'login-captcha';
+    const studentLogin = form.dataset.portal === 'student';
+    const widget = studentLogin ? document.createElement('div') : container;
+    if (studentLogin) {
+      widget.className = 'student-login-captcha-widget';
+      container.append(widget);
+    }
     form.querySelector('[type="submit"]').before(container);
     await Captcha.load('explicit');
     await new Promise(resolve => window.grecaptcha.ready(resolve));
-    checkboxId = window.grecaptcha.render(container, {
+    checkboxId = window.grecaptcha.render(widget, {
       sitekey: config.loginCheckbox.siteKey,
-      size: window.matchMedia('(max-width: 380px)').matches ? 'compact' : 'normal',
+      size: studentLogin ? 'normal' : window.matchMedia('(max-width: 380px)').matches ? 'compact' : 'normal',
       'expired-callback': () => { $('#msg').textContent = 'Security check expired. Please check the box again.'; $('#msg').className = 'notice error'; },
       'error-callback': () => { $('#msg').textContent = 'Unable to load security check. Please refresh and try again.'; $('#msg').className = 'notice error'; },
     });
