@@ -1,6 +1,6 @@
 # CWTS instructor invitations
 
-Instructors use the existing CWTS login with their own email and password. Their account can access only attendance for assigned companies and exact CS IN/OUT sessions. It cannot access CWTS administration, grades, enrollment, or Director tools.
+Instructors use the CWTS Instructor login at /cwts/instructor/login with their own email and password. Their account can access only attendance for assigned companies and exact CS IN/OUT sessions. It cannot access CWTS administration, grades, enrollment, or Director tools.
 
 ## Deployment
 
@@ -13,7 +13,7 @@ The Director screen displays a setup notice and disables invitation sending whil
 
 ## Director workflow
 
-Open **CWTS Instructors**. Enter the instructor's name and email, then select **Create account & send invitation**. The email subject is **NSTP CWTS Attendance Invitation**. The instructor opens its one-time link, sets their own password, and signs in through the existing CWTS login.
+Open **CWTS Instructors**. Enter the instructor's name and email, then select **Create account & send invitation**. The email subject is **NSTP CWTS Attendance Invitation**. The instructor opens its one-time link, sets their own password, and signs in through the CWTS Instructor login at /cwts/instructor/login.
 
 Assign the instructor to a company and an existing attendance session. A pending instructor can be assigned in advance, but cannot sign in until they accept the invitation. Assigning a different instructor to the same company and session replaces the previous instructor's access immediately. Past corrections retain their original author.
 
