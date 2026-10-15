@@ -295,6 +295,7 @@ function preparePortalShell(role) {
 }
 
 function portalLogin(expected) {
+  if (expected === 'cwts-instructor' || document.body.dataset.page === 'cwts-instructor-attendance') return '/cwts/instructor/login';
   if (expected === 'rotc-admin') return '/admin/rotc/login';
   if (expected === 'cwts-admin') return '/admin/cwts/login';
   if (expected === 'officer') return '/officer/login';
@@ -590,7 +591,7 @@ function showForgotMessage() {
   if (portal !== 'student') {
     body.innerHTML = `
       <div class="forgot-header">
-        <h3>${portal === 'cwts-admin' ? 'Reset CWTS Password' : 'Reset Admin Password'}</h3>
+        <h3>${portal === 'cwts-instructor' ? 'Reset Instructor Password' : portal === 'cwts-admin' ? 'Reset CWTS Password' : 'Reset Admin Password'}</h3>
         <p>Request a verification code through Gmail, then enter the code to create a new password.</p>
       </div>
       <div class="notice hidden" id="forgotPasswordMsg"></div>
@@ -604,7 +605,7 @@ function showForgotMessage() {
           </div>
         </label>
         <div class="forgot-action-row">
-          <button class="auth-submit ${portal === 'cwts-admin' ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="sendResetCodeBtn" type="button">Send Code</button>
+          <button class="auth-submit ${['cwts-admin','cwts-instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="sendResetCodeBtn" type="button">Send Code</button>
         </div>
         <label>
           Verification Code
@@ -627,7 +628,7 @@ function showForgotMessage() {
             <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
           </div>
         </label>
-        <button class="auth-submit ${portal === 'cwts-admin' ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="resetAdminPasswordBtn" type="submit">Reset Password</button>
+        <button class="auth-submit ${['cwts-admin','cwts-instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="resetAdminPasswordBtn" type="submit">Reset Password</button>
       </form>
     `;
     $('#sendResetCodeBtn')?.addEventListener('click', requestAdminResetCode);
@@ -744,7 +745,9 @@ async function logout() {
   if (!await confirmLogout()) return;
 
   const path = location.pathname;
-  const destination = path.startsWith('/admin/rotc')
+  const destination = document.body.dataset.page === 'cwts-instructor-attendance'
+    ? '/cwts/instructor/login'
+    : path.startsWith('/admin/rotc')
     ? '/admin/rotc/login'
     : path.startsWith('/admin/cwts')
       ? '/admin/cwts/login'
