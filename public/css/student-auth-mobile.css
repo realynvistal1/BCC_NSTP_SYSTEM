@@ -15,12 +15,12 @@
 }
 .enrollment-back-login:hover { background: #eef6ff; }
 .enrollment-back-login:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
-.theme-student .auth-heading > div:last-child { min-width: 0; }
-.theme-student .heading-icon { flex: 0 0 42px; }
-.theme-student .auth-card .input-shell input { font-size: 16px; }
-.theme-student .auth-card .notice { overflow-wrap: anywhere; }
-.theme-student .auth-card .link-button { min-height: 44px; }
-.theme-student .auth-card .password-toggle { min-width: 44px; min-height: 44px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-heading > div:last-child { min-width: 0; }
+:is(.theme-student, .theme-cwts-instructor) .heading-icon { flex: 0 0 42px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-card .input-shell input { font-size: 16px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-card .notice { overflow-wrap: anywhere; }
+:is(.theme-student, .theme-cwts-instructor) .auth-card .link-button { min-height: 44px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-card .password-toggle { min-width: 44px; min-height: 44px; }
 .enrollment-review {
   border: 1px solid #dbe5ef;
   border-radius: 14px;
@@ -49,17 +49,17 @@
 .enrollment-page .enrollment-nav-btn { height: 44px; font-size: 13px; }
 
 @media (max-width: 900px) {
-  .theme-student .auth-form-side {
+  :is(.theme-student, .theme-cwts-instructor) .auth-form-side {
     min-width: 0;
     min-height: 100svh;
     padding: 24px 16px 16px;
     justify-content: flex-start;
   }
-  .theme-student .mobile-auth-hero {
+  :is(.theme-student, .theme-cwts-instructor) .mobile-auth-hero {
     background-image: linear-gradient(rgba(8, 27, 44, .78), rgba(8, 27, 44, .93)), var(--hero);
   }
-  .theme-student .auth-card { margin-top: 0; padding: 24px; border-radius: 22px; border: 1px solid #d8e5f2; }
-  .theme-student .mobile-brand {
+  :is(.theme-student, .theme-cwts-instructor) .auth-card { margin-top: 0; padding: 24px; border-radius: 22px; border: 1px solid #d8e5f2; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand {
     margin: 0 0 24px;
     flex-direction: row;
     align-items: center;
@@ -70,19 +70,19 @@
     border-radius: 16px;
     background: linear-gradient(120deg, #eaf4ff, #f7fbff);
   }
-  .theme-student .mobile-brand img { width: 56px; height: 56px; flex: 0 0 56px; padding: 4px; background: #fff; border: 1px solid #d8e5f2; border-radius: 14px; }
-  .theme-student .student-login-brand-copy { min-width: 0; }
-  .theme-student .student-login-brand-copy small { display: block; font-size: 10px; font-weight: 700; line-height: 1.5; color: #526d88; margin-bottom: 4px; }
-  .theme-student .mobile-brand strong { display: block; font-size: 15px; line-height: 1.4; color: #214d79; text-shadow: none; text-align: left; }
-  .theme-student .auth-heading { align-items: flex-start; margin-bottom: 20px; }
-  .theme-student .auth-heading h2 { font-size: 22px; }
-  .theme-student .auth-heading p { line-height: 1.5; }
-  .theme-student .auth-form { gap: 14px; }
-  .theme-student .auth-form .input-shell input { min-width: 0; height: 48px; }
-  .theme-student .auth-footer-text { line-height: 1.6; }
-  .theme-student .auth-copyright { position: relative; margin: 20px 0 0; text-align: center; font-size: 12px; }
-  .theme-student .forgot-modal { padding: 12px; }
-  .theme-student .forgot-modal-card { max-height: calc(100dvh - 24px); overflow-y: auto; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand img { width: 56px; height: 56px; flex: 0 0 56px; padding: 4px; background: #fff; border: 1px solid #d8e5f2; border-radius: 14px; }
+  :is(.theme-student, .theme-cwts-instructor) .student-login-brand-copy { min-width: 0; }
+  :is(.theme-student, .theme-cwts-instructor) .student-login-brand-copy small { display: block; font-size: 10px; font-weight: 700; line-height: 1.5; color: #526d88; margin-bottom: 4px; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand strong { display: block; font-size: 15px; line-height: 1.4; color: #214d79; text-shadow: none; text-align: left; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-heading { align-items: flex-start; margin-bottom: 20px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-heading h2 { font-size: 22px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-heading p { line-height: 1.5; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-form { gap: 14px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-form .input-shell input { min-width: 0; height: 48px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-footer-text { line-height: 1.6; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-copyright { position: relative; margin: 20px 0 0; text-align: center; font-size: 12px; }
+  :is(.theme-student, .theme-cwts-instructor) .forgot-modal { padding: 12px; }
+  :is(.theme-student, .theme-cwts-instructor) .forgot-modal-card { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 
 @media (max-width: 700px) {
@@ -124,29 +124,35 @@
 }
 
 @media (max-width: 360px) {
-  .theme-student .auth-card { padding: 20px 16px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-card { padding: 20px 16px; }
   .enrollment-review dl > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
 }
 
 /* Compact student sign-in without changing administrator login screens. */
-.theme-student .login-captcha { width: 259px; max-width: 100%; height: 67px; }
-.theme-student .student-login-captcha-widget { width: 304px; height: 78px; transform: scale(.85); transform-origin: top left; }
-.theme-student .auth-heading p { font-size: 12px; }
-.theme-student .auth-form > label { font-size: 12px; }
-.theme-student .auth-card .link-button { font-size: 12px; }
-.theme-student .auth-submit { font-size: 14px; }
+:is(.theme-student, .theme-cwts-instructor) .login-captcha { width: 259px; max-width: 100%; height: 67px; }
+:is(.theme-student, .theme-cwts-instructor) .student-login-captcha-widget { width: 304px; height: 78px; transform: scale(.85); transform-origin: top left; }
+:is(.theme-student, .theme-cwts-instructor) .auth-heading p { font-size: 12px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-form > label { font-size: 12px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-card .link-button { font-size: 12px; }
+:is(.theme-student, .theme-cwts-instructor) .auth-submit { font-size: 14px; }
 @media (max-width: 900px) {
-  .theme-student .auth-form-side { padding: 16px 12px; }
-  .theme-student .auth-card { padding: 18px 16px; border-radius: 18px; }
-  .theme-student .mobile-brand { padding: 10px; margin-bottom: 16px; gap: 10px; border-radius: 12px; }
-  .theme-student .mobile-brand img { width: 40px; height: 40px; flex-basis: 40px; }
-  .theme-student .mobile-brand strong { font-size: 13px; }
-  .theme-student .student-login-brand-copy small { font-size: 9px; margin-bottom: 2px; }
-  .theme-student .auth-heading { gap: 10px; margin-bottom: 14px; }
-  .theme-student .auth-heading h2 { font-size: 20px; }
-  .theme-student .heading-icon { width: 34px; height: 34px; flex-basis: 34px; }
-  .theme-student .auth-form { gap: 10px; }
-  .theme-student .auth-form .input-shell input { height: 44px; }
-  .theme-student .auth-submit { height: 44px; }
-  .theme-student .auth-divider { margin: 16px 0 12px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-form-side { padding: 16px 12px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-card { padding: 18px 16px; border-radius: 18px; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand { padding: 10px; margin-bottom: 16px; gap: 10px; border-radius: 12px; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand img { width: 40px; height: 40px; flex-basis: 40px; }
+  :is(.theme-student, .theme-cwts-instructor) .mobile-brand strong { font-size: 13px; }
+  :is(.theme-student, .theme-cwts-instructor) .student-login-brand-copy small { font-size: 9px; margin-bottom: 2px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-heading { gap: 10px; margin-bottom: 14px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-heading h2 { font-size: 20px; }
+  :is(.theme-student, .theme-cwts-instructor) .heading-icon { width: 34px; height: 34px; flex-basis: 34px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-form { gap: 10px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-form .input-shell input { height: 44px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-submit { height: 44px; }
+  :is(.theme-student, .theme-cwts-instructor) .auth-divider { margin: 16px 0 12px; }
 }
+
+/* Instructor branding shares the compact student form layout. */
+.theme-cwts-instructor .mobile-brand { background: linear-gradient(120deg,#eaf7f0,#f7fcf9); border-color: #cde5d8; }
+.theme-cwts-instructor .mobile-brand strong { color: #17604e; }
+.theme-cwts-instructor .student-login-brand-copy small { color: #557768; }
+.theme-cwts-instructor .auth-footer-text { margin-top: 14px; }
