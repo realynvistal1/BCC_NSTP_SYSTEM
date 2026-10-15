@@ -98,7 +98,7 @@ module.exports = {
       text:[`Hello ${name},`,'The NSTP Director has invited you to use CWTS attendance.',
         'Set your own password using this link:',url,
         'This link expires in 24 hours and works only once. Do not forward it.',
-        'After setting your password, sign in using the existing CWTS login. Your account can access only assigned company attendance sessions.',
+        'After setting your password, sign in using the CWTS Instructor login at /cwts/instructor/login. Your account can access only assigned company attendance sessions.',
         'If you did not expect this invitation, contact the NSTP Director.'].join('\n\n'),
     });
   },
