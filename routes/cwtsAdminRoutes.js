@@ -30,6 +30,7 @@ router.use(requireAuth, requireRole('admin'), requirePortal('cwts-admin'));
 
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);
+router.get('/sample-enrollment-settings', (req, res) => res.json(require('../services/sampleEnrollmentService').settings()));
 router.post('/enrollment-schedule', controller.schedules);
 router.get('/enrollments', controller.enrollments);
 router.get('/enrollments/:id/photo', controller.enrollmentPhoto);
