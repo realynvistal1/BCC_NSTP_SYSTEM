@@ -3,6 +3,23 @@
   let busy=false;
   const labels=['Academic Information','Personal Information','Physical & Health','Account Setup'];
   const sections=$$('.enroll-step'),progress=$$('.enrollment-progress-item'),f=$('#enrollmentForm'),msg=$('#enrollMsg');
+  const birthMonth=$('#birthMonth'),birthDay=$('#birthDay'),birthYear=$('#birthYear');
+  const today=new Date();
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  months.forEach((month,index)=>birthMonth.add(new Option(month,String(index+1))));
+  for(let year=today.getFullYear();year>=1900;year--)birthYear.add(new Option(String(year),String(year)));
+  function syncBirthdate(){
+    const year=Number(birthYear.value),month=Number(birthMonth.value),previousDay=birthDay.value;
+    const days=month?new Date(year||2000,month,0).getDate():31;
+    birthDay.length=1;
+    for(let day=1;day<=days;day++)birthDay.add(new Option(String(day),String(day)));
+    birthDay.value=Number(previousDay)<=days?previousDay:'';
+    f.birthdate.value=year&&month&&birthDay.value?[year,String(month).padStart(2,'0'),birthDay.value.padStart(2,'0')].join('-'):'';
+    const maxDate=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+    birthYear.setCustomValidity(f.birthdate.value&&f.birthdate.value>maxDate?'Date of birth cannot be in the future.':'');
+  }
+  [birthMonth,birthDay,birthYear].forEach(select=>select.addEventListener('change',syncBirthdate));
+  syncBirthdate();
   const MAX_FILE=5*1024*1024;
   const fmt=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
   const showError=text=>{
