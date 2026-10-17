@@ -35,7 +35,7 @@ async function attendance(id,sessionId,submitted=true) {
 (async()=>{
   const valid={mi_number:1,mi_type:'in',verifier_id:1,battalion:1,company:'Alpha',platoon:1,ms_level:'1',school_year:'2026-2027'};
   assert(controller.validAssignment(valid));
-  for(const change of [{company:'Echo'},{platoon:5},{ms_level:'3'},{school_year:'2026-2028'},{verifier_id:'1 OR 1=1'},{special_unit:'Unknown'},{mi_number:0},{mi_number:1.5},{mi_type:'both'},{mi_type:''}]) assert.equal(controller.validAssignment({...valid,...change}),null);
+  for(const change of [{company:'Unknown'},{platoon:256},{ms_level:'3'},{school_year:'2026-2028'},{verifier_id:'1 OR 1=1'},{special_unit:'Unknown'},{mi_number:0},{mi_number:1.5},{mi_type:'both'},{mi_type:''}]) assert.equal(controller.validAssignment({...valid,...change}),null);
   // Use a dedicated, otherwise unused school year and remove every fixture afterward.
   let year;
   for(let start=8800;start<9998;start++){
@@ -45,6 +45,8 @@ async function attendance(id,sessionId,submitted=true) {
     const [result]=await db.execute("INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES('ROTC','1',?,'2026-10-01','2026-10-31')",[year]);scheduleId=result.insertId;break;
   }
   assert(scheduleId);
+  await db.execute('UPDATE enrollment_schedules SET platoons_assigned_at=NOW() WHERE id=?',[scheduleId]);
+  assert(controller.validAssignment({...valid,company:'Echo',platoon:5}),'Custom roster company placement and platoon numbers are supported');
   const verifier=await student('Advance',true),target=await student('Assigned'),outsider=await student('OtherPlatoon'),other=await student('Unassigned');
   await enrollment(verifier,true);await enrollment(target);await enrollment(outsider,false,2);
   const director={id:1,email:`${stamp}-director@example.invalid`},user={id:verifier,email:`${stamp}-Advance@example.invalid`};
@@ -52,12 +54,15 @@ async function attendance(id,sessionId,submitted=true) {
   assert.equal((await call(controller.assign,director,{...valid,verifier_id:verifier,school_year:year})).status,400,'Cannot assign an MI before attendance is created');
   const ordinary=await session('ROTC',year),wrongYear=await session('ROTC','8798-8799'),cwts=await session('CWTS',year),advance=await session('ROTC',year,1),wrongLevel=await session('ROTC',year,0,'2');
   const female=await student('FemaleAdvance',true,'Female');await enrollment(female,true);
+  const femaleTarget=await student('FemaleTarget',false,'Female');await enrollment(femaleTarget);
+  await db.execute("UPDATE student_ms_records SET assignment_battalion=2,assignment_company='Echo' WHERE student_id=?",[femaleTarget]);
   const femaleUser={id:female,email:`${stamp}-FemaleAdvance@example.invalid`};
   assert.equal((await call(controller.assign,director,{...valid,verifier_id:female,school_year:year})).status,400);
   assert.equal((await call(controller.assign,director,{...valid,verifier_id:verifier,school_year:year,battalion:2,company:'Echo'})).status,400);
   assert.equal((await call(controller.assign,director,{...valid,verifier_id:female,school_year:year,battalion:2,company:'Echo'})).status,200);
   const femaleAssignment=(await call(controller.mine,femaleUser)).payload[0];assert(femaleAssignment);
   await call(controller.revoke,director,{}, {id:femaleAssignment.id});
+  await db.execute('DELETE FROM student_ms_records WHERE student_id=?',[femaleTarget]);
   for(const change of [{mi_number:16},{mi_number:15},{mi_type:'out'}]) {
     assert.equal((await call(controller.assign,director,{...valid,...change,verifier_id:verifier,school_year:year})).status,400,'Reject out-of-range or uncreated MI/type');
   }
@@ -231,6 +236,7 @@ async function attendance(id,sessionId,submitted=true) {
       assignment_company=NULL,assignment_platoon=NULL WHERE student_id=?`,[unit,member]);
     unitRecords.push({unit,id:await attendance(member,ordinary),wrongYearId:await attendance(member,wrongYear)});
   }
+  await call(controller.revoke,director,{}, {id:assignmentId});
   for(const unitRecord of unitRecords) {
     assert.equal((await call(controller.assign,director,{...valid,verifier_id:verifier,school_year:year,special_unit:unitRecord.unit})).status,200);
     const mineUnits=(await call(controller.mine,user)).payload;
@@ -261,6 +267,7 @@ async function attendance(id,sessionId,submitted=true) {
     assert.equal((await call(controller.verify,user,{assignment_id:entry.id,status:'present',reason:'Wrong MI or type'},{id:allowed})).status,403);
     await call(controller.revoke,director,{}, {id:entry.id});
   }
+  assert.equal((await call(controller.assign,director,{...valid,verifier_id:verifier,school_year:year})).status,200);
   assert.equal((await call(controller.management,director)).status,200);assert.equal((await call(controller.audit,director)).status,200);
   const express=require('express'),jwt=require('jsonwebtoken');
   const app=express();app.use(express.json());
