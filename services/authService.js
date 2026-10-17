@@ -9,18 +9,18 @@ function portalFor(row) {
   return /cwts/i.test(row.username || row.email) ? 'cwts-admin' : 'rotc-admin';
 }
 
-function passwordValidationMessage(password) {
-  if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
-    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+function passwordValidationMessage(password, label = 'Password') {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return `${label} must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (!/[0-9]/.test(password) || !/[^a-zA-Z0-9\s]/.test(password)) {
+    return `${label} must include at least one number and one symbol (e.g. !, @, #).`;
   }
   return null;
 }
 
 function newPasswordValidationMessage(password) {
-  if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
-    return `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-  }
-  return null;
+  return passwordValidationMessage(password, 'New password');
 }
 
 async function comparePassword(plainText, hashed) {
