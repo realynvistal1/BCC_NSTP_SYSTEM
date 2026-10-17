@@ -154,6 +154,7 @@ async function ensureAttendanceColumns(db) {
   await require('./migrate-rotc-verifiers').ensureRotcVerifierTables(db);
   await require('./migrate-cwts-instructors').ensureCwtsInstructorTables(db);
   await require("./migrate-platoon-assignment").ensurePlatoonAssignmentColumn(db);
+  await require('./migrate-rotc-roster').ensureRotcRoster(db);
   await require("./migrate-cycle-assignments").ensureCycleAssignmentColumns(db);
   await require('./migrate-grade-attempts').ensureGradeAttempts(db);
   await require('./migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(db);
