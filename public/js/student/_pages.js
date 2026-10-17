@@ -394,7 +394,7 @@ async function renderReEnrollment(c){
   }
 }
 function settingsHtml(){
-  return `<div class="panel"><div class="panel-head"><div><h2>Account Settings</h2><p class="panel-subtitle">Keep your account secure by changing your password when needed.</p></div></div><form id="passwordForm" class="form-grid"><div class="field"><label>Current Password</label><input type="password" name="currentPassword" required></div><div class="field"><label>New Password</label><input type="password" name="newPassword" minlength="8" required></div><div class="field full"><button class="btn primary">Change Password</button></div></form></div>`
+  return `<div class="panel"><div class="panel-head"><div><h2>Account Settings</h2><p class="panel-subtitle">Keep your account secure by changing your password when needed.</p></div></div><form id="passwordForm" class="form-grid"><div class="field"><label>Current Password</label><input type="password" name="currentPassword" required></div><div class="field"><label>New Password</label><input type="password" name="newPassword" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." required></div><div class="field full"><button class="btn primary">Change Password</button></div></form></div>`
 }
 function bindSettings(){
   const f=$('#passwordForm');
