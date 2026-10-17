@@ -340,7 +340,9 @@ exports.checkSchedule = async (req, res) => {
       });
     }
 
-    return res.json(enrollmentService.statusMessageForClosedSchedule(schedule, program));
+    const result = enrollmentService.statusMessageForClosedSchedule(schedule, program);
+    if (program === 'ROTC') result.special_availability = await require('../services/specialEnrollmentService').availability(db, schedule.id);
+    return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
@@ -517,6 +519,8 @@ exports.register = async (req, res) => {
 
     await connection.beginTransaction();
 
+    await require('../services/specialEnrollmentService').check(connection, schedule.id, body);
+
     const insertStudentSql = `
       INSERT INTO students (
         student_id,last_name,first_name,middle_name,suffix,religion,birthdate,sex,contact_number,
@@ -595,7 +599,7 @@ exports.register = async (req, res) => {
     }
 
     console.error(error);
-    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to complete this request. Please try again later.' });
   } finally {
     connection.release();
   }
@@ -703,6 +707,9 @@ exports.reEnrollForm = async (req, res) => {
       target_level: targetLevel,
       level_label: levelLabelFor(schedule?.program || student.nstp_component, targetLevel),
       available_components: availableSchedules.map((candidate) => candidate.program),
+      special_availability: (availableSchedules.find(candidate => candidate.program === 'ROTC'))
+        ? await require('../services/specialEnrollmentService').availability(db, availableSchedules.find(candidate => candidate.program === 'ROTC').id, false, req.user.id)
+        : null,
       available_schedules: availableSchedules.map((candidate) => ({
         id: candidate.id,
         program: candidate.program,
@@ -1110,6 +1117,12 @@ exports.reEnroll = async (req, res) => {
       ]
     );
 
+    await require('../services/specialEnrollmentService').check(connection, schedule.id, {
+      willing_to_take_advance_course: selectedProgram === 'ROTC' ? (body.willing_to_take_advance_course ?? student.willing_to_take_advance_course) : 0,
+      willing_to_be_medics: selectedProgram === 'ROTC' ? (body.willing_to_be_medics ?? student.willing_to_be_medics) : 0,
+      willing_to_be_military_police: selectedProgram === 'ROTC' ? (body.willing_to_be_military_police ?? student.willing_to_be_military_police) : 0,
+    }, req.user.id);
+
     const enrollmentKind=mode==='retry'?(context.latest.enrollment_kind||'initial'):mode==='next-level'?'progression':mode;
     await connection.execute(
       "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason,enrollment_kind,prior_enrollment_id) VALUES(?,?,?,'pending',?,NULL,?,?)",
@@ -1130,7 +1143,7 @@ exports.reEnroll = async (req, res) => {
       // Ignore rollback errors after the main failure.
     }
 
-    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to complete this request. Please try again later.' });
   } finally {
     // Also release the transaction when validation returns before commit.
     try { await connection.rollback(); } finally { connection.release(); }
