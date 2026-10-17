@@ -323,7 +323,7 @@ body[data-portal-theme="officer"] .progress-meta span {
   gap: 12px
 }
 .distribution-insights.rotc-group-counts {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 @media (max-width: 1100px) {
   .distribution-insights.rotc-group-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2413,3 +2413,6 @@ body[data-portal-theme="cwts"] .roster-progress {
 .cwts-company-toolbar .section-heading > .btn { flex-shrink:0; padding:9px 14px; min-height:36px; border-radius:9px; background:#16846b; color:#fff; border:1px solid #16846b; box-shadow:none; font-size:12px; }
 .cwts-company-toolbar .section-heading > .btn:hover { background:#116c58; }
 @media(max-width:480px) { .cwts-company-toolbar .section-heading { flex-wrap:wrap; } }
+
+.roster-summary-grid.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media(max-width:600px) { .roster-summary-grid.three { grid-template-columns:1fr; } }
