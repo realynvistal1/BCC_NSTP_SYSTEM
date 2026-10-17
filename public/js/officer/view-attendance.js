@@ -110,14 +110,14 @@ function officerStudentCompany(student) {
 }
 
 function officerStudentPlatoon(student) {
-  if (student.special_unit) return 'all';
+  if (student.special_unit) return student.rotc_platoon ? student.special_unit + '-P' + student.rotc_platoon : 'all';
   if (Number(student.willing_to_take_advance_course || 0) === 1) {
     const sex = String(student.sex || '').trim().toUpperCase();
     return sex === 'MALE' ? 'Advance M' : sex === 'FEMALE' ? 'Advance F' : 'all';
   }
   const battalion = Number(student.battalion);
   const platoon = Number(student.rotc_platoon);
-  return [1, 2].includes(battalion) && [1, 2, 3, 4].includes(platoon)
+  return [1, 2].includes(battalion) && Number.isInteger(platoon) && platoon > 0
     ? `B${battalion}-P${platoon}` : 'all';
 }
 
@@ -144,44 +144,17 @@ function companyOptionsForGroup(group, students, program = 'ROTC') {
   if (program === 'CWTS') {
     return [...CWTS_COMPANY_OPTIONS];
   }
-  if (group === 'battalion-1') {
-    return ['Alpha', 'Bravo', 'Charlie', 'Delta'];
-  }
-
-  if (group === 'battalion-2') {
-    return ['Echo', 'Foxtrot', 'Golf', 'Hotel'];
-  }
-
-  if (group === 'special-platoon') {
-    return ['HQ', 'Medics', 'MP'];
-  }
-
-  if (group === 'advance-course') {
-    return [];
-  }
-
-  return ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel',
-    'HQ', 'Medics', 'MP'];
+  if (group === 'advance-course') return [];
+  return [...new Set(students.map(student => officerStudentFilterValue(student, group, program)).filter(value => value && value !== 'all'))].sort();
 }
 
 function officerUsesPlatoons(group, company) {
-  return group !== 'special-platoon' && !['HQ', 'Medics', 'MP'].includes(company);
+  return true;
 }
 
-function officerPlatoonOptions(group, company) {
+function officerPlatoonOptions(group, company, students = []) {
   if (!officerUsesPlatoons(group, company)) return [];
-  if (company === 'Advance Course - Male') return ['Advance M'];
-  if (company === 'Advance Course - Female') return ['Advance F'];
-  if (group === 'advance-course') return ['Advance M', 'Advance F'];
-  const companies = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
-  const battalions = [1, 2].filter((battalion) => (
-    (group === 'all' || group === `battalion-${battalion}`)
-    && (company === 'all' || companies.slice((battalion - 1) * 4, battalion * 4).includes(company))
-  ));
-  return [
-    ...battalions.flatMap((battalion) => [1, 2, 3, 4].map((platoon) => `B${battalion}-P${platoon}`)),
-    ...(group === 'all' && company === 'all' ? ['Advance M', 'Advance F'] : []),
-  ];
+  return [...new Set(students.filter(student => (group === 'all' || officerStudentGroup(student) === group) && (company === 'all' || officerStudentFilterValue(student, group, 'ROTC') === company)).map(officerStudentPlatoon).filter(value => value !== 'all'))].sort((a,b) => a.localeCompare(b,undefined,{numeric:true}));
 }
 
 function officerUsesSexFilter(group, company) {
@@ -352,7 +325,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
   }
 
   function platoonOptions(group = state.group, company = state.company) {
-    return officerPlatoonOptions(group, company);
+    return officerPlatoonOptions(group, company, groupRows(group));
   }
 
   function visibleStudents() {
@@ -810,7 +783,7 @@ async function openOfficerRecords(id) {
       }
 
       const company = companySelect?.value || 'all';
-      const platoonOptions = officerPlatoonOptions(group, company);
+      const platoonOptions = officerPlatoonOptions(group, company, groupStudents);
       const currentUsesSexFilter = officerUsesSexFilter(group, company);
 
       if (platoonSelect) {
