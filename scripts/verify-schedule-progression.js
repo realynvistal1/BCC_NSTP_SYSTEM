@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+// This suite checks schedule progression independently of local sample generation.
+process.env.SAMPLE_ENROLLMENTS_ENABLED = 'false';
 const db = require('../config/database');
 const { schedules } = require('../controllers/sharedAdminController');
 
