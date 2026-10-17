@@ -138,6 +138,7 @@
     }
     if(step===3){
       if(f.password.value.length<8)return 'Password must be at least 8 characters.';
+      if(!/[0-9]/.test(f.password.value)||!/[^a-zA-Z0-9\s]/.test(f.password.value))return 'Password must include at least one number and one symbol (e.g. !, @, #).';
       if(f.password.value!==f.confirm_password.value)return 'Passwords do not match.';
       if(!f.photo_file.files[0])return '2x2 photo is required.';
       if(!f.cor_file_input.files[0])return 'Certificate of Registration (COR) is required.';
