@@ -80,10 +80,24 @@ async function renderVerifierManagement(content) {
       </div></fieldset>
       <div class="field full verifier-submit"><button class="btn primary" type="submit" ${data.candidates.length?'':'disabled'}>Assign Verifier</button></div>
     </form>${data.candidates.length?'':'<p class="notice">No approved Advance Course students with saved cycle assignments are available.</p>'}</section>
-    <section class="panel verifier-assignments-panel verifier-compact-panel"><details id="verifierAssignmentsDisclosure" ${state.assignmentsOpen?'open':''}><summary class="verifier-section-heading verifier-disclosure-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('users')}</span><div><span class="attendance-eyebrow">Assigned verifiers</span><h2>Verifier Assignments</h2><p>Search a verifier or filter access. Five assignments per page.</p></div><span class="verifier-assignment-count">${data.assignments.filter(a => verifierAssignmentAccess(a) === 'active').length} active</span><span class="verifier-collapse-chevron" aria-hidden="true">&#8964;</span></summary><div class="verifier-section-body"><div class="verifier-list-toolbar"><label class="field"><span>Find a verifier</span><input id="verifierAssignmentSearch" type="search" placeholder="Name, student ID, or group" value="${esc(state.search)}"></label><label class="field"><span>Access</span><select id="verifierAccessFilter"><option value="all">All assignments</option><option value="active">Active</option><option value="revoked">Revoked</option><option value="ineligible">Access blocked</option></select></label></div><div id="verifierAssignmentResults"></div><div id="verifierAssignmentPagination" class="verifier-pagination"></div></div></details></section>
+    <section class="panel verifier-assignments-panel verifier-compact-panel"><details id="verifierAssignmentsDisclosure" ${state.assignmentsOpen?'open':''}><summary class="verifier-section-heading verifier-disclosure-heading"><span class="verifier-heading-icon teal" aria-hidden="true">${icon('users')}</span><div><span class="attendance-eyebrow">Assigned verifiers</span><h2>Verifier Assignments</h2><p>Search a verifier or filter access. Five assignments per page.</p></div><span class="verifier-assignment-count">${data.assignments.filter(a => verifierAssignmentAccess(a) === 'active').length} active</span><span class="verifier-collapse-chevron" aria-hidden="true">&#8964;</span></summary><div class="verifier-section-body"><div class="verifier-list-toolbar"><label class="field"><span>Find a verifier</span><input id="verifierAssignmentSearch" type="search" placeholder="Name, student ID, or group" value="${esc(state.search)}"></label><label class="field"><span>Access</span><select id="verifierAccessFilter"><option value="all">All assignments</option><option value="active">Active</option><option value="revoked">Revoked</option></select></label></div><div id="verifierAssignmentResults"></div><div id="verifierAssignmentPagination" class="verifier-pagination"></div></div></details></section>
     <section class="panel verifier-compact-panel verifier-history-panel" id="attendanceChanges"><details id="verifierHistoryDisclosure" ${state.historyOpen?'open':''}><summary class="verifier-section-heading verifier-disclosure-heading"><span class="verifier-heading-icon violet" aria-hidden="true">${icon('records')}</span><div><span class="attendance-eyebrow">Activity log</span><h2>Attendance Update History</h2><p>Five updates per page. Open an update for the reason and verifier.</p></div><span class="verifier-history-count">${log.length} updates</span><span class="verifier-collapse-chevron" aria-hidden="true">&#8964;</span></summary><div class="verifier-section-body"><div class="verifier-list-toolbar history"><label class="field"><span>Find an update</span><input id="verifierHistorySearch" type="search" placeholder="Student name or ID" value="${esc(state.historySearch)}"></label><button class="btn small verifier-history-refresh" id="refreshAttendanceChanges" type="button">${icon('refresh')} Refresh</button></div><div id="verifierHistoryResults" class="attendance-history-list" role="region" aria-label="Attendance updates" tabindex="0"></div><div id="verifierHistoryPagination" class="verifier-pagination"></div></div></details></section>`;
   $('#refreshAttendanceChanges').onclick=()=>renderVerifierManagement(content).catch(error=>toast(error.message,true));
-  const updateCompanies=()=>{ $('#verifierCompany').innerHTML=data.companies[$('#verifierBattalion').value].map(co=>`<option>${esc(co)}</option>`).join(''); };
+  const publishedGroups=()=>{
+    const cycle=data.cycles[$('#verifierTargetCycle').value];
+    return (data.groups||[]).filter(group=>cycle&&String(group.ms_level)===String(cycle.ms_level)&&group.school_year===cycle.school_year&&String(group.battalion)===$('#verifierBattalion').value);
+  };
+  const updatePlatoons=()=>{
+    const values=[...new Set(publishedGroups().filter(group=>group.company===$('#verifierCompany').value).map(group=>Number(group.platoon)))].sort((a,b)=>a-b);
+    $('#verifierPlatoon').innerHTML=values.map(value=>'<option value="'+value+'">Platoon '+value+'</option>').join('');
+    $('#verifierPlatoon').disabled=!values.length;
+  };
+  const updateCompanies=()=>{
+    const values=[...new Set(publishedGroups().map(group=>group.company))];
+    $('#verifierCompany').innerHTML=values.map(company=>'<option>'+esc(company)+'</option>').join('');
+    $('#verifierCompany').disabled=!values.length;
+    updatePlatoons();
+  };
   const updateCandidates=()=>{
     const selected=$('#verifierCandidate').value;
     const special=$('#verifierAssignmentType').value==='special';
@@ -130,6 +144,7 @@ async function renderVerifierManagement(content) {
     updateCandidates();
   };
   $('#verifierTargetCycle').onchange=()=>{
+    updateCompanies();
     const numbers=[...new Set(cycleSessions().map(s=>Number(s.mi_number)))].sort((a,b)=>a-b);
     $('#verifierMiNumber').innerHTML='<option value="">Select created MI</option>'+numbers.map(mi=>`<option value="${mi}">MI ${mi}</option>`).join('');
     $('#verifierMiNumber').disabled=!numbers.length;
@@ -139,7 +154,7 @@ async function renderVerifierManagement(content) {
   };
   $('#verifierMiNumber').onchange=updateMiTypes;
   $('#verifierMiType').onchange=updateCandidates;
-  $('#verifierCompany').onchange=updateCandidates;
+  $('#verifierCompany').onchange=()=>{updatePlatoons();updateCandidates();};
   $('#verifierPlatoon').onchange=updateCandidates;
   $('#verifierSpecialUnit').onchange=updateCandidates;
   $('#verifierAssignmentType').onchange=()=>{
@@ -149,6 +164,7 @@ async function renderVerifierManagement(content) {
     content.querySelectorAll('[data-regular-assignment]').forEach(field=>{
       field.classList.toggle('hidden',special);field.querySelector('select').disabled=special;
     });
+    if(!special)updateCompanies();
     updateCandidates();
   };
   $('#verifierAssignmentType').onchange();
