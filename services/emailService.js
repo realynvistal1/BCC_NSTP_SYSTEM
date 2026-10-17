@@ -14,6 +14,7 @@ function transporter() {
 
   return nodemailer.createTransport({
     service: 'gmail',
+    dnsTimeout: 10000,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 20000,
