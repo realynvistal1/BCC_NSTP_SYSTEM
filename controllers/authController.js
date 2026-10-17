@@ -813,11 +813,24 @@ exports.requestAdminResetCode = async (req, res) => {
       [rows[0].id, rows[0].email, portal, code]
     );
 
-    await emailService.sendPasswordResetCode({
-      to: rows[0].email,
-      code,
-      portalLabel: portalLabel(portal),
-    });
+    try {
+      await emailService.sendPasswordResetCode({
+        to: rows[0].email,
+        code,
+        portalLabel: portalLabel(portal),
+      });
+    } catch (error) {
+      console.error('Admin password reset email delivery failed:', {
+        code: error.code,
+        responseCode: error.responseCode,
+        command: error.command,
+      });
+      return res.status(503).json({
+        message: error.code === 'EAUTH'
+          ? 'Gmail could not authenticate the password reset sender. Contact the administrator to check the Gmail app password.'
+          : 'The verification email could not be sent. Check the server internet connection and Gmail SMTP access, then try again.',
+      });
+    }
 
     await clearSecurityEvent(requestKey);
 
