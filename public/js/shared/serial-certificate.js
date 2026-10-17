@@ -28,16 +28,8 @@ function serialAssignmentText(student, program) {
   ].filter(Boolean).join(' ') || '-';
 }
 
-const ROTC_BATTALION_COMPANIES = {
-  '1': ['Alpha', 'Bravo', 'Charlie', 'Delta'],
-  '2': ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
-};
-
-const ROTC_PLATOONS = ['1', '2', '3', '4'];
 const ROTC_SPECIAL_BATTALION = 'special';
 const ROTC_ADVANCE_BATTALION = 'advance';
-const ROTC_SPECIAL_UNITS = ['HQ', 'Medics', 'MP'];
-const ROTC_ADVANCE_GROUPS = ['Male', 'Female'];
 
 function serialCourseCode(course) {
   const value = String(course || '').trim();
@@ -134,15 +126,17 @@ async function renderAdminSerial(content, program) {
   };
 
   const cycleSchoolYears = (row, level = '') => {
+    const publishedYears=(row.assignment_cycles||[]).filter(item=>!level||String(item.ms_level)===String(level)).map(item=>item.school_year).filter(Boolean);
     if (String(level) === '1') {
-      return [String(row.ms1_school_year || '').trim()].filter(Boolean);
+      return [...new Set([...publishedYears,String(row.ms1_school_year || '').trim()].filter(Boolean))];
     }
 
     if (String(level) === '2') {
-      return [String(row.ms2_school_year || '').trim()].filter(Boolean);
+      return [...new Set([...publishedYears,String(row.ms2_school_year || '').trim()].filter(Boolean))];
     }
 
     return [...new Set([
+      ...publishedYears,
       String(row.ms1_school_year || '').trim(),
       String(row.ms2_school_year || '').trim(),
     ].filter(Boolean))];
@@ -213,8 +207,15 @@ async function renderAdminSerial(content, program) {
     return String(row.rotc_company || '') === company;
   }
 
+  function cycleRows() {
+    return rows.map(row=>{
+      if(program!=='rotc'||!Array.isArray(row.assignment_cycles))return row;
+      const assignment=row.assignment_cycles.find(item=>(!state.level||String(item.ms_level)===state.level)&&(!state.sy||item.school_year===state.sy));
+      return {...row,battalion:null,rotc_company:null,rotc_platoon:null,special_unit:null,willing_to_take_advance_course:0,...(assignment||{}),student_id:row.student_id};
+    }).filter(row=>(!state.level||(state.level==='1'?row.ms1_schedule:row.ms2_schedule))&&(!state.sy||cycleSchoolYears(row,state.level).includes(state.sy)));
+  }
   function filtered() {
-    return rows.filter((row) => {
+    return cycleRows().filter((row) => {
       const query = state.q.toLowerCase();
 
       if (
@@ -259,7 +260,7 @@ async function renderAdminSerial(content, program) {
           return false;
         }
 
-        if (state.platoon && state.battalion !== ROTC_SPECIAL_BATTALION && state.battalion !== ROTC_ADVANCE_BATTALION) {
+        if (state.platoon && state.battalion !== ROTC_ADVANCE_BATTALION) {
           const platoonValue = String(row.rotc_platoon || row.platoon || '');
           if (platoonValue !== state.platoon) {
             return false;
@@ -292,7 +293,7 @@ async function renderAdminSerial(content, program) {
   function matchingRows(overrides = {}) {
     const nextState = { ...state, ...overrides };
 
-    return rows.filter((row) => {
+    return cycleRows().filter((row) => {
       if (program === 'rotc') {
         if (!nextState.battalion && isSpecialUnitRow(row)) {
           return false;
@@ -306,7 +307,7 @@ async function renderAdminSerial(content, program) {
           return false;
         }
 
-        if (nextState.platoon && nextState.battalion !== ROTC_SPECIAL_BATTALION && nextState.battalion !== ROTC_ADVANCE_BATTALION) {
+        if (nextState.platoon && nextState.battalion !== ROTC_ADVANCE_BATTALION) {
           const platoonValue = String(row.rotc_platoon || row.platoon || '');
           if (platoonValue !== nextState.platoon) {
             return false;
@@ -323,80 +324,29 @@ async function renderAdminSerial(content, program) {
   }
 
   function filterOptions() {
-    const regularRotcRows = rows.filter((row) => !isSpecialUnitRow(row));
-    const storedBattalions = uniqueSorted(regularRotcRows.map((row) => row.battalion), 'number');
-    const battalions = [
-      ...uniqueSorted([
-      ...storedBattalions,
-      ...Object.keys(ROTC_BATTALION_COMPANIES),
-      ], 'number'),
-      ROTC_SPECIAL_BATTALION,
-      ROTC_ADVANCE_BATTALION,
-    ];
-    let rotcCompanies = [];
-    let rotcPlatoons = [];
-
-    if (program === 'rotc') {
-      if (state.battalion === ROTC_SPECIAL_BATTALION) {
-        const dataCompanies = uniqueSorted(
-          matchingRows({ company: '', platoon: '' }).map((row) => row.special_unit)
-        );
-        rotcCompanies = uniqueSorted([...ROTC_SPECIAL_UNITS, ...dataCompanies]);
-      } else if (state.battalion === ROTC_ADVANCE_BATTALION) {
-        const dataGroups = uniqueSorted(
-          matchingRows({ company: '', platoon: '' })
-            .map((row) => String(row.sex || '').trim())
-            .map((value) => (value ? `${value.charAt(0).toUpperCase()}${value.slice(1).toLowerCase()}` : ''))
-        );
-        rotcCompanies = uniqueSorted([...ROTC_ADVANCE_GROUPS, ...dataGroups]);
-      } else if (state.battalion) {
-        const battalionCompanies = ROTC_BATTALION_COMPANIES[state.battalion] || [];
-        const dataCompanies = uniqueSorted(
-          matchingRows({ company: '', platoon: '' }).map((row) => row.rotc_company)
-        );
-
-        rotcCompanies = uniqueSorted([...battalionCompanies, ...dataCompanies]);
-      } else {
-        const battalionCompanies = state.battalion
-          ? []
-          : uniqueSorted(Object.values(ROTC_BATTALION_COMPANIES).flat());
-        const dataCompanies = uniqueSorted(
-          matchingRows({ company: '', platoon: '' }).map((row) => row.rotc_company)
-        );
-
-        rotcCompanies = uniqueSorted([...battalionCompanies, ...dataCompanies]);
-      }
-
-      if (state.battalion !== ROTC_SPECIAL_BATTALION && state.battalion !== ROTC_ADVANCE_BATTALION) {
-        const dataPlatoons = uniqueSorted(
-          matchingRows({ platoon: '' }).map((row) => row.rotc_platoon || row.platoon),
-          'number'
-        );
-
-        rotcPlatoons = uniqueSorted([...ROTC_PLATOONS, ...dataPlatoons], 'number');
-      }
-    }
-
-    const cwtsCompanies = uniqueSorted(rows.map((row) => row.company));
-
-    return {
-      battalions,
-      rotcCompanies,
-      rotcPlatoons,
-      cwtsCompanies,
-    };
+    const current=cycleRows();
+    const regular=current.filter(row=>!isSpecialUnitRow(row));
+    const battalions=uniqueSorted(regular.map(row=>row.battalion),'number');
+    if(current.some(row=>row.special_unit))battalions.push(ROTC_SPECIAL_BATTALION);
+    if(current.some(isAdvanceRow))battalions.push(ROTC_ADVANCE_BATTALION);
+    const available=matchingRows({company:'',platoon:''});
+    const rotcCompanies=uniqueSorted(available.map(row=>state.battalion===ROTC_SPECIAL_BATTALION?row.special_unit:state.battalion===ROTC_ADVANCE_BATTALION?row.sex:row.rotc_company));
+    const rotcPlatoons=state.battalion===ROTC_ADVANCE_BATTALION?[]:uniqueSorted(matchingRows({platoon:''}).map(row=>row.rotc_platoon),'number');
+    return {battalions,rotcCompanies,rotcPlatoons,cwtsCompanies:uniqueSorted(current.map(row=>row.company))};
   }
 
   function syncFilterState() {
-    const options = filterOptions();
+    let options = filterOptions();
 
     if (program === 'rotc') {
       if (state.battalion && !options.battalions.includes(state.battalion)) {
         state.battalion = '';
+        options=filterOptions();
       }
 
       if (state.company && !options.rotcCompanies.includes(state.company)) {
         state.company = '';
+        options=filterOptions();
       }
 
       if (state.platoon && !options.rotcPlatoons.includes(state.platoon)) {
@@ -408,7 +358,7 @@ async function renderAdminSerial(content, program) {
       state.cwtsCompany = '';
     }
 
-    return options;
+    return filterOptions();
   }
 
   function draw() {
@@ -501,7 +451,7 @@ async function renderAdminSerial(content, program) {
                   <option value="">${state.battalion === ROTC_SPECIAL_BATTALION ? 'All Special Units' : state.battalion === ROTC_ADVANCE_BATTALION ? 'All Groups' : 'All Companies'}</option>
                   ${options.rotcCompanies.map((value) => `<option value="${esc(value)}">${state.battalion === ROTC_SPECIAL_BATTALION ? esc(value) : state.battalion === ROTC_ADVANCE_BATTALION ? esc(value) : `Company ${esc(value)}`}</option>`).join('')}
                 </select></label>
-              ${state.battalion === ROTC_SPECIAL_BATTALION || state.battalion === ROTC_ADVANCE_BATTALION
+              ${state.battalion === ROTC_ADVANCE_BATTALION
                 ? ''
                 : `<label class="serial-filter"><select id="serialPlatoon">
                       <option value="">All Platoons</option>
