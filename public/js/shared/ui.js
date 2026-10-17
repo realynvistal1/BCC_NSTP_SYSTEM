@@ -1413,7 +1413,7 @@ function settingsHtml() {
 
         <div class="field">
           <label>New Password</label>
-          <input type="password" name="newPassword" minlength="8" required>
+          <input type="password" name="newPassword" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." required>
         </div>
 
         <div class="field full">
