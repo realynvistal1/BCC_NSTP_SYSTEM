@@ -237,13 +237,13 @@ async function officerPageBase(page,c){
     return
   }
   if(page==='battalion-1'||page==='battalion-2'){
-    const rows=await API.get(`/api/officer/roster/${page}`),bn=page==='battalion-1'?1:2,label=bn===1?'Male':'Female',companies=bn===1?['Alpha','Bravo','Charlie','Delta']:['Echo','Foxtrot','Golf','Hotel'],capacity=companies.length*4*37,state={level:'',schoolYear:''};
+    const rows=await API.get(`/api/officer/roster/${page}`),bn=page==='battalion-1'?1:2,label=bn===1?'Male':'Female',companies=[...new Set(rows.flatMap(row=>[row,...(row.enrollments||[])]).map(row=>row.rotc_company).filter(Boolean))],capacity=Infinity,state={level:'',schoolYear:''};
     const render=()=>{
       const filtered=filterRosterRows(rows,state);
       const grouped={};
-      companies.forEach(co=>{grouped[co]={1:[],2:[],3:[],4:[]}});
+      companies.forEach(co=>{grouped[co]={};filtered.filter(row=>row.rotc_company===co).forEach(row=>{grouped[co][row.rotc_platoon]=[]})});
       filtered.forEach(x=>{if(grouped[x.rotc_company]&&grouped[x.rotc_company][x.rotc_platoon])grouped[x.rotc_company][x.rotc_platoon].push(x)});
-      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Battalion ${bn} - ${label}</h2><p>View all approved ROTC ${label.toLowerCase()} cadets assigned to Battalion ${bn} companies and platoons.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary(`Total ${bn===1?'Cadets':'Cadettes'}`,filtered.length,'','slate')}${rosterSummary('Capacity',`${filtered.length}/${capacity}`,'','blue')}${rosterSummary('Companies',companies.length,'','slate')}${rosterSummary('Platoons',companies.length*4,'4 per company','green')}</div>${companies.map((co,ci)=>`<div class="company-card"><div class="company-card-head"><div><span class="roster-letter ${['blue','green','amber','purple'][ci]}">${co[0]}</span><strong>${co} Company</strong></div><small>${Object.values(grouped[co]).flat().length} cadets</small></div><div class="roster-stack">${[1,2,3,4].map(pl=>officerExpander(`off-${bn}-${co}-${pl}`,`Platoon ${pl}`,grouped[co][pl],37,['blue','green','amber','purple'][ci])).join('')}</div></div>`).join('')}`;
+      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Battalion ${bn} - ${label}</h2><p>View all approved ROTC ${label.toLowerCase()} cadets assigned to Battalion ${bn} companies and platoons.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid three">${rosterSummary(`Total ${bn===1?'Cadets':'Cadettes'}`,filtered.length,'','slate')}${rosterSummary('Companies',companies.length,'','slate')}${rosterSummary('Platoons',Object.values(grouped).reduce((total,group)=>total+Object.keys(group).length,0),'','green')}</div>${companies.map((co,ci)=>`<div class="company-card"><div class="company-card-head"><div><span class="roster-letter ${['blue','green','amber','purple'][ci]}">${co[0]}</span><strong>${co} Company</strong></div><small>${Object.values(grouped[co]).flat().length} cadets</small></div><div class="roster-stack">${Object.keys(grouped[co]).sort((a,b)=>Number(a)-Number(b)).map(pl=>officerExpander(`off-${bn}-${co}-${pl}`,`Platoon ${pl}`,grouped[co][pl],Infinity,['blue','green','amber','purple'][ci])).join('')}</div></div>`).join('')}`;
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
@@ -285,10 +285,11 @@ async function officerPageBase(page,c){
       const medics=filtered.filter(x=>x.special_unit==='Medics').length;
       const hq=filtered.filter(x=>x.special_unit==='HQ').length;
       const mp=filtered.filter(x=>x.special_unit==='MP').length;
+      const genderCounts=list=>'Male: '+list.filter(student=>String(student.sex).toLowerCase()==='male').length+' - Female: '+list.filter(student=>String(student.sex).toLowerCase()==='female').length;
       const medicsRows=filtered.filter(x=>x.special_unit==='Medics');
       const hqRows=filtered.filter(x=>x.special_unit==='HQ');
       const mpRows=filtered.filter(x=>x.special_unit==='MP');
-      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Members',filtered.length,'approved special-platoon members','slate')}${rosterSummary('Medics',medics,'medical support unit','rose')}${rosterSummary('HQ',hq,'headquarters roster','blue')}${rosterSummary('MP',mp,'military police unit','green')}</div><div class="roster-stack">${officerExpander('special-medics','Medics',medicsRows,50,'rose')}${officerExpander('special-hq','HQ',hqRows,Infinity,'blue')}${officerExpander('special-mp','MP',mpRows,50,'green')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner sky"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>Special Platoon</h2><p>View approved ROTC students assigned to special units.</p></div></div>${officerRosterFilterBar(rows,'ROTC',state)}<div class="roster-summary-grid four">${rosterSummary('Total Members',filtered.length,genderCounts(filtered),'slate')}${rosterSummary('Medics',medics,genderCounts(medicsRows),'rose')}${rosterSummary('HQ',hq,genderCounts(hqRows),'blue')}${rosterSummary('MP',mp,genderCounts(mpRows),'green')}</div><div class="roster-stack">${['Medics','HQ','MP'].map(unit=>[...new Set(filtered.filter(row=>row.special_unit===unit).map(row=>row.rotc_platoon||0))].sort((a,b)=>a-b).map(platoon=>officerExpander('special-'+unit+'-'+platoon,unit+(platoon?' - Platoon '+platoon:''),filtered.filter(row=>row.special_unit===unit&&Number(row.rotc_platoon||0)===Number(platoon)),Infinity,'blue')).join('')).join('')}</div>`;
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
@@ -332,21 +333,26 @@ async function officerPage(page, c) {
     API.get('/api/officer/enrollments')
   ]);
 
-  const battalionCap = 4 * 4 * 37;
+  const roster=d.rotc_roster;
+  const b1Summary=roster?.battalions?.[1]||{count:b1.length,capacity:null,companies:new Set(b1.map(row=>row.rotc_company)).size,platoons:new Set(b1.map(row=>row.rotc_company+'/'+row.rotc_platoon)).size};
+  const b2Summary=roster?.battalions?.[2]||{count:b2.length,capacity:null,companies:new Set(b2.map(row=>row.rotc_company)).size,platoons:new Set(b2.map(row=>row.rotc_company+'/'+row.rotc_platoon)).size};
+  const advanceCount=roster?.advance.count??adv.length;
+  const specialCount=roster?.special.count??special.length;
+  const structureLabel=summary=>summary.companies+' '+(summary.companies===1?'company':'companies')+' - '+summary.platoons+' '+(summary.platoons===1?'platoon':'platoons');
   const cwtsCompanyNames = await API.get('/api/officer/cwts-companies');
   const cwtsCap = cwtsCompanyNames.length * 60;
   const rotcTotal = Number(d.rotc || 0);
   const cwtsTotal = Number(d.cwts || 0);
   const allStudents = rotcTotal + cwtsTotal;
-  const assignedTotal = b1.length + b2.length + adv.length + special.length + cwts.length;
-  const b1Pct = Math.round((b1.length / battalionCap) * 100);
-  const b2Pct = Math.round((b2.length / battalionCap) * 100);
-  const cwtsPct = Math.round((cwts.length / cwtsCap) * 100);
+  const assignedTotal = b1Summary.count + b2Summary.count + advanceCount + specialCount + cwtsTotal;
+  const b1Pct = b1Summary.capacity?Math.round(b1Summary.count/b1Summary.capacity*100):null;
+  const b2Pct = b2Summary.capacity?Math.round(b2Summary.count/b2Summary.capacity*100):null;
+  const cwtsPct = cwtsCap?Math.round(cwtsTotal/cwtsCap*100):0;
   const activeSessions = Number(d.open_sessions || 0);
   const recordedAttendance = Number(d.attendance_records || 0);
-  const advMale = adv.filter(x => String(x.sex).toLowerCase() === 'male').length;
-  const advFemale = adv.filter(x => String(x.sex).toLowerCase() === 'female').length;
-  const specialLabel = special.length === 1 ? 'member' : 'members';
+  const advMale = roster?.advance.male??adv.filter(x => String(x.sex).toLowerCase() === 'male').length;
+  const advFemale = roster?.advance.female??adv.filter(x => String(x.sex).toLowerCase() === 'female').length;
+  const specialLabel = specialCount === 1 ? 'member' : 'members';
 
   const intro = document.querySelector('.intro-copy');
   if (intro) {
@@ -370,11 +376,11 @@ async function officerPage(page, c) {
         <p>Keep your most-used Director pages one click away.</p>
       </div>
       <div class="portal-dashboard-grid officer-dashboard-grid">
-        ${directorCard('ROTC - Battalion 1', 'Male cadets battalion', b1.length, `/ ${battalionCap} slots`, '/officer/rotc/battalion-1', 'users', 'blue', '4 companies - 4 platoons each', b1Pct)}
-        ${directorCard('ROTC - Battalion 2', 'Female cadettes battalion', b2.length, `/ ${battalionCap} slots`, '/officer/rotc/battalion-2', 'users', 'purple', '4 companies - 4 platoons each', b2Pct)}
-        ${directorCard('Advance Course', 'Cadets for advance ROTC', adv.length, 'cadets', '/officer/rotc/advance-course', 'platoon', 'orange', `Male: ${advMale} - Female: ${advFemale}`)}
-        ${directorCard('Special Platoon', 'Medics, HQ, and MP roster', special.length, specialLabel, '/officer/rotc/special-platoon', 'platoon', 'green', 'Special ROTC unit assignments')}
-        ${directorCard('CWTS', 'Company roster overview', cwts.length, `/ ${cwtsCap} slots`, '/officer/cwts', 'users', 'green', cwtsCompanyNames.length + ' companies - 60 slots each', cwtsPct)}
+        ${directorCard('ROTC - Battalion 1', 'Male cadets battalion', b1Summary.count, b1Summary.capacity!==null?'/ '+b1Summary.capacity+' slots':'cadets', '/officer/rotc/battalion-1', 'users', 'blue', structureLabel(b1Summary), b1Pct)}
+        ${directorCard('ROTC - Battalion 2', 'Female cadettes battalion', b2Summary.count, b2Summary.capacity!==null?'/ '+b2Summary.capacity+' slots':'cadets', '/officer/rotc/battalion-2', 'users', 'purple', structureLabel(b2Summary), b2Pct)}
+        ${directorCard('Advance Course', 'Cadets for advance ROTC', advanceCount, 'cadets', '/officer/rotc/advance-course', 'platoon', 'orange', `Male: ${advMale} - Female: ${advFemale}`)}
+        ${directorCard('Special Platoon', 'Medics, HQ, and MP roster', specialCount, specialLabel, '/officer/rotc/special-platoon', 'platoon', 'green', roster?'Medics: '+roster.special.units.Medics+' - HQ: '+roster.special.units.HQ+' - MP: '+roster.special.units.MP:'Special ROTC unit assignments')}
+        ${directorCard('CWTS', 'Company roster overview', cwtsTotal, `/ ${cwtsCap} slots`, '/officer/cwts', 'users', 'green', cwtsCompanyNames.length + ' companies - 60 slots each', cwtsPct)}
         ${dashCard('Create Attendance', 'Set Location & Time', 'Record attendance for ROTC or CWTS.', '/officer/create-attendance', 'location', 'indigo')}
         ${dashCard('View Attendance', 'Review Sessions', 'Review sessions and student records.', '/officer/view-attendance', 'attendance', 'green')}
         ${dashCard('View Student Records', 'ROTC & CWTS', 'View complete student records.', '/officer/view-records', 'records', 'indigo')}
