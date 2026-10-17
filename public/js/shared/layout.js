@@ -618,7 +618,7 @@ function showForgotMessage() {
           New Password
           <div class="input-shell">
             <span class="field-icon">*</span>
-            <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
+            <input name="newPassword" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." placeholder="8+ characters, number &amp; symbol" required type="password">
           </div>
         </label>
         <label>
@@ -666,7 +666,7 @@ function showForgotMessage() {
         New Password
         <div class="input-shell">
           <span class="field-icon">*</span>
-          <input name="newPassword" minlength="8" placeholder="At least 8 characters" required type="password">
+          <input name="newPassword" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." placeholder="8+ characters, number &amp; symbol" required type="password">
         </div>
       </label>
       <label>
