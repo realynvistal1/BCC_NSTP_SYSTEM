@@ -293,6 +293,17 @@ async function renderReEnrollment(c){
       preferenceField.innerHTML=`<label>ROTC Preferences</label><div class="notice" style="display:grid;gap:10px"><label><input type="checkbox" name="willing_to_take_advance_course" value="1" ${checked(s.willing_to_take_advance_course)}> Willing to take Advance Course</label><label><input type="checkbox" name="willing_to_be_medics" value="1" ${checked(s.willing_to_be_medics)}> Willing to be assigned to Medics</label><label><input type="checkbox" name="willing_to_be_military_police" value="1" ${checked(s.willing_to_be_military_police)}> Willing to be assigned to Military Police</label></div>`;
       form.appendChild(preferenceField);
     }
+    const preferenceInputs=[...form.querySelectorAll('input[name="willing_to_take_advance_course"],input[name="willing_to_be_medics"],input[name="willing_to_be_military_police"]')];
+    preferenceInputs.forEach(input=>input.addEventListener('change',()=>{if(input.checked)preferenceInputs.forEach(other=>{if(other!==input)other.checked=false})}));
+    for(const [unit,flag] of [['Medics','willing_to_be_medics'],['MP','willing_to_be_military_police']]){
+      const input=form.querySelector('[name="'+flag+'"]');
+      const availability=data.special_availability?.[unit];
+      if(input&&availability){
+        input.disabled=Boolean(availability.full);
+        if(input.disabled)input.checked=false;
+        input.closest('label')?.append(document.createTextNode(availability.full?' (Full - 37/37)':' ('+availability.count+'/37)'));
+      }
+    }
     if(supportsRotc&&!form.querySelector('#reXrayFile')){
       const xrayField=document.createElement('div');
       xrayField.className='field full';
