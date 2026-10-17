@@ -88,8 +88,8 @@ function makeStudentId(component, index) {
 function buildStudent(component, index) {
   const isRotc = component === "ROTC";
   const sex = isRotc ? (index % 2 === 0 ? "Male" : "Female") : (index % 3 === 0 ? "Male" : "Female");
-  const firstName = sex === "Male" ? at(FIRST_NAMES_MALE, index) : at(FIRST_NAMES_FEMALE, index);
-  const lastName = at(LAST_NAMES, index * 3);
+  const firstName = sex === "Male" ? at(FIRST_NAMES_MALE, Math.floor(index / 2)) : at(FIRST_NAMES_FEMALE, Math.floor(index / 2));
+  const lastName = at(LAST_NAMES, index * 7);
   const middleName = at(LAST_NAMES, index * 5).replace(/\s+/g, "");
   const yearLevel = index % 4 === 0 ? "2nd Year" : "1st Year";
   const course = at(COURSES, index);
@@ -163,7 +163,7 @@ async function ensureMs1Schedule(db, program) {
   return created[0];
 }
 
-async function upsertStudent(db, hash, student, scheduleId) {
+async function upsertStudent(db, hash, student, scheduleId, msLevel = '1') {
   const [existingRows] = await db.execute(
     "SELECT id FROM students WHERE email=? LIMIT 1",
     [student.email]
@@ -220,8 +220,8 @@ async function upsertStudent(db, hash, student, scheduleId) {
   }
 
   const [recordRows] = await db.execute(
-    "SELECT id FROM student_ms_records WHERE student_id=? AND schedule_id=? AND ms_level='1' AND program=? LIMIT 1",
-    [studentPk, String(scheduleId), student.component]
+    "SELECT id FROM student_ms_records WHERE student_id=? AND schedule_id=? AND ms_level=? AND program=? LIMIT 1",
+    [studentPk, String(scheduleId), msLevel, student.component]
   );
 
   if (recordRows[0]) {
@@ -231,10 +231,11 @@ async function upsertStudent(db, hash, student, scheduleId) {
     );
   } else {
     await db.execute(
-      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,'1','pending',?,NULL)",
-      [studentPk, String(scheduleId), student.component]
+      "INSERT INTO student_ms_records(student_id,schedule_id,ms_level,status,program,rejection_reason) VALUES(?,?,?,'pending',?,NULL)",
+      [studentPk, String(scheduleId), msLevel, student.component]
     );
   }
+  return studentPk;
 }
 
 async function seedProgram(db, hash, program) {
@@ -258,7 +259,7 @@ async function seedScheduleStudents(db, program, scheduleId, count = 1000) {
   }
   return count;
 }
-module.exports = { seedScheduleStudents };
+module.exports = { seedScheduleStudents, buildStudent, upsertStudent };
 if (require.main === module) (async () => {
   const db = await mysql.createConnection(config);
   const hash = await bcrypt.hash(PASSWORD, 10);
