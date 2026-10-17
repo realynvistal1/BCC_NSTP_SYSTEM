@@ -29,7 +29,10 @@
     "verify:schedule-progression": "node scripts/verify-schedule-progression.js",
     "verify:roster-cycles": "node scripts/verify-roster-cycle-assignments.js",
     "verify:dos": "node scripts/verify-dos-hardening.js",
-    "db:migrate:cwts-companies": "node database/migrate-cwts-companies.js"
+    "db:migrate:cwts-companies": "node database/migrate-cwts-companies.js",
+    "db:migrate:rotc-roster": "node database/migrate-rotc-roster.js",
+    "verify:rotc-roster": "node --test scripts/verify-rotc-roster.test.js",
+    "verify:sample-enrollments": "node --test scripts/verify-sample-enrollments.test.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
