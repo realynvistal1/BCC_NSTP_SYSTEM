@@ -290,7 +290,7 @@ function makeAttendanceSummary(_programKey) {
     }
 
     if (student.special_unit) {
-      return String(student.special_unit || '').trim();
+      return String(student.rotc_platoon || '').trim();
     }
 
     return String(student.rotc_platoon || '').trim();
@@ -305,7 +305,7 @@ function makeAttendanceSummary(_programKey) {
 
   function overallSummaryPlatoonLabel(student) {
     if (student.special_unit) {
-      return '';
+      return student.rotc_platoon ? student.special_unit + '-P' + student.rotc_platoon : '';
     }
 
     if (Number(student.willing_to_take_advance_course || 0) === 1 && !student.special_unit) {
@@ -324,14 +324,7 @@ function makeAttendanceSummary(_programKey) {
       return groupedCompany ? [] : [...cwtsCompanyOptions];
     }
 
-    if (group === 'overall') {
-      return [...rotcCompanyOptions, 'Medics', 'HQ', 'MP'];
-    }
-
-    if (group === 'battalion-1') return ['Alpha', 'Bravo', 'Charlie', 'Delta'];
-    if (group === 'battalion-2') return ['Echo', 'Foxtrot', 'Golf', 'Hotel'];
     if (group === 'advance-course') return ['Male', 'Female'];
-    if (group === 'special-platoon') return ['HQ', 'Medics', 'MP'];
 
     return [...new Set(
       students.map((student) => summaryStudentCompany(student)).filter(Boolean)
@@ -462,7 +455,7 @@ function makeAttendanceSummary(_programKey) {
     companySelect.value = companyOptions.includes(previousCompany) ? previousCompany : '';
     companySelect.disabled = companyOptions.length === 0;
 
-    if (program === 'CWTS' || group === 'advance-course' || group === 'special-platoon' || ['Medics', 'HQ', 'MP'].includes(companySelect.value)) {
+    if (program === 'CWTS' || group === 'advance-course') {
       platoonSelect.value = '';
       platoonSelect.disabled = true;
       platoonSelect.style.display = 'none';
@@ -472,14 +465,10 @@ function makeAttendanceSummary(_programKey) {
     platoonSelect.style.display = '';
 
     const selectedCompany = companySelect.value || '';
-    const platoonOptions = group === 'overall'
-      ? [
-        ...[1, 2]
-          .filter((battalion) => !selectedCompany || rotcCompanyOptions.slice((battalion - 1) * 4, battalion * 4).includes(selectedCompany))
-          .flatMap((battalion) => [1, 2, 3, 4].map((platoon) => `B${battalion}-P${platoon}`)),
-        ...(!selectedCompany ? ['Advance M', 'Advance F'] : []),
-      ]
-      : ['1', '2', '3', '4'];
+    const platoonOptions = sortPlatoonValues(new Set(groupStudents
+      .filter(student => !selectedCompany || summaryStudentCompany(student) === selectedCompany)
+      .map(student => group === 'overall' ? overallSummaryPlatoonLabel(student) : String(student.rotc_platoon || ''))
+      .filter(Boolean)));
 
     platoonSelect.innerHTML = `<option value="">All ${group === 'special-platoon' ? 'Unit' : 'Platoon'}</option>`
       + platoonOptions.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
