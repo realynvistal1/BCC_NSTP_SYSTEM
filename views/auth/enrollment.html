@@ -252,7 +252,12 @@
          <label>
           Date of Birth
          </label>
-         <input name="birthdate" required="" type="date"/>
+         <div class="enrollment-birthdate" role="group" aria-label="Date of Birth">
+          <select id="birthMonth" aria-label="Birth month" required><option value="">Month</option></select>
+          <select id="birthDay" aria-label="Birth day" required><option value="">Day</option></select>
+          <select id="birthYear" aria-label="Birth year" required><option value="">Year</option></select>
+         </div>
+         <input name="birthdate" type="hidden"/>
         </div>
         <div class="enrollment-field">
          <label>
@@ -601,11 +606,12 @@
           Password
          </label>
          <div class="enrollment-password-field">
-          <small>Use at least 8 characters, including a number and a symbol (e.g. !, @, #).</small><input minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." autocomplete="new-password" name="password" placeholder="8+ characters, number &amp; symbol" required="" type="password"/>
+          <input aria-describedby="passwordHint" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." autocomplete="new-password" name="password" placeholder="Enter password" required="" type="password"/>
           <button aria-label="Show password" class="enrollment-password-toggle" data-password-target="password" type="button">
            <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
           </button>
          </div>
+         <small class="enrollment-password-hint" id="passwordHint">Use at least 8 characters, including a number and a symbol (e.g. !, @, #).</small>
         </div>
         <div class="enrollment-field">
          <label>
