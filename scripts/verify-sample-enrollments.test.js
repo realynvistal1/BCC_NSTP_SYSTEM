@@ -87,8 +87,10 @@ test('schedule creation generates 100 pending samples in the correct level and r
     assert.equal(Number(noOrphans.total),0);
     failInsert = false;
     process.env.NODE_ENV = 'production';
+    assert.equal(samples.settings().enabled,true,'Hosted demo can explicitly enable samples');
+    process.env.SAMPLE_ENROLLMENTS_ENABLED='false';
     assert.equal(samples.settings().enabled,false);
-    const noSamples = await samples.create({execute(){throw new Error('Production must not generate samples');}},{id:999,program:'ROTC',ms_level:'1'});
+    const noSamples = await samples.create({execute(){throw new Error('Disabled sample mode must not generate samples');}},{id:999,program:'ROTC',ms_level:'1'});
     assert.equal(noSamples.count,0);
     process.env.NODE_ENV = 'development'; process.env.SAMPLE_ENROLLMENTS_ENABLED = 'false';
     assert.equal(samples.settings().enabled,false);

@@ -3,7 +3,7 @@ const { buildStudent, upsertStudent } = require('../database/seed-students');
 const COUNT = 100;
 function settings() {
   return {
-    enabled: process.env.NODE_ENV !== 'production' && process.env.SAMPLE_ENROLLMENTS_ENABLED === 'true',
+    enabled: process.env.SAMPLE_ENROLLMENTS_ENABLED === 'true',
     count: COUNT,
   };
 }
