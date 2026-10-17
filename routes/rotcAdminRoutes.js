@@ -30,6 +30,7 @@ router.use(requireAuth, requireRole('admin'), requirePortal('rotc-admin'));
 
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);
+router.get('/sample-enrollment-settings', (req, res) => res.json(require('../services/sampleEnrollmentService').settings()));
 router.post('/enrollment-schedule', controller.schedules);
 router.get('/enrollments', controller.enrollments);
 router.get('/enrollments/:id/photo', controller.enrollmentPhoto);
@@ -41,7 +42,9 @@ router.patch('/enrollments/:id', controller.updateEnrollment);
 router.post('/enrollments/bulk-approve', controller.bulkApprove);
 router.post('/enrollments/bulk-reject', controller.bulkReject);
 router.get('/roster', controller.roster);
-router.post('/auto-assign', controller.autoAssign);
+router.get('/roster/editor', require('../controllers/rotcRosterController').editor);
+router.post('/roster/editor', require('../controllers/rotcRosterController').editor);
+router.post('/auto-assign', require('../controllers/rotcRosterController').assign);
 router.get('/grades', controller.grades);
 router.post('/grades', controller.grades);
 router.get('/offenses', controller.offenses);
@@ -59,6 +62,6 @@ router.get('/records/:studentId', controller.recordDetail);
 router.get('/attendance-summary', controller.attendanceSummary);
 router.patch('/attendance-summary/:sessionId/verify', controller.verifyAttendance);
 router.get('/withdrawals', controller.withdrawals);
-router.patch('/withdrawals/:id', controller.withdrawals);
+router.patch('/withdrawals/:id', require('../controllers/rotcWithdrawalController').update);
 
 module.exports = router;
