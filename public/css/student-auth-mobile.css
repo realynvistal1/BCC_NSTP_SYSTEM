@@ -156,3 +156,11 @@
 .theme-cwts-instructor .mobile-brand strong { color: #17604e; }
 .theme-cwts-instructor .student-login-brand-copy small { color: #557768; }
 .theme-cwts-instructor .auth-footer-text { margin-top: 14px; }
+
+/* Keep the visibility button aligned with its input, including on mobile. */
+.enrollment-page .enrollment-password-field { position: relative; min-width: 0; }
+.enrollment-page .enrollment-password-field input { padding-right: 52px; min-height: 46px; }
+.enrollment-page .enrollment-password-toggle { width: 40px; height: 40px; right: 4px; }
+.enrollment-page .enrollment-password-hint { color: #596b80; font-size: 12px; line-height: 1.5; }
+.enrollment-page .enrollment-birthdate { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px; min-width: 0; }
+.enrollment-page .enrollment-birthdate select { min-width: 0; min-height: 46px; padding-left: 8px; padding-right: 4px; }
