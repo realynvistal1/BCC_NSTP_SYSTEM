@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     const assignment = isAdvance
       ? 'Advance Course'
       : student.special_unit
-        ? `Special Unit: ${student.special_unit}`
+        ? `Special Unit: ${student.special_unit}${student.rotc_platoon ? ` / Platoon ${student.rotc_platoon}` : ""}`
         : student.nstp_component === 'CWTS'
           ? `Company ${student.company || 'Not assigned'}`
           : [
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     const assignmentDetails = isAdvance
       ? [['Program', 'ROTC'], ['Course', 'Advance Course']]
       : student.special_unit
-        ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit]]
+        ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit], ['Platoon', student.rotc_platoon || 'Awaiting assignment']]
         : student.nstp_component === 'CWTS'
           ? [['Program', 'CWTS'], ['Company', student.company || 'Awaiting assignment']]
           : [['Company', student.rotc_company || 'Awaiting assignment'],
