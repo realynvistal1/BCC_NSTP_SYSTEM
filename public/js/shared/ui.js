@@ -4,7 +4,7 @@ function enrollmentApprovalSummary(result) {
   const legacyPending = text.match(/(\d+) selected enrollment\(s\).*?(?:remain pending|could not be approved)/i);
   const legacyCapacity = text.match(/CWTS[^.]*?(\d+)-student/i);
   const capacity = Number(result.capacity || legacyCapacity?.[1] || 0);
-  const pending = Number(result.capacitySkipped ?? legacyPending?.[1] ?? 0);
+  const pending = Number(result.remainingPending ?? result.capacitySkipped ?? legacyPending?.[1] ?? 0);
   const approved = Number(result.approved || 0);
   return { capacity, pending, approved };
 }
@@ -13,10 +13,10 @@ function showEnrollmentApprovalResult(result, error = false) {
     const dialog = document.createElement('dialog');
     dialog.className = 'enrollment-result-dialog';
     const {capacity, pending, approved} = enrollmentApprovalSummary(result);
-    const capacityFull = Boolean(pending || result.capacityReached || (capacity && result.capacityWarnings?.length));
+    const capacityFull = Boolean(result.capacitySkipped || result.capacityReached || (capacity && result.capacityWarnings?.length));
     const counted = typeof result.approved === 'number';
     dialog.setAttribute('aria-labelledby', 'enrollmentResultTitle');
-    dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error || capacityFull ? 'warning' : ''}" aria-hidden="true">${error || capacityFull ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : capacityFull ? 'CWTS capacity reached' : 'Students approved'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Still pending</span></div></div>` : ''}
+    dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error || capacityFull ? 'warning' : ''}" aria-hidden="true">${error || capacityFull ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : capacityFull ? 'CWTS capacity reached' : 'Students approved'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved now</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Pending in this schedule</span></div></div>` : ''}
       ${counted && capacityFull && capacity ? `<p class="enrollment-result-explanation">CWTS has <strong>${esc(capacity)} slots</strong> across ${esc(capacity / 60)} companies. ${pending ? `The remaining <strong>${esc(pending)} students were not approved</strong> and stay pending.` : 'All available slots are now filled.'}</p><div class="enrollment-result-next"><strong>What to do next</strong><p>Add a company for 60 more slots, or review and reject pending enrollments with a reason.</p></div>` : `<p class="enrollment-result-explanation">${esc(result.message)}</p>`}
       <button type="button" class="btn primary enrollment-result-done">Close</button></div>`;
     dialog.querySelectorAll('button').forEach(button => button.onclick = () => dialog.close());
@@ -184,7 +184,10 @@ function scheduleCard(x, p) {
     </article>`;
 }
 async function renderEnrollmentSchedule(p,c){
-  const rows = await API.get(`/api/admin/${p}/enrollment-schedule`);
+  const [rows, sampleMode] = await Promise.all([
+    API.get(`/api/admin/${p}/enrollment-schedule`),
+    API.get(`/api/admin/${p}/sample-enrollment-settings`),
+  ]);
   const program = p.toUpperCase();
   const prefix = p === 'cwts' ? 'CWTS' : 'MS';
   const active = rows.filter(x => ['open', 'upcoming'].includes(scheduleStatus(x.open_date, x.deadline).key));
@@ -256,7 +259,7 @@ async function renderEnrollmentSchedule(p,c){
           <div>
             <span class="modal-eyebrow">${program} Enrollment</span>
             <h3>Create Enrollment Schedule</h3>
-            <p>Set the level, school year, opening date and enrollment deadline.</p>
+            <p>Set the level, school year, opening date and enrollment deadline.${sampleMode.enabled ? ' This will also create 100 sample students as pending enrollments.' : ''}</p>
           </div>
           <button type="button" class="modal-close" id="closeScheduleModal">x</button>
         </div>
@@ -308,6 +311,7 @@ async function renderEnrollmentSchedule(p,c){
         ${icon('schedule')} Create Schedule
       </button>
     </section>
+    ${sampleMode.enabled ? '<div class="notice"><strong>Sample mode is on.</strong> Each new schedule creates 100 pending sample students. Sample accounts have IDs starting with SAMPLE-. ROTC includes 50 regular, 15 Medics, 15 MP, 10 HQ, and 10 Advance Course students.</div>' : ''}
     ${warning}
     <section class="schedule-section">
       <div class="schedule-section-title">
@@ -484,7 +488,7 @@ function enrollmentAssignment(x, p) {
   }
 
   return (
-    x.special_unit ||
+    (x.special_unit ? `${x.special_unit}${x.rotc_platoon ? ` - Platoon ${x.rotc_platoon}` : ""}` : "") ||
     (
       [
         x.battalion ? `Battalion ${x.battalion}` : '',
@@ -831,7 +835,7 @@ async function renderEnrollmentList(p,c){
   </option>`).join('')}</select><select id="filterCourse"><option value="">All Courses</option>${courseOptionsForProgram(p).map(y=>`<option>${
     esc(y)
   }
-  </option>`).join('')}</select><select id="filterMedical"><option value="">Medical: All</option><option value="yes">With Medical Condition</option><option value="no">No Medical Condition</option></select>${p==='rotc'?`<select id="filterPreference"><option value="">All Preferences</option><option value="medics">Medics</option><option value="mp">MP</option><option value="advance">Advance Course</option></select>`:''}<button class="clear-filter-btn" id="clearFilters">Clear Filters</button></div></section><div class="bulk-action-row"><div id="filterResultText">Showing ${rows.length} enrollment${rows.length===1?'':'s'}</div><div class="actions"><button class="btn danger" id="rejectAllPending">Reject All Pending (<span id="bulkRejectCount">${counts.pending}</span>)</button><button class="btn success" id="approveAllPending">Approve All Pending (<span id="bulkCount">${counts.pending}</span>)</button></div></div><section class="enrollment-table-card"><div class="table-scroll"><table class="data-table enrollment-data-table"><thead><tr><th>Student</th><th>Student ID</th><th>Course & Year</th><th>${p==='cwts'?'CWTS Level':'MS Level'}</th><th>SY</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody id="enrollmentRows"></tbody></table></div><div id="enrollmentEmpty" class="empty-state-card hidden">${icon('enrollment')}<strong>No enrollments found</strong><span>Try adjusting your search or filters.</span></div></section><div id="modalMount"></div>`;
+  </option>`).join('')}</select><select id="filterMedical"><option value="">Medical: All</option><option value="yes">With Medical Condition</option><option value="no">No Medical Condition</option></select>${p==='rotc'?`<select id="filterPreference"><option value="">All Preferences</option><option value="medics">Medics</option><option value="mp">MP</option><option value="advance">Advance Course</option></select>`:''}<button class="clear-filter-btn" id="clearFilters">Clear Filters</button></div></section><div class="bulk-action-row"><div id="filterResultText">Showing ${rows.length} enrollment${rows.length===1?'':'s'}</div><div class="actions"><button class="btn danger" id="rejectAllPending">Reject Filtered Pending (<span id="bulkRejectCount">${counts.pending}</span>)</button><button class="btn success" id="approveAllPending">Approve Filtered Pending (<span id="bulkCount">${counts.pending}</span>)</button></div></div><section class="enrollment-table-card"><div class="table-scroll"><table class="data-table enrollment-data-table"><thead><tr><th>Student</th><th>Student ID</th><th>Course & Year</th><th>${p==='cwts'?'CWTS Level':'MS Level'}</th><th>SY</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody id="enrollmentRows"></tbody></table></div><div id="enrollmentEmpty" class="empty-state-card hidden">${icon('enrollment')}<strong>No enrollments found</strong><span>Try adjusting your search or filters.</span></div></section><div id="modalMount"></div>`;
   const modalMount = c.querySelector('#modalMount');
   document.body.appendChild(modalMount);
   function ensureModalHost() {
@@ -1113,7 +1117,7 @@ async function renderEnrollmentList(p,c){
     $('#bulkRejectModal')?.remove();
   }
   function openBulkRejectModal(ids){
- ensureModalHost().innerHTML=`<div class="app-dialog" id="bulkRejectModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card schedule-modal-card"><div class="app-dialog-head"><div><span class="modal-eyebrow">${program} Enrollment</span><h3>Reject All Pending</h3><p>Enter the rejection reason that will be shown to all selected students.</p></div><button type="button" class="modal-close" id="closeBulkRejectModal">x</button></div><div class="schedule-form-old" style="grid-template-columns:1fr"><div class="reject-box" style="display:block"><label for="bulkRejectReason">Rejection reason</label><textarea id="bulkRejectReason" rows="5" placeholder="Enter the reason or correction needed..."></textarea></div><div class="app-dialog-actions"><button type="button" class="btn" id="cancelBulkReject">Cancel</button><button type="button" class="btn danger" id="confirmBulkReject">Reject Selected</button></div></div></div></div>`;
+ ensureModalHost().innerHTML=`<div class="app-dialog" id="bulkRejectModal"><div class="app-dialog-backdrop"></div><div class="app-dialog-card schedule-modal-card"><div class="app-dialog-head"><div><span class="modal-eyebrow">${program} Enrollment</span><h3>Reject Filtered Pending</h3><p>Enter the rejection reason that will be shown to all selected students.</p></div><button type="button" class="modal-close" id="closeBulkRejectModal">x</button></div><div class="schedule-form-old" style="grid-template-columns:1fr"><div class="reject-box" style="display:block"><label for="bulkRejectReason">Rejection reason</label><textarea id="bulkRejectReason" rows="5" placeholder="Enter the reason or correction needed..."></textarea></div><div class="app-dialog-actions"><button type="button" class="btn" id="cancelBulkReject">Cancel</button><button type="button" class="btn danger" id="confirmBulkReject">Reject Selected</button></div></div></div></div>`;
     $('#closeBulkRejectModal').onclick=closeBulkRejectModal;
     $('#cancelBulkReject').onclick=closeBulkRejectModal;
     $('#bulkRejectModal .app-dialog-backdrop').onclick=closeBulkRejectModal;
@@ -1157,8 +1161,8 @@ function rosterName(x){
   }
   `:''}`
 }
-function rosterRows(list){
-  return list.length?`<div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Course</th><th>Year Level</th></tr></thead><tbody>${list.map((x,i)=>`<tr><td>${
+function rosterRows(list, action = null){
+  return list.length?`<div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Course</th><th>Year Level</th>${action ? '<th>Action</th>' : ''}</tr></thead><tbody>${list.map((x,i)=>`<tr><td>${
     i+1
   }
   </td><td><strong>${
@@ -1173,7 +1177,7 @@ function rosterRows(list){
   </td><td>${
     esc(x.year_level||'-')
   }
-  </td></tr>`).join('')}</tbody></table></div>`:`<div class="roster-empty">No members assigned yet.</div>`
+  </td>${action ? `<td>${action(x)}</td>` : ''}</tr>`).join('')}</tbody></table></div>`:`<div class="roster-empty">No members assigned yet.</div>`
 }
 function rosterSummary(label,value,sub='',tone='blue'){
   return `<div class="roster-stat ${tone}"><div class="roster-stat-label">${esc(label)}</div><div class="roster-stat-value">${esc(value)}</div>${sub?`<div class="roster-stat-sub">${
@@ -1445,6 +1449,7 @@ function bindSettings() {
 }
 
 async function renderROTCRoster(c, specialOnly = false) {
+  if (!specialOnly && location.pathname.startsWith('/admin/rotc/')) return renderROTCRosterEditor(c);
   const [allCycleRows, schedules] = await Promise.all([
     API.get("/api/admin/rotc/roster?all_cycles=1"),
     API.get("/api/admin/rotc/enrollment-schedule"),
