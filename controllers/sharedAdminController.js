@@ -348,6 +348,8 @@ async function approvedRecordRows(programCode, filters = {}) {
   const course = readLimitedText(filters.course, 150);
   const platoon = readLimitedText(filters.platoon, 10);
   const special = readLimitedText(filters.special, 50);
+  const medical = readLimitedText(filters.medical, 10);
+  if (!['','with','without'].includes(medical)) return [];
 
   if ([msLevel, schoolYear, search, battalion, company, platoon, special, course].includes(null)) {
     return [];
@@ -372,7 +374,7 @@ async function approvedRecordRows(programCode, filters = {}) {
     `SELECT smr.id record_id,smr.ms_level,smr.status,smr.created_at,
             COALESCE(es.year,'') school_year,
             s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
-            s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,
+            s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,s.has_medical_condition,s.medical_condition,
             s.place_of_birth,s.religion,s.height,s.weight,s.blood_type,s.complexion,s.photo,
             s.temporary_barangay,s.temporary_municipality,s.temporary_province,
             s.permanent_barangay,s.permanent_municipality,s.permanent_province,
@@ -406,7 +408,9 @@ async function approvedRecordRows(programCode, filters = {}) {
   );
 
   return rows.filter((row) => (
-    (!course || String(row.course || '').trim() === course)
+    (!medical || (Number(row.has_medical_condition) === 1) === (medical === 'with'))
+    && (!(special==='advance'&&filters.sex)||row.sex===filters.sex)
+    && (!course || String(row.course || '').trim() === course)
     &&
     (programCode !== 'ROTC' || !battalion || String(row.battalion || '') === battalion)
     && (!company || String(programCode === 'ROTC' ? row.rotc_company : row.company || '') === company)
@@ -458,6 +462,9 @@ exports.dashboard = async (req, res) => {
          SUM(s.battalion=2 AND COALESCE(s.special_unit,'')='' AND COALESCE(s.willing_to_take_advance_course,0)<>1) battalion_2,
          SUM(COALESCE(s.willing_to_take_advance_course,0)=1 AND COALESCE(s.special_unit,'')='') advance_course,
          SUM(COALESCE(s.special_unit,'')<>'') special_platoons,
+         SUM(smr.assignment_special_unit='MP') special_mp,
+         SUM(smr.assignment_special_unit='Medics') special_medics,
+         SUM(smr.assignment_special_unit='HQ') special_hq,
          SUM(s.company='Alpha') company_alpha,
          SUM(s.company='Bravo') company_bravo,
          SUM(s.company='Charlie') company_charlie,
@@ -505,6 +512,9 @@ exports.dashboard = async (req, res) => {
           battalion_2: assignmentPublished ? Number(assigned.battalion_2 || 0) : 0,
           advance_course: assignmentPublished ? Number(assigned.advance_course || 0) : 0,
           special_platoons: assignmentPublished ? Number(assigned.special_platoons || 0) : 0,
+          mp: assignmentPublished ? Number(assigned.special_mp || 0) : 0,
+          medics: assignmentPublished ? Number(assigned.special_medics || 0) : 0,
+          hq: assignmentPublished ? Number(assigned.special_hq || 0) : 0,
         },
       } : {
         distribution: {
@@ -656,18 +666,25 @@ exports.schedules = async (req, res) => {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-      await connection.execute(
+      const [created] = await connection.execute(
         'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
         [programCode, normalizedLevel, normalizedYear, openDate, deadline]
       );
+      const samples = await require('../services/sampleEnrollmentService').create(connection, {
+        id: created.insertId, program: programCode, ms_level: normalizedLevel, year: normalizedYear,
+      });
       await connection.commit();
+      return res.json({
+        message: programCode + ' enrollment schedule created successfully.' + (samples.count ? ` ${samples.count} sample students added as pending enrollments.` : ''),
+        sample_students: samples.count,
+        sample_groups: samples.groups,
+      });
     } catch (error) {
       await connection.rollback();
       throw error;
     } finally {
       connection.release();
     }
-    return res.json({ message: programCode + ' enrollment schedule created successfully.' });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
@@ -901,8 +918,8 @@ async function specialCapacityWarnings(scheduleId, level) {
     [String(scheduleId), String(level)]
   );
   return [['Medics', Number(counts.medics || 0)], ['MP', Number(counts.mp || 0)]]
-    .filter(([, count]) => count > 50)
-    .map(([unit, count]) => unit + ' has ' + count + ' approved candidates for 50 slots. The first 50 alphabetically will get slots; ' + (count - 50) + ' extra student(s) will go to regular platoons during assignment.');
+    .filter(([, count]) => count > 37)
+    .map(([unit, count]) => unit + ' has ' + count + ' approved candidates. Configure sufficient platoon capacity before assignment. The 37-student limit applies only to new enrollment selections.');
 }
 
 async function approveCwtsWithinCapacity(recordId, scheduleId) {
@@ -976,6 +993,11 @@ exports.updateEnrollment = async (req, res) => {
       });
     }
 
+    if (programCode === 'ROTC') {
+      await require('../services/rotcEnrollmentReviewService').review(recordId, status, safeRejectionReason || 'Please contact your NSTP administrator.');
+      return res.json({ message: status === 'approved' ? 'Enrollment approved. Assignment will be published when the roster is finalized.' : 'Enrollment ' + status + '.' });
+    }
+
     let cwtsCapacityReached = false;
     let cwtsCapacity = 360;
     if (programCode === 'CWTS' && status === 'approved') {
@@ -1020,7 +1042,7 @@ exports.updateEnrollment = async (req, res) => {
       capacityWarnings,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to complete this request. Please try again later.' });
   }
 };
 
@@ -1080,17 +1102,7 @@ exports.bulkApprove = async (req, res) => {
             );
           }
         } else {
-          await db.execute(
-            "UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?",
-            [id]
-          );
-
-          if (!record.platoons_assigned_at) {
-            await db.execute(
-              'UPDATE students SET special_unit=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,platoon=NULL WHERE id=?',
-              [record.student_id]
-            );
-          }
+          await require('../services/rotcEnrollmentReviewService').review(id, 'approved', null);
         }
 
         if (programCode === 'ROTC' && !record.platoons_assigned_at) reviewedCycles.set(String(record.schedule_id), record.ms_level);
@@ -1101,6 +1113,18 @@ exports.bulkApprove = async (req, res) => {
       }
     }
 
+    // Report pending enrollments in every cycle touched by this request, including
+    // students hidden by the enrollment list filters.
+    const [[pendingSummary]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM student_ms_records pending
+       WHERE pending.program=? AND pending.status='pending'
+       AND pending.schedule_id IN (
+         SELECT selected.schedule_id FROM student_ms_records selected
+         WHERE selected.program=? AND selected.id IN (${ids.map(() => '?').join(',')})
+       )`,
+      [programCode, programCode, ...ids]
+    );
+    const remainingPending = Number(pendingSummary.total);
     const capacityWarnings = [];
     if (cwtsCapacityReached) capacityWarnings.push('CWTS has reached the ' + cwtsCapacity + '-student approval limit. ' + capacitySkipped + ' selected enrollment(s) could not be approved and remain pending. Review or reject remaining pending enrollments with a reason.');
     for (const [scheduleId, level] of reviewedCycles) capacityWarnings.push(...await specialCapacityWarnings(scheduleId, level));
@@ -1108,6 +1132,7 @@ exports.bulkApprove = async (req, res) => {
       capacityWarnings,
       capacity: programCode === 'CWTS' ? cwtsCapacity : null,
       capacitySkipped,
+      remainingPending,
       message: programCode === 'CWTS'
         ? [
           approved + ' student' + (approved === 1 ? '' : 's') + ' approved.',
@@ -1170,10 +1195,13 @@ exports.bulkReject = async (req, res) => {
           continue;
         }
 
+        if (programCode === 'ROTC') await require('../services/rotcEnrollmentReviewService').review(id, 'rejected', rejectionReason);
+        else {
         await db.execute(
           "UPDATE student_ms_records SET status='rejected',rejection_reason=? WHERE id=?",
           [rejectionReason, id]
         );
+        }
         rejected += 1;
       } catch (error) {
         failed += 1;
@@ -1828,8 +1856,21 @@ exports.serials = async (req, res) => {
         [programCode, programCode, programCode, programCode, programCode]
       );
 
+      const assignmentCycles=new Map();
+      if(programCode==='ROTC') {
+        const [published]=await db.execute(`SELECT r.student_id,r.ms_level,es.year school_year,r.assignment_battalion battalion,r.assignment_company rotc_company,
+          r.assignment_platoon rotc_platoon,r.assignment_special_unit special_unit,COALESCE(r.assignment_is_advance,0) willing_to_take_advance_course
+          FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED)
+          WHERE r.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL ORDER BY r.id DESC`);
+        for(const assignment of published) {
+          const key=Number(assignment.student_id);
+          if(!assignmentCycles.has(key))assignmentCycles.set(key,[]);
+          assignmentCycles.get(key).push(assignment);
+        }
+      }
       return res.json(rows.map((row) => ({
         ...row,
+        ...(programCode==='ROTC'?{assignment_cycles:assignmentCycles.get(Number(row.student_id))||[]}:{}),
         eligible: gradesService.isCertificateEligible([
           { ms_level: '1', grade: row.ms1_grade, status: row.ms1_status },
           { ms_level: '2', grade: row.ms2_grade, status: row.ms2_status },
@@ -2418,6 +2459,10 @@ exports.downloadRecordProfiles = async (req, res) => {
     const course = readLimitedText(req.query.course, 150);
     const platoon = readLimitedText(req.query.platoon, 10);
     const special = readLimitedText(req.query.special, 50);
+    const sex=readLimitedText(req.query.sex,10);
+    if(!['','Male','Female'].includes(sex))return res.status(400).json({message:'Select a valid gender.'});
+    const medical = readLimitedText(req.query.medical, 10);
+    if (!['','with','without'].includes(medical)) return res.status(400).json({message:'Select a valid medical condition filter.'});
     const commandantNameInput = readLimitedText(req.query.commandant_name, 100);
     const commandantName = commandantNameInput === null
       ? null
@@ -2451,6 +2496,8 @@ exports.downloadRecordProfiles = async (req, res) => {
       company,
       platoon,
       special,
+      medical,
+      sex,
       commandantName,
       course,
     };
@@ -2773,6 +2820,11 @@ exports.attendanceSummary = async (req, res) => {
       rosterGroup,
     ];
 
+    if (programCode === 'ROTC') {
+      params[6] = 'historical';
+      for (let index = 9; index <= 13; index++) params[index] = 'overall';
+    }
+
     let [students] = await db.execute(
       `SELECT
          s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,s.sex,
@@ -2806,6 +2858,19 @@ exports.attendanceSummary = async (req, res) => {
        ORDER BY s.last_name,s.first_name`,
       params
     );
+
+    if (programCode === 'ROTC') {
+      const membership = await require('../services/rotcAssignmentHistoryService').forSession(db, session);
+      students = students.filter(student => membership.has(Number(student.id))).map(student => ({...student,...membership.get(Number(student.id))})).filter(student => {
+        const advance = Number(student.willing_to_take_advance_course) === 1 && !student.special_unit;
+        if (advance !== Boolean(isAdvanceCourseSession)) return false;
+        if (rosterGroup === 'battalion-1') return Number(student.battalion) === 1 && !student.special_unit && !advance;
+        if (rosterGroup === 'battalion-2') return Number(student.battalion) === 2 && !student.special_unit && !advance;
+        if (rosterGroup === 'advance-course') return advance;
+        if (rosterGroup === 'special-platoon') return ['HQ','MP','Medics'].includes(student.special_unit);
+        return true;
+      });
+    }
 
     if (programCode === 'CWTS' && group.startsWith('company-')) {
       const companyNames = await cwtsCompanies.list();
