@@ -35,7 +35,9 @@ async function officerApprovedRecordRows(programCode, filters = {}) {
             s.permanent_barangay,s.permanent_municipality,s.permanent_province,
             s.father_name,s.father_occupation,s.mother_name,s.mother_occupation,
             s.emergency_contact_name,s.emergency_contact_address,s.emergency_contact_relationship,s.emergency_contact_contact_number,
-            s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,s.willing_to_take_advance_course,
+            smr.assignment_company company,smr.assignment_battalion battalion,
+            smr.assignment_company rotc_company,smr.assignment_platoon rotc_platoon,
+            smr.assignment_special_unit special_unit,COALESCE(smr.assignment_is_advance,0) willing_to_take_advance_course,
             s.serial_number,
             g.midterm,g.final_term,g.grade,g.status grade_status
      FROM student_ms_records smr
@@ -60,7 +62,11 @@ async function officerApprovedRecordRows(programCode, filters = {}) {
   );
 
   return rows.filter((row) => (
-    !company || String(programCode === 'CWTS' ? row.company : row.rotc_company || '') === company
+    (!company || String(programCode === 'CWTS' ? row.company : row.rotc_company || '') === company)
+    && (!filters.battalion || String(row.battalion||'')===filters.battalion)
+    && (!filters.platoon || String(row.rotc_platoon||'')===filters.platoon)
+    && (!(filters.special==='advance'&&filters.sex)||row.sex===filters.sex)
+    && (!filters.special || (filters.special==='advance'?Number(row.willing_to_take_advance_course)===1&&!row.special_unit:row.special_unit===filters.special))
   ));
 }
 
@@ -105,7 +111,7 @@ async function approvedStudentsForSession(session, { includeCompleted = false } 
   const schoolYear = String(session.school_year || '').trim();
   const isAdvanceCourse = Number(session.program === 'ROTC' && Number(session.is_advance_course || 0) === 1 ? 1 : 0);
 
-  const [rows] = await db.execute(
+  let [rows] = await db.execute(
     `SELECT s.id,s.student_id,s.first_name,s.middle_name,s.last_name,s.course,s.year_level,s.sex,
             s.nstp_component,s.company,s.battalion,s.rotc_company,s.rotc_platoon,s.special_unit,
             s.willing_to_take_advance_course,s.serial_number
@@ -134,11 +140,16 @@ async function approvedStudentsForSession(session, { includeCompleted = false } 
       String(session.ms_level || '1'),
       schoolYear,
       schoolYear,
-      session.program,
+      session.program === 'ROTC' ? 'historical' : session.program,
       isAdvanceCourse,
       isAdvanceCourse,
     ]
   );
+
+  if (session.program === 'ROTC') {
+    const membership = await require('../services/rotcAssignmentHistoryService').forSession(db, session);
+    rows = rows.filter(student => membership.has(Number(student.id))).map(student => ({...student,...membership.get(Number(student.id))})).filter(student => Boolean(Number(student.willing_to_take_advance_course) === 1 && !student.special_unit) === Boolean(isAdvanceCourse));
+  }
 
   // Keep completed students out of automatic absence/offense processing, but
   // allow the Director's historical attendance view to include them.
@@ -224,7 +235,7 @@ async function currentCycle(program) {
 
 async function dashboardScheduleFor(program) {
   const [schedules] = await db.execute(
-    `SELECT id, program, ms_level, year, open_date, deadline
+    `SELECT id, program, ms_level, year, open_date, deadline, platoons_assigned_at
      FROM enrollment_schedules
      WHERE program=?
      ORDER BY id DESC`,
@@ -315,6 +326,7 @@ exports.dashboard = async (req, res) => {
         (SELECT COUNT(*) FROM attendance_records) attendance_records
     `, [rotcScheduleId, rotcScheduleId, cwtsScheduleId, cwtsScheduleId]);
 
+    summary.rotc_roster=await require('../services/rotcDashboardService').forSchedule(db,rotcSchedule);
     return res.json(summary);
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
@@ -879,7 +891,11 @@ exports.downloadRecordProfiles = async (req, res) => {
       return res.status(400).json({ message: 'Enter a valid commandant name before downloading.' });
     }
 
-    const filters = { msLevel, schoolYear, search, company, commandantName, includePhoto: true };
+    const battalion=readLimitedText(req.query.battalion,10),platoon=readLimitedText(req.query.platoon,10),special=readLimitedText(req.query.special,50);
+    if([battalion,platoon,special].includes(null)||!['','1','2'].includes(battalion)||(platoon&&!/^\d{1,3}$/.test(platoon))||!['','advance','Medics','HQ','MP'].includes(special)) return res.status(400).json({message:'Select valid assignment filters.'});
+    const sex=readLimitedText(req.query.sex,10);
+    if(!['','Male','Female'].includes(sex))return res.status(400).json({message:'Select a valid gender.'});
+    const filters = { msLevel, schoolYear, search, company, battalion,platoon,special,sex, commandantName, includePhoto: true };
     const rows = await officerApprovedRecordRows(programCode, filters);
 
     if (!rows.length) {
