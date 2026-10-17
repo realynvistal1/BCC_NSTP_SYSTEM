@@ -70,6 +70,18 @@ html[data-theme="dark"] .email-wizard { --email-blue: #7dd3fc; }
 html[data-theme="dark"] .email-current-address,
 html[data-theme="dark"] .email-code-destination { background: #172337; border-color: #334155; color: #e2e8f0; }
 html[data-theme="dark"] .email-current-address strong { color: #e2e8f0; }
+#passwordForm > .field {
+  min-width: 0;
+  align-content: start;
+}
+.settings-password-help {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+html[data-theme="dark"] .settings-password-help {
+  color: #94a3b8;
+}
 .settings-password-input {
   position: relative;
   min-width: 0;
