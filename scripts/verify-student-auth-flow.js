@@ -27,6 +27,8 @@ async function verifyEnrollment() {
   vm.runInContext(validation, context);
   assert.equal(context.customValidate(), 'Password must be at least 8 characters.');
   form.password.value = form.confirm_password.value = '12345678';
+  assert.equal(context.customValidate(), 'Password must include at least one number and one symbol (e.g. !, @, #).');
+  form.password.value = form.confirm_password.value = 'Password8!';
   assert.equal(context.customValidate(), '');
   const start = enrollment.indexOf("  $('#nextBtn').onclick=async()=>{");
   const end = enrollment.indexOf("\n  ;\n  f.addEventListener('submit'", start);
