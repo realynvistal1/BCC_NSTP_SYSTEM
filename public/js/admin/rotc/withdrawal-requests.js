@@ -64,8 +64,6 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
               </div>
               <div class="withdraw-student">
                 <h3>${esc(row.last_name)}, ${esc(row.first_name)}</h3>
-                <p>${esc(row.student_no)} - ${esc(row.course)} - ${esc(row.year_level)}</p>
-                <small>Submitted ${formatWithdrawDate(row.created_at)}</small>
               </div>
             </div>
             <div class="withdraw-card-content">
