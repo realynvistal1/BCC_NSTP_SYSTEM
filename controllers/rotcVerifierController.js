@@ -4,7 +4,7 @@ const attendanceService = require('../services/attendanceService');
 const { decorateAttendanceUpdates } = require('../services/attendanceUpdateService');
 const { parsePositiveInt } = require('../services/requestValidationService');
 
-const companies = { 1: ['Alpha','Bravo','Charlie','Delta'], 2: ['Echo','Foxtrot','Golf','Hotel'] };
+const companyNames = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel'];
 const specialUnits = ['Medics','HQ','MP'];
 const eligible = `EXISTS (SELECT 1 FROM student_ms_records vr
   WHERE vr.student_id=a.verifier_id AND vr.program='ROTC' AND vr.status='approved'
@@ -15,7 +15,7 @@ const eligible = `EXISTS (SELECT 1 FROM student_ms_records vr
     AND vs.willing_to_take_advance_course=1
     AND (a.special_unit IN ('Medics','HQ','MP')
       OR (a.battalion=1 AND vs.sex='Male') OR (a.battalion=2 AND vs.sex='Female')))`;
-const scope = `ses.program='ROTC' AND COALESCE(ses.is_advance_course,0)=0
+let scope = `ses.program='ROTC' AND COALESCE(ses.is_advance_course,0)=0
   AND ses.ms_level=a.ms_level AND ses.school_year=a.school_year
   AND (a.mi_number=0 OR ses.mi_number=a.mi_number)
   AND (a.mi_type='' OR ses.mi_type=a.mi_type)
@@ -29,6 +29,12 @@ const scope = `ses.program='ROTC' AND COALESCE(ses.is_advance_course,0)=0
         AND smr.assignment_special_unit IS NULL)
         OR (a.special_unit IN ('Medics','HQ','MP') AND smr.assignment_special_unit=a.special_unit))
       AND COALESCE(smr.assignment_is_advance,0)=0)`;
+// Membership belongs to the session opening time, not today's edited roster.
+const sessionAssignment = path => `NULLIF(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(
+  (SELECT h.assignment FROM rotc_assignment_history h WHERE h.record_id=smr.id AND h.effective_at<=ses.open_date ORDER BY h.effective_at DESC,h.id DESC LIMIT 1),
+  JSON_OBJECT('battalion',smr.assignment_battalion,'rotc_company',smr.assignment_company,'rotc_platoon',smr.assignment_platoon,'special_unit',smr.assignment_special_unit,'willing_to_take_advance_course',smr.assignment_is_advance)
+), '$.${path}')), 'null')`;
+scope=scope.replace(/smr\.assignment_(battalion|company|platoon|special_unit|is_advance)/g,(_,field)=>sessionAssignment({battalion:'battalion',company:'rotc_company',platoon:'rotc_platoon',special_unit:'special_unit',is_advance:'willing_to_take_advance_course'}[field]));
 function validAssignment(body) {
   const verifierId=parsePositiveInt(body.verifier_id), battalion=Number(body.battalion), platoon=Number(body.platoon);
   const company=String(body.company||''), level=String(body.ms_level||''), year=String(body.school_year||'');
@@ -38,7 +44,7 @@ function validAssignment(body) {
     || !['1','2'].includes(level) || !/^\d{4}-\d{4}$/.test(year)
     || Number(year.slice(5))!==Number(year.slice(0,4))+1) return null;
   if (specialUnit) return specialUnits.includes(specialUnit) ? [verifierId,0,'',0,level,year,specialUnit,miNumber,miType] : null;
-  if (!companies[battalion]?.includes(company) || !Number.isInteger(platoon) || platoon<1 || platoon>4) return null;
+  if (![1,2].includes(battalion)||!companyNames.includes(company) || !Number.isInteger(platoon) || platoon<1 || platoon>255) return null;
   return [verifierId,battalion,company,platoon,level,year,'',miNumber,miType];
 }
 function endpoint(fn) {
@@ -60,7 +66,13 @@ exports.management = endpoint(async (req,res) => {
   const [sessions]=await db.execute(`SELECT DISTINCT ms_level,school_year,mi_number,mi_type FROM attendance_sessions
     WHERE program='ROTC' AND COALESCE(is_advance_course,0)=0 AND mi_number BETWEEN 1 AND 15
       AND mi_type IN ('in','out') ORDER BY school_year DESC,ms_level,mi_number,mi_type`);
-  res.json({assignments,candidates,companies,cycles,specialUnits,sessions});
+  const [groups]=await db.execute(`SELECT DISTINCT r.ms_level,es.year school_year,r.assignment_battalion battalion,r.assignment_company company,r.assignment_platoon platoon
+    FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED)
+    WHERE r.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL
+      AND r.assignment_special_unit IS NULL AND COALESCE(r.assignment_is_advance,0)=0 AND r.assignment_company IS NOT NULL
+    ORDER BY r.assignment_battalion,r.assignment_company,r.assignment_platoon`);
+  const companies=Object.fromEntries([1,2].map(battalion=>[battalion,[...new Set(groups.filter(group=>Number(group.battalion)===battalion).map(group=>group.company))]]));
+  res.json({assignments,candidates,companies,groups,cycles,specialUnits,sessions});
 });
 exports.assign = endpoint(async (req,res) => {
   const values=validAssignment(req.body);
@@ -75,6 +87,12 @@ exports.assign = endpoint(async (req,res) => {
     return res.status(400).json({message:values[1]===1?'Battalion 1 requires a male Advance Course verifier.':'Battalion 2 requires a female Advance Course verifier.'});
   const [cycles]=await db.execute("SELECT id FROM enrollment_schedules WHERE program='ROTC' AND ms_level=? AND year=?",[level,year]);
   if(!cycles.length) return res.status(400).json({message:'Select an existing ROTC enrollment level and school year.'});
+  if(!values[6]) {
+    const [groups]=await db.execute(`SELECT r.id FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED)
+      WHERE r.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL AND r.ms_level=? AND es.year=?
+      AND r.assignment_battalion=? AND r.assignment_company=? AND r.assignment_platoon=? AND r.assignment_special_unit IS NULL AND COALESCE(r.assignment_is_advance,0)=0 LIMIT 1`,[level,year,values[1],values[2],values[3]]);
+    if(!groups.length)return res.status(400).json({message:'Select a platoon from the published roster for this cycle.'});
+  }
   const [sessions]=await db.execute(`SELECT id FROM attendance_sessions WHERE program='ROTC'
     AND COALESCE(is_advance_course,0)=0 AND ms_level=? AND school_year=? AND mi_number=? AND mi_type=? LIMIT 1`,
     [level,year,values[7],values[8]]);
