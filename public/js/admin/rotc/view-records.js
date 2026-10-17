@@ -4,7 +4,7 @@ function recordAssignment(row, program) {
   }
 
   if (row.special_unit) {
-    return `Special Unit - ${row.special_unit}`;
+    return `Special Unit - ${row.special_unit}${row.rotc_platoon ? ` - Platoon ${row.rotc_platoon}` : ""}`;
   }
 
   if (Number(row.willing_to_take_advance_course)) {
@@ -305,6 +305,7 @@ async function renderAdminRecords(_program, content) {
       <select id="recordSpecial">
         <option value="">All Special Assignments</option>
       </select>
+      <select id="recordSex" aria-label="Advance Course gender" hidden disabled><option value="">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select>
       <button class="clear-filter-btn" id="clearRecordFilters" type="button">Clear Filters</button>
     </section>
     <section class="panel record-list-panel">
@@ -392,15 +393,11 @@ async function renderAdminRecords(_program, content) {
     const battalions = ['1', '2'];
     setFilterOptions('#recordBattalion', 'All Battalions', battalions, battalion, (value) => `Battalion ${value}`);
 
-    const battalionCompanies = {
-      1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
-      2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
-    };
-    const companies = battalionCompanies[battalion] || Object.values(battalionCompanies).flat();
+    const scoped = base.filter(row=>!battalion || String(row.battalion || '')===battalion);
+    const companies = optionValues(scoped,row=>row.rotc_company);
     setFilterOptions('#recordCompany', 'All Companies', companies, company);
-
-    const platoons = ['1', '2', '3', '4'];
-    setFilterOptions('#recordPlatoon', 'All Platoons', platoons, $('#recordPlatoon').value, (value) => `Platoon ${value}`);
+    const platoons = optionValues(scoped.filter(row=>(!$('#recordCompany').value || row.rotc_company===$('#recordCompany').value)&&(!special || (special==='advance' ? Number(row.willing_to_take_advance_course)===1 : row.special_unit===special))),row=>row.rotc_platoon);
+    setFilterOptions('#recordPlatoon','All Platoons',platoons,$('#recordPlatoon').value,value=>'Platoon '+value);
 
     const specialValues = ['advance', 'Medics', 'HQ', 'MP'];
     setFilterOptions('#recordSpecial', 'All Special Assignments', specialValues, special, (value) => value === 'advance' ? 'Advance Course' : value);
@@ -409,7 +406,7 @@ async function renderAdminRecords(_program, content) {
     const hasSpecial = Boolean($('#recordSpecial').value);
     $('#recordBattalion').disabled = hasSpecial || !battalions.length;
     $('#recordCompany').disabled = hasSpecial || !companies.length;
-    $('#recordPlatoon').disabled = hasSpecial || !platoons.length;
+    $('#recordPlatoon').disabled = special === 'advance' || !platoons.length;
     $('#recordSpecial').disabled = hasBattalion || !specialValues.length;
   }
 
@@ -421,6 +418,7 @@ async function renderAdminRecords(_program, content) {
 
     return coreFiltered().filter((row) => (
       (!battalion || String(row.battalion || '') === battalion)
+      && (special!=='advance'||!$('#recordSex').value||row.sex===$('#recordSex').value)
       && (!company || String(row.rotc_company || '') === company)
       && (!platoon || String(row.rotc_platoon || '') === platoon)
       && (!special
@@ -431,6 +429,11 @@ async function renderAdminRecords(_program, content) {
   }
 
   function draw() {
+    const advance=$('#recordSpecial').value==='advance';
+    $('#recordSex').hidden=!advance;
+    $('#recordSex').disabled=!advance;
+    $('#recordSex').style.display=advance?'':'none';
+    if(!advance)$('#recordSex').value='';
     const level = $('#recordLevel').value;
     const currentYear = $('#recordSY').value;
     const years = schoolYearsForLevel(level);
@@ -484,6 +487,7 @@ async function renderAdminRecords(_program, content) {
     draw();
   };
   $('#recordPlatoon').onchange = draw;
+  $('#recordSex').onchange = draw;
   $('#recordSpecial').onchange = () => {
     if ($('#recordSpecial').value) {
       $('#recordBattalion').value = '';
@@ -501,6 +505,7 @@ async function renderAdminRecords(_program, content) {
     $('#recordCompany').value = '';
     $('#recordPlatoon').value = '';
     $('#recordSpecial').value = '';
+    $('#recordSex').value = '';
     draw();
   };
   $('#downloadRecords').onclick = () => {
@@ -566,6 +571,7 @@ async function renderAdminRecords(_program, content) {
     if ($('#recordCompany').value) params.set('company', $('#recordCompany').value);
     if ($('#recordPlatoon').value) params.set('platoon', $('#recordPlatoon').value);
     if ($('#recordSpecial').value) params.set('special', $('#recordSpecial').value);
+    if($('#recordSpecial').value==='advance'&&$('#recordSex').value)params.set('sex',$('#recordSex').value);
     params.set('commandant_name', editedCommandantName);
 
     commandantName = editedCommandantName;
