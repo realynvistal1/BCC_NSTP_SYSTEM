@@ -271,6 +271,19 @@
         $('#nextBtn').disabled=true;
         $('#nextBtn').textContent='Loading...';
         const check=await API.get(`/api/student/enrollment-schedule?program=${encodeURIComponent(program())}&ms_level=1`);
+        if(check.special_availability){
+          for(const [unit,value] of [['Medics','medics'],['MP','military_police']]){
+            const option=f.querySelector('input[name="willingness_option"][value="'+value+'"]');
+            if(!option)continue;
+            const availability=check.special_availability[unit];
+            option.disabled=Boolean(availability.full);
+            const parent=option.closest('label')||option.parentElement;
+            let status=parent.querySelector('[data-capacity]');
+            if(!status){status=document.createElement('span');status.dataset.capacity='';parent.append(status)}
+            status.textContent=availability.full?' Full - 37/37':' '+availability.count+'/37';
+            if(option.disabled&&option.checked){option.checked=false;const none=f.querySelector('input[name="willingness_option"][value="none"]');if(none)none.checked=true;updateConditionalFields()}
+          }
+        }
         if(!check.open){
           $('#scheduleHint').textContent=check.message||`No enrollment schedule is currently open for ${program()}.`;
           $('#scheduleHint').classList.remove('hidden');
