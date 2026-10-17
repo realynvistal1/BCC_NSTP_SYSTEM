@@ -40,7 +40,9 @@ async function adminPage(_role, page, content) {
           ${insight('Battalion 1', Number(data.distribution?.battalion_1 || 0), 'Students in Battalion 1')}
           ${insight('Battalion 2', Number(data.distribution?.battalion_2 || 0), 'Students in Battalion 2')}
           ${insight('Advance Course', Number(data.distribution?.advance_course || 0), 'Students in Advance Course')}
-          ${insight('Special Platoons', Number(data.distribution?.special_platoons || 0), 'Students across all special platoons')}
+          ${insight('MP', Number(data.distribution?.mp || 0), 'Students in MP')}
+          ${insight('Medics', Number(data.distribution?.medics || 0), 'Students in Medics')}
+          ${insight('HQ', Number(data.distribution?.hq || 0), 'Students in HQ')}
         </div>
       </section>
       <section class="section-card">
