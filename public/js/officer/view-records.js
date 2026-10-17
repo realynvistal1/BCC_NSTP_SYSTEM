@@ -185,6 +185,7 @@ async function renderOfficerRecords(content) {
       <select id="recordSpecial">
         <option value="">All Special Assignments</option>
       </select>
+      <select id="recordSex" aria-label="Advance Course gender" hidden disabled><option value="">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select>
       <button class="clear-filter-btn" id="clearRecordFilters" type="button">Clear Filters</button>
     </section>
     <section class="panel record-list-panel">
@@ -247,6 +248,7 @@ async function renderOfficerRecords(content) {
       company: $('#recordCompany').value,
       platoon: $('#recordPlatoon').value,
       special: $('#recordSpecial').value,
+      sex: $('#recordSex').value,
       ...overrides,
     };
   }
@@ -261,8 +263,10 @@ async function renderOfficerRecords(content) {
       company,
       platoon,
       special,
+      sex,
     } = currentFilters(overrides);
 
+    if (special === 'advance' && sex && row.sex !== sex) return false;
     if (program && row.program !== program) {
       return false;
     }
@@ -381,10 +385,7 @@ async function renderOfficerRecords(content) {
     const battalions = isRotc ? ['1', '2'] : [];
     setSelectOptions('#recordBattalion', 'All Battalions', battalions, filters.battalion, (value) => `Battalion ${value}`);
 
-    const battalionCompanies = {
-      1: ['Alpha', 'Bravo', 'Charlie', 'Delta'],
-      2: ['Echo', 'Foxtrot', 'Golf', 'Hotel'],
-    };
+    const battalionCompanies = Object.fromEntries(['1','2'].map(battalion => [battalion, [...new Set(rotcBase.filter(row => String(row.battalion) === battalion).map(row => row.rotc_company).filter(Boolean))]]));
     const allRotcCompanies = Object.values(battalionCompanies).flat();
     const allCwtsCompanies = cwtsCompanyNames;
     const companyValues = program === 'ROTC'
@@ -401,7 +402,7 @@ async function renderOfficerRecords(content) {
       : filters.company;
     setSelectOptions('#recordCompany', 'All Companies', companyValues, companyValue);
 
-    const platoons = isRotc ? ['1', '2', '3', '4'] : [];
+    const platoons = isRotc ? [...new Set(rotcBase.filter(row => (!filters.company || row.rotc_company === filters.company)&&(!filters.battalion||String(row.battalion)===filters.battalion)&&(!filters.special||(filters.special==='advance'?Number(row.willing_to_take_advance_course)===1:row.special_unit===filters.special))).map(row => String(row.rotc_platoon || '')).filter(Boolean))].sort((a,b) => Number(a)-Number(b)) : [];
     setSelectOptions('#recordPlatoon', 'All Platoons', platoons, filters.platoon, (value) => `Platoon ${value}`);
 
     const specialValues = isRotc ? ['advance', 'Medics', 'HQ', 'MP'] : [];
@@ -411,7 +412,7 @@ async function renderOfficerRecords(content) {
     const hasSpecialAssignment = Boolean(filters.special);
     $('#recordBattalion').disabled = !isRotc || hasSpecialAssignment || !battalions.length;
     $('#recordCompany').disabled = hasSpecialAssignment || !(isRotc || isCwts) || !companyValues.length;
-    $('#recordPlatoon').disabled = !isRotc || hasSpecialAssignment || !platoons.length;
+    $('#recordPlatoon').disabled = !isRotc || filters.special === 'advance' || !platoons.length;
     $('#recordSpecial').disabled = !isRotc || hasBattalion || !specialValues.length;
   }
 
@@ -447,6 +448,11 @@ async function renderOfficerRecords(content) {
   }
 
   function draw() {
+    const advance=currentProgram()!=='CWTS'&&$('#recordSpecial').value==='advance';
+    $('#recordSex').hidden=!advance;
+    $('#recordSex').style.display=advance?'':'none';
+    $('#recordSex').disabled=!advance;
+    if(!advance)$('#recordSex').value='';
     refreshFilterOptions();
     const program = currentProgram() || 'ROTC';
     const pfx = prefix(program);
@@ -647,6 +653,7 @@ async function renderOfficerRecords(content) {
   };
   $('#recordCompany').onchange = draw;
   $('#recordPlatoon').onchange = draw;
+  $('#recordSex').onchange = draw;
   $('#recordSpecial').onchange = () => {
     if ($('#recordSpecial').value) {
       $('#recordBattalion').value = '';
@@ -676,6 +683,10 @@ async function renderOfficerRecords(content) {
     if ($('#recordLevel').value) params.set('ms_level', $('#recordLevel').value);
     if ($('#recordSY').value) params.set('school_year', $('#recordSY').value);
     if ($('#recordCompany').value) params.set('company', normalizedCompanyFilter());
+    if(normalizedBattalionFilter())params.set('battalion',normalizedBattalionFilter());
+    if(normalizedPlatoonFilter())params.set('platoon',normalizedPlatoonFilter());
+    if(normalizedSpecialFilter())params.set('special',normalizedSpecialFilter());
+    if(normalizedSpecialFilter()==='advance'&&$('#recordSex').value)params.set('sex',$('#recordSex').value);
     const search = $('#recordSearch').value.trim();
     if (search) params.set('search', search);
     if (editedCommandantName) params.set('commandant_name', editedCommandantName);
@@ -735,6 +746,7 @@ async function renderOfficerRecords(content) {
     $('#recordCompany').value = '';
     $('#recordPlatoon').value = '';
     $('#recordSpecial').value = '';
+    $('#recordSex').value = '';
     draw();
   };
   watchCwtsCompanyChanges('/api/officer/cwts-companies',cwtsCompanyNames,names=>{cwtsCompanyNames=names;draw();});
