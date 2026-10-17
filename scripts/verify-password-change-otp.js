@@ -37,7 +37,7 @@ async function main() {
     });
     const service = require('../services/passwordChangeService');
     const request = { currentPassword: 'OriginalPassword123', email: 'attacker@example.com' };
-    const change = (code) => ({ ...request, newPassword: 'NewPassword456', verification_code: code });
+    const change = (code) => ({ ...request, newPassword: 'NewPassword456!', verification_code: code });
     let checks = 0;
     const expect = async (user, body, sending, status) => {
       const response = await service.run(user, body, sending, 'Test Portal');
@@ -68,8 +68,8 @@ async function main() {
       await expect(user, change('000000'), false, 400);
       await expect(user, change(code), false, 200);
       const [accounts] = await connection.execute(`SELECT password FROM ${table} WHERE id=1`);
-      assert(await auth.comparePassword('NewPassword456', accounts[0].password));
-      await expect(user, { ...change(code), currentPassword: 'NewPassword456', newPassword: 'ThirdPassword789' }, false, 400);
+      assert(await auth.comparePassword('NewPassword456!', accounts[0].password));
+      await expect(user, { ...change(code), currentPassword: 'NewPassword456!', newPassword: 'ThirdPassword789!' }, false, 400);
 
       // A resend invalidates the old code and cannot reset the guessing budget.
       await connection.execute(`UPDATE ${table} SET password=? WHERE id=1`, [originalPassword]);
