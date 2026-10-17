@@ -1,0 +1,368 @@
+﻿/* Preserve the existing portal layout and polish roster controls. */
+.rotc-roster-editor { min-width: 0; }
+.rotc-roster-editor .section-card { margin-bottom: 22px; padding: 24px; border: 1px solid #e2eaf4; border-radius: 18px; box-shadow: 0 5px 20px rgba(30,66,105,.035); }
+.rotc-roster-editor h2 { margin: 0 0 7px; font-size: 20px; line-height: 1.35; }
+.rotc-roster-editor h3 { margin: 0 0 9px; font-size: 17px; }
+.rotc-roster-editor p { color: #617086; font-size: 13px; line-height: 1.65; margin: 0 0 18px; max-width: 900px; }
+.rotc-roster-editor .roster-editor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.rotc-roster-editor .roster-editor-heading p { margin-bottom: 20px; }
+.rotc-roster-editor .roster-state { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; border: 1px solid #cfe2f8; background: #edf5ff; color: #306391; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 650; }
+.rotc-roster-editor .roster-state::before { content: ''; width: 6px; height: 6px; background: #528fc7; border-radius: 50%; }
+.rotc-roster-editor .roster-state.is-final { background: #ecf8f1; color: #28764c; border-color: #cfe9d9; }
+.rotc-roster-editor .roster-state.is-final::before { background: #389364; }
+.rotc-roster-editor .roster-cycle-filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 15px; }
+.rotc-roster-editor .roster-cycle-filters .field { width: 220px; gap: 8px; }
+.rotc-roster-editor .roster-cycle-filters .field > span { color: #50617a; font-size: 12px; font-weight: 650; }
+.rotc-roster-editor input, .rotc-roster-editor select { font: inherit; font-size: 13px; min-height: 40px; padding: 9px 12px; border: 1px solid #d9e4f1; border-radius: 9px; background: #fbfdff; color: #33465f; max-width: 100%; }
+.rotc-roster-editor select { padding-right: 28px; }
+.rotc-roster-editor input:focus-visible, .rotc-roster-editor select:focus-visible, .rotc-roster-editor button:focus-visible { outline: 3px solid #cce3fa; outline-offset: 2px; border-color: #6fa4d7; }
+.rotc-roster-editor input:disabled, .rotc-roster-editor select:disabled { background: #f3f6fa; color: #687a90; cursor: default; }
+.rotc-roster-editor .roster-status-note { margin-bottom: 0; font-size: 12px; }
+.rotc-roster-editor [data-message]:empty { display: none; }
+.rotc-roster-editor [data-message]:not(:empty) { margin: 14px 0 0; padding: 12px 14px; background: #edf5ff; border: 1px solid #d4e5f8; border-radius: 9px; color: #365f89; }
+.rotc-roster-editor [data-message][role="alert"] { background: #fff8ed; border-color: #f0dfbd; color: #846338; }
+.rotc-roster-editor .table-scroll { border: 1px solid #e5edf6; border-radius: 12px; overflow: auto; }
+.rotc-roster-editor .roster-setup-scroll { max-height: 420px; scrollbar-width: thin; scrollbar-color: #c2d2e4 #f6f9fd; }
+.rotc-roster-editor .data-table { margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+.rotc-roster-editor .data-table thead { position: sticky; top: 0; z-index: 1; background: #f5f8fc; }
+.rotc-roster-editor .data-table th { background: #f5f8fc; color: #5d7390; padding: 14px; font-size: 10px; letter-spacing: .07em; white-space: nowrap; border-bottom: 1px solid #e3ecf6; }
+.rotc-roster-editor .data-table td { padding: 12px 14px; font-size: 12px; color: #43556e; vertical-align: middle; border-bottom: 1px solid #eef2f7; }
+.rotc-roster-editor .data-table tbody tr:last-child td { border-bottom: 0; }
+.rotc-roster-editor .data-table tbody tr:hover { background: #f8fbff; }
+.rotc-roster-editor .data-table td:last-child { white-space: nowrap; }
+.rotc-roster-editor [data-field="capacity"], .rotc-roster-editor [data-field="platoon"] { width: 86px; min-width: 76px; }
+.rotc-roster-editor [data-field="company"] { min-width: 125px; }
+.rotc-roster-editor [data-field="battalion"] { min-width: 76px; }
+.rotc-roster-editor .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; }
+.rotc-roster-editor .btn { border-radius: 9px; min-height: 40px; font-size: 12px; font-weight: 650; padding: 9px 14px; box-shadow: none; }
+.rotc-roster-editor .btn:disabled { opacity: .5; cursor: default; }
+.rotc-roster-editor [data-slot] .btn { min-height: 34px; padding: 7px 10px; margin-right: 5px; }
+.rotc-roster-editor [data-slot] .btn.danger { color: #915f65; background: #fff; border: 1px solid #e9dfe3; }
+.rotc-roster-editor [data-slot] .btn.danger:hover { background: #fff4f4; border-color: #e7c5ca; }
+.rotc-roster-editor [data-slot] [data-up] { color: #59799c; background: #f6faff; }
+.rotc-roster-editor [data-students] select { width: 100%; min-width: 230px; }
+.rotc-roster-editor .filter-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.rotc-roster-editor .filter-row input { flex: 1 1 220px; }
+.rotc-roster-editor .filter-row select { flex: 0 1 320px; }
+.rotc-roster-editor .roster-empty { text-align: center; padding: 35px 16px !important; color: #73839a; }
+@media (max-width: 760px) {
+  .rotc-roster-editor .section-card { padding: 18px; border-radius: 14px; }
+  .rotc-roster-editor .roster-cycle-filters { gap: 12px; }
+  .rotc-roster-editor .roster-cycle-filters .field { flex: 1; width: auto; min-width: 130px; }
+  .rotc-roster-editor .data-table { min-width: 680px; }
+  .rotc-roster-editor .filter-row select { flex: 1 1 220px; }
+  .rotc-roster-editor .actions .btn { flex: 1 1 auto; }
+  .rotc-roster-editor .roster-editor-heading { gap: 12px; }
+  .rotc-roster-editor h2 { font-size: 18px; }
+}
+/* Compact colored totals, without decorations or extra copy. */
+.rotc-roster-editor .roster-summary-grid.six { grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
+.rotc-roster-editor .roster-stat { padding:16px; min-height:80px; border:1px solid #e0e7ef; border-radius:12px; background:#edf2f8; box-shadow:none; }
+.rotc-roster-editor .roster-stat.blue { background:#e8f1ff; border-color:#d6e4f7; }
+.rotc-roster-editor .roster-stat.rose { background:#fbeaf0; border-color:#f0dce5; }
+.rotc-roster-editor .roster-stat.amber { background:#fcf2dd; border-color:#eee3ca; }
+.rotc-roster-editor .roster-stat.green { background:#e7f4ed; border-color:#d6e9de; }
+.rotc-roster-editor .roster-stat.purple { background:#efeafa; border-color:#e1daf0; }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-label { color:#4f647d; font-size:11px; line-height:1.4; text-transform:none; letter-spacing:0; font-weight:650; }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-value { color:#243e5c; font-size:24px; line-height:1.2; font-weight:750; margin-top:8px; }
+.rotc-roster-editor .roster-stat.is-awaiting { min-height:64px; display:flex; align-items:center; }
+.rotc-roster-editor.roster-awaiting-assignment .roster-count,
+.rotc-roster-editor.roster-awaiting-assignment .roster-progress,
+.rotc-roster-editor.roster-awaiting-assignment .company-card-head small,
+.rotc-roster-editor.roster-awaiting-assignment .roster-section-title > small { display:none; }
+.rotc-roster-editor .section-card.roster-setup-panel, .rotc-roster-editor .section-card.roster-transfer-panel { padding:0; }
+.rotc-roster-editor .roster-setup-panel > summary, .rotc-roster-editor .roster-transfer-panel > summary { display:flex; align-items:center; gap:14px; padding:20px 24px; cursor:pointer; list-style:none; }
+.rotc-roster-editor summary::-webkit-details-marker { display:none; }
+.rotc-roster-editor .setup-panel-summary > span:nth-child(2) { flex:1; }
+.rotc-roster-editor .setup-panel-summary strong { display:block; font-size:16px; color:#263d59; }
+.rotc-roster-editor .setup-panel-summary small { display:block; color:#7890a9; font-size:12px; margin-top:5px; }
+.rotc-roster-editor .setup-panel-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:13px; color:#507eaf; background:#eaf3fe; }
+.rotc-roster-editor .setup-panel-icon svg { width:23px; height:23px; }
+.rotc-roster-editor .setup-panel-body { padding:4px 24px 24px; }
+.rotc-roster-editor .setup-subheading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:22px 0 14px; }
+.rotc-roster-editor .setup-subheading span { font-size:12px; color:#7890a9; }
+.rotc-roster-editor .setup-subheading h3 { margin:0; font-size:14px; }
+.rotc-roster-editor .setup-company-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.rotc-roster-editor .setup-company { border:1px solid #e1eaf5; border-radius:13px; background:#fbfdff; min-width:0; }
+.rotc-roster-editor .setup-company > summary { display:flex; align-items:center; gap:12px; padding:16px; cursor:pointer; list-style:none; }
+.rotc-roster-editor .setup-company summary strong { font-size:13px; color:#344e6c; }
+.rotc-roster-editor .setup-company summary small { display:block; font-size:11px; margin-top:5px; color:#7b8fa5; }
+.rotc-roster-editor .setup-chevron { margin-left:auto; font-size:20px; color:#7591ae; transition:transform .2s; }
+.rotc-roster-editor .setup-company[open] > summary .setup-chevron { transform:rotate(180deg); }
+.rotc-roster-editor .setup-company-body { padding:0 16px 16px; }
+.rotc-roster-editor .setup-company-toolbar { display:flex; align-items:end; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:8px 0 14px; color:#7b8fa5; font-size:11px; }
+.rotc-roster-editor .setup-company-toolbar .field { flex:1; max-width:190px; }
+.rotc-roster-editor .setup-platoon-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.rotc-roster-editor .setup-platoon-tile { min-width:0; padding:14px; background:#fff; border:1px solid #e5edf6; border-radius:11px; }
+.rotc-roster-editor .setup-tile-heading strong { display:block; font-size:12px; color:#405c7b; }
+.rotc-roster-editor .setup-tile-heading > span { display:block; margin-top:4px; font-size:10px; color:#8a9aae; }
+.rotc-roster-editor .setup-tile-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:13px 0 8px; }
+.rotc-roster-editor .setup-tile-fields .field { min-width:0; }
+.rotc-roster-editor .setup-tile-fields .field > span { font-size:10px; color:#7a8ea5; }
+.rotc-roster-editor .setup-tile-fields input { min-width:0; width:100%; padding:8px; }
+.rotc-roster-editor .setup-tile-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.rotc-roster-editor .setup-tile-actions .btn { font-size:10px; margin:0; padding:6px 8px; min-height:29px; }
+.rotc-roster-editor .setup-platoon-tile > small { font-size:10px; color:#7a8ea5; }
+.rotc-roster-editor .setup-add-company { display:flex; align-items:end; flex-wrap:wrap; gap:12px; margin-top:15px; padding:16px; border:1px dashed #cadced; border-radius:12px; }
+.rotc-roster-editor .setup-add-company .field { flex:1; min-width:140px; }
+.rotc-roster-editor .setup-add-company .field > span { font-size:11px; color:#6e849d; }
+.rotc-roster-editor .setup-save-row { display:flex; align-items:center; justify-content:space-between; gap:20px; border-top:1px solid #e5edf6; padding-top:20px; margin-top:24px; }
+.rotc-roster-editor .setup-save-row p { font-size:11px; margin:0; }
+.rotc-roster-editor .setup-save-row .btn { flex-shrink:0; }
+.rotc-roster-editor .roster-assignment-actions { background:linear-gradient(120deg,#f5faff,#fff); border-color:#dbe9f8; }
+.rotc-roster-editor .roster-assignment-actions p { margin-bottom:0; }
+.rotc-roster-editor .roster-company-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
+.rotc-roster-editor .roster-special-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
+.rotc-roster-editor .company-card { padding:16px; min-width:0; }
+.rotc-roster-editor .company-card-head { padding:0 0 13px; }
+.rotc-roster-editor .company-card-head strong { font-size:14px; }
+.rotc-roster-editor .company-card-head small { font-size:11px; }
+.rotc-roster-editor .roster-section-title { margin:25px 0 15px; }
+.rotc-roster-editor .roster-section-title h3 { font-size:18px; margin:0; }
+.rotc-roster-editor .roster-section-title small { font-size:12px; }
+.rotc-roster-editor .roster-transfer-panel > summary { flex-wrap:wrap; justify-content:space-between; }
+.rotc-roster-editor .roster-transfer-panel > summary span { color:#7c8fa6; font-size:12px; }
+.rotc-roster-editor .roster-table-wrap { overflow:auto; }
+@media(max-width:1200px) {
+  .rotc-roster-editor .roster-summary-grid.six { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .rotc-roster-editor .roster-special-grid { grid-template-columns:1fr; }
+}
+@media(max-width:760px) {
+  .rotc-roster-editor .roster-summary-grid.six { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .rotc-roster-editor .setup-company-grid, .rotc-roster-editor .roster-company-grid { grid-template-columns:1fr; }
+  .rotc-roster-editor .setup-panel-body { padding:0 16px 16px; }
+  .rotc-roster-editor .roster-setup-panel > summary, .rotc-roster-editor .roster-transfer-panel > summary { padding:18px 16px; }
+  .rotc-roster-editor .setup-save-row { flex-wrap:wrap; }
+}
+/* Simple setup follows the actual ROTC structure. */
+.rotc-roster-editor .setup-simple-battalion { padding:22px 0; border-bottom:1px solid #e6edf5; }
+.rotc-roster-editor .setup-simple-battalion:last-of-type { border-bottom:0; }
+.rotc-roster-editor .setup-battalion-heading { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.rotc-roster-editor .setup-battalion-heading h3 { margin:0 0 4px; font-size:16px; }
+.rotc-roster-editor .setup-battalion-heading p { margin:0; font-size:12px; }
+.rotc-roster-editor .setup-company-add-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.rotc-roster-editor .setup-company-add-row select { width:180px; }
+.rotc-roster-editor .setup-simple-companies { display:grid; gap:10px; }
+.rotc-roster-editor .setup-simple-company { border:1px solid #e1eaf4; border-radius:12px; overflow:hidden; }
+.rotc-roster-editor .setup-simple-company > summary { display:flex; align-items:center; gap:12px; padding:14px 16px; background:#f8fbff; cursor:pointer; list-style:none; }
+.rotc-roster-editor .setup-simple-company > summary strong { font-size:13px; color:#35516d; }
+.rotc-roster-editor .setup-simple-company > summary small { font-size:11px; color:#8395a9; margin-left:auto; }
+.rotc-roster-editor .setup-simple-company > summary .setup-chevron { margin-left:0; }
+.rotc-roster-editor .setup-simple-company[open] > summary .setup-chevron { transform:rotate(180deg); }
+.rotc-roster-editor .setup-simple-company-body { padding:0 16px 14px; }
+.rotc-roster-editor .setup-simple-platoon { display:flex; align-items:end; flex-wrap:wrap; gap:12px; padding:14px 0; border-bottom:1px solid #edf2f7; }
+.rotc-roster-editor .setup-simple-platoon .field { gap:6px; }
+.rotc-roster-editor .setup-simple-platoon .field > span { font-size:11px; color:#6c829a; }
+.rotc-roster-editor .setup-simple-platoon .setup-number { width:90px; }
+.rotc-roster-editor .setup-simple-platoon .setup-capacity { width:110px; }
+.rotc-roster-editor .setup-simple-platoon input { min-width:0; width:100%; }
+.rotc-roster-editor .setup-simple-platoon .setup-students-label, .rotc-roster-editor .setup-simple-platoon .setup-sex-label { color:#7f91a6; font-size:12px; line-height:40px; }
+.rotc-roster-editor .setup-simple-platoon > .btn { margin-left:auto; margin-right:0; min-height:40px; }
+.rotc-roster-editor .setup-company-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px; }
+.rotc-roster-editor .setup-remove-company { color:#926871; background:#fff; border-color:#eadfe3; }
+.rotc-roster-editor .setup-simple-special { display:grid; gap:14px; }
+.rotc-roster-editor .setup-special-unit { border:1px solid #e1eaf4; border-radius:12px; padding:16px; }
+.rotc-roster-editor .setup-special-unit-heading { display:flex; align-items:center; gap:12px; }
+.rotc-roster-editor .setup-special-unit-heading strong { font-size:14px; color:#35516d; }
+.rotc-roster-editor .setup-special-unit-heading .btn { margin-left:auto; }
+.rotc-roster-editor .setup-empty-note { padding:16px; background:#f8fbff; border-radius:10px; }
+.rotc-roster-editor .roster-original-heading { margin-bottom:20px; }
+.rotc-roster-editor .roster-original-heading h2 { margin:0 0 6px; }
+.rotc-roster-editor .roster-original-heading p { margin:0; }
+.rotc-roster-editor .roster-original-filters { flex:0 0 auto; margin:0; width:auto; gap:10px; }
+.rotc-roster-editor .roster-original-filters select { flex:0 0 auto; width:165px; border-radius:10px; background:#fff; }
+.rotc-roster-editor [data-message]:not(:empty) { margin:0 0 18px; }
+@media(max-width:760px) {
+  .rotc-roster-editor .roster-original-heading { align-items:stretch; flex-direction:column; gap:14px; }
+  .rotc-roster-editor .roster-original-filters { width:100%; }
+  .rotc-roster-editor .roster-original-filters select { flex:1 1 120px; width:auto; min-width:0; }
+  .rotc-roster-editor .setup-simple-platoon { gap:9px; }
+  .rotc-roster-editor .setup-simple-platoon .setup-number { width:75px; }
+  .rotc-roster-editor .setup-simple-platoon .setup-capacity { width:85px; }
+  .rotc-roster-editor .setup-simple-platoon .setup-students-label { display:none; }
+  .rotc-roster-editor .setup-simple-platoon > .btn { font-size:11px; padding:8px; }
+  .rotc-roster-editor .setup-special-unit { padding:12px; }
+}
+
+@media(min-width:1800px) { .rotc-roster-editor .roster-summary-grid.six { grid-template-columns:repeat(6,minmax(0,1fr)); } }
+@media(max-width:760px) {
+  .rotc-roster-editor .roster-summary-grid.six { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .rotc-roster-editor .roster-stat { padding:13px; min-height:64px; }
+  .rotc-roster-editor .roster-stat-heading { align-items:flex-start; gap:8px; }
+  .rotc-roster-editor .roster-stat-icon { width:28px; height:28px; border-radius:9px; }
+  .rotc-roster-editor .roster-stat-icon svg { width:18px; height:18px; }
+  body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-label { font-size:12px; }
+  body .rotc-roster-editor .roster-summary-grid .roster-stat.is-awaiting .roster-stat-value { font-size:13px; }
+  .rotc-roster-editor .roster-stat-sub { font-size:10px; }
+}
+.roster-add-dialog { width:min(430px,calc(100vw - 32px)); border:1px solid #dce7f3; border-radius:18px; padding:26px; color:#263e59; background:#fff; box-shadow:0 24px 80px rgba(20,46,76,.2); }
+.roster-add-dialog::backdrop { background:rgba(23,42,65,.35); }
+.roster-add-dialog h3 { margin:0 0 9px; font-size:18px; }
+.roster-add-dialog p { color:#71849a; font-size:13px; line-height:1.6; }
+.roster-add-dialog .field { margin-top:18px; }
+.roster-add-dialog .field > span { font-size:12px; font-weight:650; color:#5a718b; }
+.roster-add-dialog .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+.rotc-roster-editor .roster-student-filters { gap:10px; }
+.rotc-roster-editor .roster-student-filters input { flex:1.5 1 220px; }
+.rotc-roster-editor .roster-student-filters select { flex:1 1 150px; min-width:130px; }
+.rotc-roster-editor [data-move-student] { color:#326b9e; background:#edf5ff; border-color:#cfe1f4; min-width:68px; }
+.roster-add-dialog [data-move-error]:empty { display:none; }
+.roster-add-dialog [data-move-error] { color:#956738; }
+/* Reference roster layout: compact white totals and one company per row. */
+.rotc-roster-editor .roster-summary-grid .roster-stat { background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:14px; min-height:98px; box-shadow:0 4px 14px rgba(15,23,42,.04); }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-label { font-size:9px; line-height:1.4; color:#6f8199; text-transform:uppercase; letter-spacing:.055em; font-weight:800; }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-value { color:#172033; font-size:21px; line-height:1.1; font-weight:850; margin:5px 0 0; }
+.rotc-roster-editor .roster-stat-sub { font-size:9px; color:#94a3b8; margin-top:5px; }
+.rotc-roster-editor .roster-stat-value:empty { display:none; }
+.rotc-roster-editor .roster-current-filter { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:4px; padding:20px; }
+.rotc-roster-editor .roster-current-filter h3 { font-size:13px; margin:0 0 6px; }
+.rotc-roster-editor .roster-current-filter p { margin:0; font-size:11px; }
+.rotc-roster-editor .roster-current-filter .btn { flex-shrink:0; }
+.rotc-roster-editor .roster-company-grid, .rotc-roster-editor .roster-special-grid { grid-template-columns:minmax(0,1fr); gap:18px; }
+.rotc-roster-editor .company-card { padding:13px; }
+.rotc-roster-editor .company-card-head strong { font-size:12px; }
+.rotc-roster-editor .company-card-head small { font-size:10px; }
+.rotc-roster-editor .roster-section-title h3 { font-size:14px; }
+.rotc-roster-editor .assignment-copy p { margin:3px 0 0; font-size:11px; }
+.rotc-roster-editor .assignment-box .actions { margin-bottom:0; }
+.roster-setup-dialog { width:min(960px,calc(100vw - 32px)); max-height:86vh; overflow:auto; border:1px solid #dae5f2; border-radius:18px; padding:0; background:#fff; color:#263e59; box-shadow:0 25px 85px rgba(26,54,86,.22); }
+.roster-setup-dialog::backdrop { background:rgba(25,45,70,.35); }
+.roster-setup-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; position:sticky; top:0; z-index:2; background:#fff; border-bottom:1px solid #e5edf6; padding:20px 24px; }
+.roster-setup-dialog-heading h3 { margin:0; font-size:18px; }
+@media(max-width:760px) { .roster-setup-dialog-heading { padding:16px; } .rotc-roster-editor .roster-current-filter { padding:16px; } }
+.rotc-roster-editor .setup-hq-row { display:flex; align-items:center; gap:18px; padding:14px 0; border-bottom:1px solid #edf2f7; }
+.rotc-roster-editor .setup-hq-row:last-child { border-bottom:0; }
+.rotc-roster-editor .setup-hq-row strong { color:#35516d; font-size:12px; min-width:85px; }
+.rotc-roster-editor .setup-hq-row span { color:#71869c; font-size:12px; }
+/* Clear, colored sections inside the existing setup dialog. */
+.roster-setup-dialog .roster-setup-dialog-heading { background:linear-gradient(110deg,#eaf3ff,#f8fbff); border-bottom:1px solid #d4e4f7; }
+.roster-setup-dialog .roster-setup-dialog-heading h3 { color:#224d7c; font-size:19px; font-weight:750; }
+.roster-setup-dialog .roster-setup-dialog-heading .btn { background:#fff; color:#326895; border-color:#c4d9ef; font-weight:700; }
+.rotc-roster-editor .roster-setup-dialog .setup-panel-body { padding:20px 24px 24px; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-battalion { --setup-color:#356fa9; --setup-tint:#f3f8ff; --setup-border:#d7e6f8; padding:20px; margin-bottom:18px; background:var(--setup-tint); border:1px solid var(--setup-border); border-left:4px solid var(--setup-color); border-radius:13px; }
+.rotc-roster-editor .roster-setup-dialog .setup-tone-rose { --setup-color:#a65279; --setup-tint:#fff6f9; --setup-border:#f0dce5; }
+.rotc-roster-editor .roster-setup-dialog .setup-tone-green { --setup-color:#377c67; --setup-tint:#f1faf6; --setup-border:#d7eade; }
+.rotc-roster-editor .roster-setup-dialog .setup-battalion-heading h3 { color:var(--setup-color); font-size:17px; font-weight:750; }
+.rotc-roster-editor .roster-setup-dialog .setup-battalion-heading p { color:#647991; font-size:12px; }
+.rotc-roster-editor .roster-setup-dialog .setup-battalion-heading p strong { color:var(--setup-color); font-weight:700; }
+.rotc-roster-editor .roster-setup-dialog .setup-company-add-row select { background:#fff; border-color:var(--setup-border); color:#344f6c; }
+.rotc-roster-editor .roster-setup-dialog .setup-company-add-row > .btn { color:#fff; background:var(--setup-color); border-color:var(--setup-color); font-weight:700; }
+.rotc-roster-editor .roster-setup-dialog .setup-company-add-row > .btn:hover:not(:disabled) { filter:brightness(.95); }
+.rotc-roster-editor .roster-setup-dialog .setup-empty-note { background:#fff; color:#627a94; border:1px dashed var(--setup-border); border-radius:10px; padding:15px; margin:0; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-company { border-color:var(--setup-border); background:#fff; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-company > summary { background:#fff; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-company > summary strong { color:var(--setup-color); font-weight:750; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-company > summary small { color:#5b728d; font-weight:600; }
+.rotc-roster-editor .roster-setup-dialog .setup-special-unit { background:#fff; border-color:var(--setup-border); }
+.rotc-roster-editor .roster-setup-dialog .setup-special-unit-heading strong { color:var(--setup-color); font-size:14px; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-platoon .field > span { font-weight:700; color:#496782; }
+.rotc-roster-editor .roster-setup-dialog .setup-simple-platoon input { background:#fff; color:#254c73; font-weight:650; }
+.rotc-roster-editor .roster-setup-dialog .setup-save-row { border-top:0; margin-top:6px; padding-top:0; justify-content:flex-end; }
+@media(max-width:760px) {
+  .rotc-roster-editor .roster-setup-dialog .setup-panel-body { padding:14px; }
+  .rotc-roster-editor .roster-setup-dialog .setup-simple-battalion { padding:15px; }
+}
+.roster-feedback-dialog { width:min(390px,calc(100vw - 32px)); padding:30px 28px 26px; border:1px solid #dae7f0; border-radius:20px; background:#fff; box-shadow:0 24px 90px rgba(28,62,94,.23); color:#263e59; text-align:center; }
+.roster-feedback-dialog::backdrop { background:rgba(28,47,70,.3); }
+.roster-feedback-dialog .roster-feedback-icon { width:62px; height:62px; display:grid; place-items:center; margin:0 auto 18px; background:#e9f7ef; color:#329266; border:1px solid #d3ecdf; border-radius:50%; }
+.roster-feedback-dialog .roster-feedback-icon svg { width:30px; height:30px; }
+.roster-feedback-dialog h3 { font-size:20px; font-weight:750; margin:0 0 10px; color:#274965; }
+.roster-feedback-dialog p { margin:0 0 24px; color:#708298; font-size:13px; line-height:1.65; }
+.roster-feedback-dialog > .btn { min-width:135px; justify-content:center; border-radius:10px; }
+.roster-feedback-dialog.error .roster-feedback-icon { background:#fff5e8; color:#bc8a42; border-color:#f2e1c5; }
+
+/* Student moves in the platoon tables. */
+.rotc-roster-editor .roster-move-button { padding:6px 12px; color:#2466a3; border-color:#bdd8f3; background:#edf6ff; font-weight:650; white-space:nowrap; }
+.rotc-roster-editor .roster-move-button:hover:not(:disabled) { background:#dceeff; border-color:#69a4df; }
+.roster-move-dialog { width:min(460px,calc(100vw - 32px)); padding:26px; border-top:4px solid #4b95d6; }
+.roster-move-dialog .move-dialog-label { color:#3579b6; font-size:10px; letter-spacing:1.4px; font-weight:750; }
+.roster-move-dialog h3 { margin-top:7px; color:#193b5b; font-size:21px; }
+.roster-move-dialog .move-student-name { margin:12px 0 16px; color:#294e70; font-size:15px; }
+.roster-move-dialog .move-current { display:grid; gap:5px; padding:13px 15px; background:#f2f6fb; border:1px solid #dfe8f2; border-radius:10px; font-size:13px; }
+.roster-move-dialog .move-current span { color:#667e96; font-size:11px; }
+.roster-move-dialog .field select { width:100%; min-height:44px; margin-top:7px; }
+.roster-move-dialog .move-preview { padding:12px 14px; margin-top:16px; border-radius:10px; border:1px solid #cce7db; background:#f0faf5; color:#306750; font-size:12px; line-height:1.6; }
+.roster-move-dialog .move-save-note { font-size:11px; margin-bottom:0; }
+
+.rotc-roster-editor .roster-search-bar { margin:18px 0; padding:14px 18px; background:#fff; border:1px solid #dbe7f5; border-radius:14px; }
+.rotc-roster-editor .roster-search-bar label { display:block; margin-bottom:7px; font-size:12px; font-weight:700; color:#294e70; }
+.rotc-roster-editor .roster-search-bar > div { display:flex; gap:8px; }
+.rotc-roster-editor .roster-search-bar input { width:100%; min-width:0; max-width:420px; padding:10px 12px; border:1px solid #cbdff3; border-radius:8px; background:#f9fcff; color:#263e59; }
+.rotc-roster-editor .roster-search-bar [data-search-result]:not(:empty) { display:block; margin-top:9px; font-size:12px; color:#536f8e; }
+.rotc-roster-editor [hidden] { display:none !important; }
+
+/* Organize the roster toolbar and give each action a clear emphasis. */
+.rotc-roster-editor .roster-current-filter { padding:17px 20px; margin-bottom:12px; border-left:4px solid #438bd0; }
+.rotc-roster-editor .roster-current-filter h3 { color:#244c73; font-weight:750; }
+.rotc-roster-editor .roster-current-filter [data-open-setup] { background:#2869aa; color:#fff; border:1px solid #2869aa; box-shadow:0 3px 8px rgba(40,105,170,.15); padding:10px 18px; }
+.rotc-roster-editor .roster-current-filter [data-open-setup]:hover { background:#205b96; }
+.rotc-roster-editor .assignment-box { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:16px 24px; padding:20px; margin:18px 0; background:#f7faff; border:1px solid #cddff3; border-radius:15px; box-shadow:0 3px 12px rgba(43,86,130,.04); }
+.rotc-roster-editor .assignment-copy { display:flex; align-items:center; gap:12px; min-width:0; }
+.rotc-roster-editor .assignment-copy strong { color:#244b73; font-size:14px; }
+.rotc-roster-editor .assignment-icon { padding:8px 12px; border-radius:9px; background:#deecfc; color:#2766a4; font-size:11px; font-weight:750; }
+.rotc-roster-editor .assignment-box .assign-wide { width:auto; min-width:165px; margin:0; background:#e5effb; color:#2563a0; border:1px solid #b9d3ef; box-shadow:none; }
+.rotc-roster-editor .assignment-box .assign-wide:hover:not(:disabled) { background:#d6e7fb; border-color:#8eb8e2; }
+.rotc-roster-editor .assignment-box .actions { grid-column:1 / -1; justify-content:flex-end; gap:10px; margin:0; padding-top:16px; border-top:1px solid #dce7f4; }
+.rotc-roster-editor .assignment-box [data-action="save"] { background:#2869aa; color:#fff; border:1px solid #2869aa; box-shadow:0 3px 8px rgba(40,105,170,.12); }
+.rotc-roster-editor .assignment-box [data-action="save"]:hover:not(:disabled) { background:#205b96; }
+.rotc-roster-editor .assignment-box [data-action="finalize"] { background:#188351; color:#fff; border:1px solid #188351; box-shadow:0 3px 8px rgba(24,131,81,.12); order:3; }
+.rotc-roster-editor .assignment-box [data-action="finalize"]:hover:not(:disabled) { background:#126d42; }
+.rotc-roster-editor .assignment-box [data-discard] { background:#fff; color:#8d5360; border:1px solid #e5ccd2; order:-1; margin-right:auto; }
+.rotc-roster-editor .assignment-box [data-discard]:hover:not(:disabled) { background:#fff3f5; }
+.rotc-roster-editor .roster-search-bar { display:grid; grid-template-columns:auto minmax(180px,1fr) auto; align-items:center; gap:12px 18px; padding:15px 20px; border:1px solid #d6e3f1; border-radius:13px; box-shadow:0 3px 12px rgba(43,86,130,.035); }
+.rotc-roster-editor .roster-search-bar label { margin:0; font-size:13px; color:#28537a; white-space:nowrap; }
+.rotc-roster-editor .roster-search-bar > div { align-items:center; }
+.rotc-roster-editor .roster-search-bar input { max-width:none; flex:1; min-height:42px; padding:10px 14px; border-radius:9px; background:#f4f8fd; }
+.rotc-roster-editor .roster-search-bar [data-clear-search] { background:#eaf2fc; border:1px solid #c8dcf2; color:#316a9f; min-height:42px; }
+.rotc-roster-editor .roster-search-bar [data-clear-search]:hover { background:#dceafa; }
+.rotc-roster-editor .roster-search-bar [data-search-result]:not(:empty) { margin:0; font-size:11px; color:#367450; background:#edf8f1; padding:7px 10px; border-radius:7px; }
+.rotc-roster-editor .roster-setup-dialog .setup-save-row { position:sticky; bottom:-24px; background:#fff; padding:16px 0 0; margin:8px 0 0; border-top:1px solid #e1eaf4; }
+.rotc-roster-editor .roster-setup-dialog [data-action="configure"] { background:#2869aa; color:#fff; border-color:#2869aa; min-width:140px; }
+.rotc-roster-editor .btn { transition:background-color .15s,border-color .15s,box-shadow .15s; }
+@media(max-width:760px) {
+  .rotc-roster-editor .assignment-box { grid-template-columns:1fr; padding:16px; gap:14px; }
+  .rotc-roster-editor .assignment-box .assign-wide { width:100%; }
+  .rotc-roster-editor .assignment-box .actions { gap:8px; }
+  .rotc-roster-editor .assignment-box .actions .btn { flex:1 1 130px; }
+  .rotc-roster-editor .assignment-box [data-discard] { margin-right:0; }
+  .rotc-roster-editor .roster-search-bar { grid-template-columns:1fr; gap:9px; padding:15px; }
+  .rotc-roster-editor .roster-search-bar [data-search-result]:not(:empty) { justify-self:start; }
+  .rotc-roster-editor .roster-setup-dialog .setup-save-row { bottom:-14px; }
+}
+
+.roster-move-dialog { max-height:90vh; overflow:auto; }
+.roster-move-dialog select[name="destination"] { height:200px; padding:6px; background:#f8fbff; border:1px solid #c6daf0; border-radius:10px; font:inherit; font-size:13px; color:#2c4f72; }
+.roster-move-dialog select[name="destination"] optgroup { padding:7px 5px; color:#2869aa; font-weight:750; }
+.roster-move-dialog select[name="destination"] option { padding:9px 12px; color:#334e68; font-weight:500; border-radius:6px; }
+.roster-move-dialog select[name="destination"] option:checked { background:#d9eafb; color:#174f86; }
+.roster-move-dialog .actions { padding-top:15px; border-top:1px solid #e2eaf4; margin-top:16px; }
+
+.roster-reassign-dialog { width:min(430px,calc(100vw - 32px)); padding:26px; border:1px solid #d5e4f4; border-top:4px solid #3884c9; border-radius:18px; background:#fff; color:#294968; box-shadow:0 24px 80px rgba(21,50,82,.24); }
+.roster-reassign-dialog::backdrop { background:rgba(25,45,70,.4); }
+.roster-reassign-dialog .reassign-heading { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
+.roster-reassign-dialog .reassign-icon { display:grid; place-items:center; width:48px; height:48px; border-radius:14px; background:#eaf3ff; color:#2e75b5; }
+.roster-reassign-dialog svg { width:26px; height:26px; }
+.roster-reassign-dialog .reassign-close { display:grid; place-items:center; width:30px; height:30px; border:0; border-radius:8px; background:#f1f5fa; color:#667e96; font-size:23px; cursor:pointer; }
+.roster-reassign-dialog h3 { margin:0 0 10px; font-size:21px; color:#21466c; }
+.roster-reassign-dialog p { margin:0 0 18px; font-size:13px; color:#647b92; line-height:1.65; }
+.roster-reassign-dialog .reassign-warning { display:grid; gap:6px; padding:14px; background:#fff7e9; border:1px solid #f1dfba; border-radius:10px; font-size:12px; line-height:1.6; color:#856431; }
+.roster-reassign-dialog .reassign-warning strong { color:#825b20; font-size:13px; }
+.roster-reassign-dialog .reassign-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+.roster-reassign-dialog .btn { min-height:40px; border:1px solid #d3e1ef; border-radius:9px; padding:10px 14px; background:#fff; color:#486782; font-weight:650; cursor:pointer; }
+.roster-reassign-dialog .btn.primary { background:#2869aa; border-color:#2869aa; color:#fff; }
+.roster-reassign-dialog button:focus-visible { outline:3px solid #b6d6f5; outline-offset:3px; }
+@media(max-width:460px) { .roster-reassign-dialog { padding:20px; } .roster-reassign-dialog .reassign-actions { flex-direction:column-reverse; } }
+
+.rotc-roster-editor .roster-assigned-status { display:inline-flex; align-items:center; gap:7px; justify-self:end; padding:8px 12px; background:#e8f5ee; border:1px solid #cde6d8; border-radius:20px; color:#28734c; font-size:11px; font-weight:700; white-space:nowrap; }
+.rotc-roster-editor .assignment-box .actions .btn { min-height:42px; padding:10px 18px; font-size:12px; border-radius:9px; }
+.rotc-roster-editor .assignment-box .actions .btn:disabled { background:#eef2f7; border-color:#dce4ee; color:#8a9bad; box-shadow:none; opacity:1; cursor:not-allowed; }
+.roster-reassign-dialog.confirm-finalize { border-top-color:#188351; }
+.roster-reassign-dialog.confirm-finalize .reassign-icon { color:#188351; background:#e7f5ed; }
+.roster-reassign-dialog.confirm-finalize .btn.primary { background:#188351; border-color:#188351; }
+.roster-reassign-dialog.confirm-discard { border-top-color:#b25969; }
+.roster-reassign-dialog.confirm-discard .reassign-icon { color:#a24d5e; background:#fff0f3; }
+.roster-reassign-dialog.confirm-discard .btn.primary { background:#a24d5e; border-color:#a24d5e; }
+@media(max-width:760px) { .rotc-roster-editor .roster-assigned-status { justify-self:start; } }
+
+.rotc-roster-editor .assignment-box [data-action="update"] { background:#188351; border:1px solid #188351; color:#fff; order:3; }
+.rotc-roster-editor .assignment-box [data-action="edit"] { background:#2869aa; border:1px solid #2869aa; color:#fff; }
