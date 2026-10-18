@@ -21,6 +21,39 @@
   [birthMonth,birthDay,birthYear].forEach(select=>select.addEventListener('change',syncBirthdate));
   syncBirthdate();
   const MAX_FILE=5*1024*1024;
+  // Read selected files immediately while the mobile picker still grants access.
+  // Keep only in memory; never persist identity documents in browser storage.
+  const uploadCache=new Map();
+  const uploadFields={medical_certificate_file:'Medical certificate',xray_file_input:'X-ray',photo_file:'2x2 photo',cor_file_input:'COR'};
+  function captureUpload(input){
+    const file=input.files?.[0];
+    if(!file){uploadCache.delete(input.name);return null;}
+    const entry={file,promise:null};
+    entry.promise=(async()=>{
+      try{
+        if(file.size>MAX_FILE)throw new Error('File exceeds 5 MB.');
+        const value=await fileAsDataUrl(file);
+        if(!value||!String(value).startsWith('data:'))throw new Error('Empty file.');
+        return {value};
+      }catch(error){return {error:new Error(uploadFields[input.name]+': cannot read this file. Select it again from your phone\'s Downloads or Files folder.')};}
+    })();
+    uploadCache.set(input.name,entry);return entry;
+  }
+  async function enrollmentUpload(input){
+    const file=input.files?.[0];if(!file)return null;
+    let entry=uploadCache.get(input.name);
+    if(!entry||entry.file!==file)entry=captureUpload(input);
+    const result=await entry.promise;
+    if(result.error)throw result.error;
+    return result.value;
+  }
+  Object.keys(uploadFields).forEach(name=>{
+    const input=f.elements[name];
+    input?.addEventListener('change',()=>{
+      const entry=captureUpload(input);
+      entry?.promise.then(result=>{if(uploadCache.get(name)===entry&&result.error)showError(result.error.message);});
+    });
+  });
   const fmt=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
   const showError=text=>{
     msg.textContent=text;
@@ -306,10 +339,10 @@
       data.willing_to_be_medics=w==='medics'?1:0;
       data.willing_to_be_military_police=w==='military_police'?1:0;
       data.has_medical_condition=Number(f.has_medical_condition.value||0);
-      data.medical_certificate=await fileAsDataUrl(f.medical_certificate_file.files[0]);
-      data.xray_file=program()==='ROTC'?await fileAsDataUrl(f.xray_file_input.files[0]):null;
-      data.photo=await fileAsDataUrl(f.photo_file.files[0]);
-      data.cor_file=await fileAsDataUrl(f.cor_file_input.files[0]);
+      data.medical_certificate=await enrollmentUpload(f.medical_certificate_file);
+      data.xray_file=program()==='ROTC'?await enrollmentUpload(f.xray_file_input):null;
+      data.photo=await enrollmentUpload(f.photo_file);
+      data.cor_file=await enrollmentUpload(f.cor_file_input);
       await prepareCheckbox();
       data.recaptcha_token=checkboxRequired?window.grecaptcha.getResponse(checkboxId):await Captcha.token('student_enrollment');
       if(checkboxRequired&&!data.recaptcha_token)throw new Error('Please check "I\'m not a robot" before submitting enrollment.');
@@ -323,6 +356,7 @@
       btn.disabled=true;
       btn.textContent='Submitting...';
       await API.post('/api/student/register',data);
+      uploadCache.clear();
       $('#enrollWrap').innerHTML=`<div class="enrollment-success-page"><div class="enrollment-success-card" role="status" tabindex="-1"><div class="enrollment-success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><h2>Enrollment submitted</h2><p>Your request is pending administrator review. Sign in to check your enrollment status.</p><a href="/student/login">Go to Student Login</a></div></div>`;
       $('.enrollment-success-card')?.focus();
       $('.enrollment-signin-note')?.classList.add('hidden');
