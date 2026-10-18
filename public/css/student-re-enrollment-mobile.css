@@ -31,3 +31,5 @@
  body[data-page="re-enrollment"] .intro-copy h1 { font-size:22px; }
  body[data-page="re-enrollment"] .intro-copy p { font-size:11px; }
 }
+
+.re-saved-requirement { display:block; padding:10px 12px; border:1px solid #cee7da; border-radius:7px; color:#286b4c; background:#f0faf4; font-size:12px; line-height:1.5; }

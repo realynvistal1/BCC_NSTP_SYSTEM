@@ -310,6 +310,20 @@ async function renderReEnrollment(c){
       xrayField.innerHTML='<label>Update X-ray</label><input type="file" id="reXrayFile" accept=".pdf,image/*">';
       form.appendChild(xrayField);
     }
+    for(const [id,key,label] of [['reMedicalCertificate','medical_certificate','Medical certificate'],['reCorFile','cor_file','COR'],['reXrayFile','xray_file','X-ray']]){
+      const input=document.getElementById(id);
+      if(!input)continue;
+      const field=input.closest('.field');
+      const saved=Boolean(s.saved_requirements?.[key]);
+      field.querySelector('label').textContent=label;
+      if(saved){
+        input.disabled=true;input.hidden=true;
+        const status=document.createElement('span');status.className='re-saved-requirement';status.textContent='Already submitted - reused for this enrollment.';
+        field.appendChild(status);
+      }else{
+        const note=document.createElement('small');note.textContent='No saved file. Upload PDF or image, up to 5 MB.';field.appendChild(note);
+      }
+    }
     organizeReEnrollmentForm(form,supportsRotc);
     const componentSelect=$('#reNstpComponent');
     const targetNotice=c.querySelector('.panel > .notice');
@@ -379,9 +393,12 @@ async function renderReEnrollment(c){
         payload.willing_to_take_advance_course=form.querySelector('input[name="willing_to_take_advance_course"]')?.checked?1:0;
         payload.willing_to_be_medics=form.querySelector('input[name="willing_to_be_medics"]')?.checked?1:0;
         payload.willing_to_be_military_police=form.querySelector('input[name="willing_to_be_military_police"]')?.checked?1:0;
-        const medicalFile=$('#reMedicalCertificate')?.files?.[0];
-        const corFile=$('#reCorFile')?.files?.[0];
-        const xrayFile=$('#reXrayFile')?.files?.[0];
+        const medicalFile=s.saved_requirements?.medical_certificate?null:$('#reMedicalCertificate')?.files?.[0];
+        const corFile=s.saved_requirements?.cor_file?null:$('#reCorFile')?.files?.[0];
+        const xrayFile=s.saved_requirements?.xray_file?null:$('#reXrayFile')?.files?.[0];
+        const files=[medicalFile,corFile,(componentSelect?.value||s.nstp_component)==='ROTC'?xrayFile:null].filter(Boolean);
+        if(files.some(file=>file.size>5*1024*1024))throw new Error('Each requirement must be 5 MB or smaller.');
+        if(files.reduce((sum,file)=>sum+4*Math.ceil(file.size/3),0)>9*1024*1024)throw new Error('The selected files are too large together. Use smaller images or PDFs (under 6 MB total). Saved requirements do not need uploading again.');
         if(medicalFile)payload.medical_certificate=await fileAsDataUrl(medicalFile);
         if(corFile)payload.cor_file=await fileAsDataUrl(corFile);
         if((componentSelect?.value||s.nstp_component)==='ROTC'&&xrayFile)payload.xray_file=await fileAsDataUrl(xrayFile);

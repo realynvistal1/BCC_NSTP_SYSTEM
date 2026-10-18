@@ -201,7 +201,7 @@ res.status(404).sendFile(path.join(__dirname, "views/404.html"));
 app.use((err, req, res, next) => {
 if (res.headersSent) return next(err);
 if (err?.type === 'entity.too.large' || err?.type === 'parameters.too.many') {
-  return res.status(413).json({ message: 'Request body exceeds the allowed size or number of fields.' });
+  return res.status(413).json({ message: req.path === '/api/student/re-enroll' ? 'The selected files are too large. Saved requirements are reused automatically; upload only missing documents using smaller files.' : 'Request body exceeds the allowed size or number of fields.' });
 }
 if (err?.type === 'entity.parse.failed' || err?.type === 'querystring.parse.rangeError') {
   return res.status(400).json({ message: 'Invalid request body.' });

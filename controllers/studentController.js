@@ -695,6 +695,11 @@ exports.reEnrollForm = async (req, res) => {
     } = context;
     const safeStudent = studentPublic(student);
 
+    safeStudent.saved_requirements={
+      medical_certificate:Boolean(student.medical_certificate),
+      cor_file:Boolean(student.cor_file),
+      xray_file:Boolean(student.xray_file),
+    };
     delete safeStudent.password;
     delete safeStudent.medical_certificate;
     delete safeStudent.xray_file;
