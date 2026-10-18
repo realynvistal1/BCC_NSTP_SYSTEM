@@ -75,9 +75,11 @@ exports.editor = async (req, res) => {
     const pendingCount = Number(review.total);
     const deadline = new Date(schedule.deadline).getTime();
     const enrollmentClosed = Number.isFinite(deadline) && Date.now() > deadline;
+    let setupNeedsCapacity=false;
+    if(!schedule.platoons_assigned_at&&state.assignments===null){try{roster.assign(rows,state.configuration);}catch(error){setupNeedsCapacity=Boolean(error.status);}}
     if (req.method === 'GET') {
       await connection.commit();
-      return res.json({ schedule, ...state, students: rows, pending_count:pendingCount, enrollment_closed:enrollmentClosed });
+      return res.json({ schedule, ...state, students: rows, pending_count:pendingCount, enrollment_closed:enrollmentClosed, setup_needs_capacity:setupNeedsCapacity });
     }
     if(schedule.platoons_assigned_at) roster.fail('This roster is finalized and cannot be edited. Only approved Advance Course withdrawals can change assignments.');
     if (Number(req.body.revision) !== state.revision) roster.fail('Another administrator changed this draft. Reload before continuing.');
@@ -86,10 +88,10 @@ exports.editor = async (req, res) => {
     let assignments = req.body.assignments === undefined ? state.assignments : req.body.assignments;
     const action = req.body.action;
     if (!['configure','assign','save','finalize'].includes(action)) roster.fail('Invalid roster action.');
-    if (action==='configure' && state.revision>0) roster.fail('Platoon setup has already been saved and is now locked for this enrollment cycle.');
+    if (action==='configure' && state.revision>0 && !setupNeedsCapacity) roster.fail('Platoon setup has already been saved and is now locked for this enrollment cycle.');
     if (action==='assign' && state.assignments!==null) roster.fail('Students have already been assigned. Use Move to adjust the draft roster.');
     if (action==='assign' && state.revision===0) roster.fail('Save the platoon setup before assigning students.');
-    if (state.revision>0) {
+    if (state.revision>0 && !(action==='configure'&&setupNeedsCapacity)) {
       const structure=items=>JSON.stringify(items.map(({capacity,...slot})=>slot));
       if(structure(slots)!==structure(state.configuration)||JSON.stringify(companies)!==JSON.stringify(state.companies)) roster.fail('Platoon setup is locked. You can only move students in the draft roster.');
       for(const slot of slots) {
@@ -99,7 +101,10 @@ exports.editor = async (req, res) => {
     }
     roster.validateSetup(slots, companies, { requirePlatoon:action==='configure' });
     if (['save','finalize'].includes(action) && (!Array.isArray(assignments) || !assignments.length)) roster.fail('Assign students before saving the roster.');
-    if (action === 'configure') assignments = null;
+    if (action === 'configure') {
+      roster.assign(rows,slots); // Reject insufficient capacity before saving and locking setup.
+      assignments = null;
+    }
     if (action === 'assign' || action === 'finalize') {
       if (!enrollmentClosed) roster.fail('Wait until enrollment closes before assigning or finalizing.');
       if (pendingCount) roster.fail('Approve or reject all pending enrollments before assigning or finalizing.');

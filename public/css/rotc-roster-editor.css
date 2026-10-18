@@ -409,3 +409,6 @@ body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-value { 
 .roster-move-result h3 { color:#226946; font-size:23px; }
 .roster-move-result p { color:#35566e; font-size:14px; }
 .roster-move-result p strong { display:inline-block; margin-bottom:8px; font-size:16px; color:#214a6c; }
+
+.setup-capacity-warning { padding:14px 16px; margin-bottom:18px; border:1px solid #ebce98; border-left:4px solid #c88c2f; border-radius:10px; background:#fff8eb; color:#805c27; }
+.rotc-roster-editor .setup-capacity-warning p { margin:6px 0 0; font-size:12px; color:#805c27; }

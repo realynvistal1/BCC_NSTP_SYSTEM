@@ -29,12 +29,12 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     const assignmentDetails = isAdvance
       ? [['Program', 'ROTC'], ['Course', 'Advance Course']]
       : student.special_unit
-        ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit], ['Platoon', student.rotc_platoon || 'Awaiting assignment']]
+        ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit], ['Platoon', student.rotc_platoon || 'Pending']]
         : student.nstp_component === 'CWTS'
-          ? [['Program', 'CWTS'], ['Company', student.company || 'Awaiting assignment']]
-          : [['Battalion', student.battalion || 'Awaiting assignment'],
-            ['Company', student.rotc_company || 'Awaiting assignment'],
-            ['Platoon', student.rotc_platoon || 'Awaiting assignment']];
+          ? [['Program', 'CWTS'], ['Company', student.company || 'Pending']]
+          : [['Battalion', student.battalion || 'Pending'],
+            ['Company', student.rotc_company || 'Pending'],
+            ['Platoon', student.rotc_platoon || 'Pending']];
 
     if (isAdvance) {
       try {
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
           <span class="student-assignment-eyebrow">${esc(student.nstp_component || 'NSTP')} &bull; UNIT ASSIGNMENT</span>
           <span class="student-assignment-status ${hasAssignment ? 'is-assigned' : 'is-waiting'}">
             <span aria-hidden="true">${icon(hasAssignment ? 'check' : 'attendance')}</span>
-            ${hasAssignment ? 'Assigned' : 'Awaiting assignment'}
+            ${hasAssignment ? 'Assigned' : 'Pending'}
           </span>
         </div>
         <div class="student-assignment-body">
@@ -59,11 +59,11 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
               <h2 id="assignmentTitle">${esc(assignment)}</h2>
               <p class="student-assignment-description">${hasAssignment
                 ? 'Your unit. Your team. Serve and grow together.'
-                : 'Your unit will appear here after enrollment approval and administrator assignment.'}</p>
+                : 'Your assignment will appear once finalized by the admin.'}</p>
             </div>
           </div>
           <dl class="student-assignment-details">
-            ${assignmentDetails.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(String(value))}</dd></div>`).join('')}
+            ${assignmentDetails.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd class="${value === 'Pending' ? 'assignment-pending-value' : ''}">${esc(String(value))}</dd></div>`).join('')}
           </dl>
         </div>
         ${isAdvance ? `

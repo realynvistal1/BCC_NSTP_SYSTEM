@@ -47,7 +47,7 @@ async function renderROTCRosterEditor(container) {
       if(setup===true){
         dialog.querySelector('#rosterReassignTitle').textContent='Save platoon setup?';
         dialog.querySelector('#rosterReassignDescription').textContent='Your updated companies, platoons and capacities will be saved.';
-        dialog.querySelector('.reassign-warning strong').textContent='Setup can only be saved once.';
+        dialog.querySelector('.reassign-warning strong').textContent='Setup can only be saved once capacity is sufficient.';
         dialog.querySelector('.reassign-warning span').textContent='Review your companies, platoons and capacities. After saving, setup is locked for this enrollment cycle. Student moves can still increase capacity when needed.';
         dialog.querySelector('.reassign-actions [value="cancel"]').textContent='Keep Editing';
         dialog.querySelector('.reassign-actions [value="assign"]').textContent='Save Setup';
@@ -77,9 +77,21 @@ async function renderROTCRosterEditor(container) {
       dialog.showModal();
     });
   }
+  function setupCapacityIssues(){
+    const needs=new Map();
+    for(const student of state.students){
+      const unit=Number(student.has_medical_condition)?'HQ':Number(student.willing_to_be_medics)?'Medics':Number(student.willing_to_be_military_police)?'MP':null;
+      if(unit==='HQ'||(!unit&&Number(student.willing_to_take_advance_course)))continue;
+      const sex=student.sex==='Male'?1:student.sex==='Female'?2:0;
+      const key=unit?unit+'|'+sex:'Battalion '+sex;
+      const entry=needs.get(key)||{label:unit?unit+' - '+(sex===1?'Male':'Female'):key,required:0,capacity:state.configuration.filter(slot=>unit?slot.unit===unit&&slot.platoon===sex:!slot.unit&&slot.battalion===sex).reduce((sum,slot)=>sum+Number(slot.capacity||0),0)};
+      entry.required++;needs.set(key,entry);
+    }
+    return [...needs.values()].filter(entry=>entry.capacity<entry.required);
+  }
   async function save(action) {
     if (busy) return;
-    if(action==='configure'&&Number(state.revision)>0){showRosterNotice('Setup is locked','This enrollment cycle already has a saved platoon setup.','error');return;}
+    if(action==='configure'&&Number(state.revision)>0&&!state.setup_needs_capacity){showRosterNotice('Setup is locked','This enrollment cycle already has a saved platoon setup.','error');return;}
     if(action==='assign'&&state.assignments!==null){showRosterNotice('Already assigned','Use Move to adjust the draft roster. Assignment is available only once.','error');return;}
     if(['assign','finalize','update'].includes(action)){
       if(!(Date.now()>new Date(state.schedule.deadline).getTime())){showRosterNotice('Enrollment is still open','Wait until enrollment closes before assigning students.','error');return;}
@@ -92,6 +104,7 @@ async function renderROTCRosterEditor(container) {
     if(action==='configure'&&!state.configuration.some(slot=>slot.unit!=='HQ')){showRosterNotice('Add a platoon','Add at least one platoon before saving the setup.','error');return;}
     if(['save','finalize','update'].includes(action)&&!state.assignments?.length){showRosterNotice('Assign students first','Assign students before saving the roster.','error');return;}
     if (setupDirty && ['save','finalize','update'].includes(action)) { showRosterNotice('Save your setup first','Save Setup and assign alphabetically after changing the setup.','error'); return; }
+    if(action==='configure'&&setupCapacityIssues().length){const box=container.querySelector('[data-setup-capacity]');box?.scrollIntoView({block:'center',behavior:'smooth'});return;}
     if (action === 'configure' && !(await confirmReassignment(true))) return;
     if (action === 'assign' && state.assignments && !(await confirmReassignment())) return;
     if (['finalize','update'].includes(action) && !(await confirmReassignment(action))) return;
@@ -127,7 +140,7 @@ async function renderROTCRosterEditor(container) {
   function draw() {
     const published=Boolean(state.schedule.platoons_assigned_at);
     const locked = published;
-    const setupLocked=locked||Number(state.revision)>0;
+    const setupLocked=locked||(Number(state.revision)>0&&!state.setup_needs_capacity);
     const slots = state.configuration;
     const assignments = locked ? state.students.map(student => {
       const slot = slots.find(slot => Number(slot.battalion || 0) === Number(student.assignment_battalion || 0) && (slot.company || null) === (student.assignment_company || null) && (slot.unit || null) === (student.assignment_special_unit || null) && slot.platoon === Number(student.assignment_platoon));
@@ -181,7 +194,9 @@ async function renderROTCRosterEditor(container) {
         + '<div class="setup-simple-companies">'+companies.map(companySetup).join('')+(companies.length?'':'<p class="setup-empty-note">No companies yet. Choose a company above to add it here.</p>')+'</div></section>';
     }).join('');
     const setupSpecial = '<section class="setup-simple-battalion setup-tone-green"><div class="setup-battalion-heading"><span class="roster-letter green">S</span><div><h3>Special Platoons</h3><p>Medics and MP: Platoon 1 &mdash; Male. Platoon 2 &mdash; Female.</p></div></div><div class="setup-simple-special">'+['Medics','MP'].map((unit,index)=>'<div class="setup-special-unit"><div class="setup-special-unit-heading"><span class="roster-letter '+['rose','green','blue'][index]+'">'+unit[0]+'</span><strong>'+unit+'</strong>'+(setupLocked||unit==='HQ'?'':'<button class="btn" data-add-unit="'+unit+'" '+([1,2].every(number=>slots.some(slot=>slot.unit===unit&&slot.platoon===number))?'disabled':'')+'>+ Add platoon</button>')+'</div>'+slots.map((slot,i)=>slot.unit===unit?tile(slot,i):'').join('')+'</div>').join('')+'</div></section>';
-    const setup = '<dialog class="roster-setup-dialog" data-setup-dialog aria-labelledby="rosterSetupTitle"><div class="roster-setup-dialog-heading"><h3 id="rosterSetupTitle">Platoon setup</h3><button type="button" class="btn" data-close-setup>Done</button></div><div class="setup-panel-body">'+setupBattalions+setupSpecial+(setupLocked?'':'<div class="setup-save-row"><button class="btn primary" data-action="configure">Save Setup</button></div>')+'</div></dialog>';
+    const capacityIssues=setupCapacityIssues();
+    const capacityNotice=capacityIssues.length?'<div class="setup-capacity-warning" data-setup-capacity role="alert"><strong>Increase capacity before saving</strong>'+capacityIssues.map(issue=>'<p>'+esc(issue.label)+': '+issue.required+' students / '+issue.capacity+' places. Add '+(issue.required-issue.capacity)+' more places.</p>').join('')+'</div>':'';
+    const setup = '<dialog class="roster-setup-dialog" data-setup-dialog aria-labelledby="rosterSetupTitle"><div class="roster-setup-dialog-heading"><h3 id="rosterSetupTitle">Platoon setup</h3><button type="button" class="btn" data-close-setup>Done</button></div><div class="setup-panel-body">'+capacityNotice+setupBattalions+setupSpecial+(setupLocked?'':'<div class="setup-save-row"><button class="btn primary" data-action="configure">Save Setup</button></div>')+'</div></dialog>';
     const moveAction = locked ? null : student => '<button type="button" class="btn roster-move-button" data-move-student="'+Number(student.record_id)+'" '+(setupDirty||Number(student.has_medical_condition)===1?'disabled':'')+'>Move</button>';
     const battalions = [1,2].map(battalion => {
       const companies = companyNames.filter(company=>slots.some(slot=>!slot.unit&&slot.company===company&&slot.battalion===battalion));
