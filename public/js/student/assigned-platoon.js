@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         : student.nstp_component === 'CWTS'
           ? `Company ${student.company || 'Not assigned'}`
           : [
-            student.rotc_company ? `${student.rotc_company} Company` : '',
             student.battalion ? `Battalion ${student.battalion}` : '',
+            student.rotc_company ? `${student.rotc_company} Company` : '',
             student.rotc_platoon ? `Platoon ${student.rotc_platoon}` : '',
           ].filter(Boolean).join(' - ') || 'Not assigned';
 
@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         ? [['Program', student.nstp_component || 'ROTC'], ['Special unit', student.special_unit], ['Platoon', student.rotc_platoon || 'Awaiting assignment']]
         : student.nstp_component === 'CWTS'
           ? [['Program', 'CWTS'], ['Company', student.company || 'Awaiting assignment']]
-          : [['Company', student.rotc_company || 'Awaiting assignment'],
-            ['Battalion', student.battalion || 'Awaiting assignment'],
+          : [['Battalion', student.battalion || 'Awaiting assignment'],
+            ['Company', student.rotc_company || 'Awaiting assignment'],
             ['Platoon', student.rotc_platoon || 'Awaiting assignment']];
 
     if (isAdvance) {

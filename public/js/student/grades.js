@@ -45,13 +45,13 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
 
     const rowTemplate = (label, grade) => `
       <details class="student-record-disclosure grade-result ${grade?.status === 'Passed' ? 'grade-passed' : grade?.status === 'Failed' ? 'grade-failed' : 'grade-pending'}">
-        <summary><div class="student-record-title"><strong>${esc(label)}</strong><small>Average: ${grade?.grade != null ? Number(grade.grade).toFixed(2) : 'Pending release'}</small></div>${grade ? badge(grade.status) : '<span class="badge">Pending release</span>'}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
+        <summary><div class="student-record-title"><strong>${esc(label)}</strong><small>Units: 3</small></div>${grade ? badge(grade.status) : '<span class="badge">Pending release</span>'}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
         <dl class="student-record-details">
           
           <div><dt>Midterm</dt><dd>${grade?.midterm != null ? Number(grade.midterm).toFixed(2) : '-'}</dd></div>
           <div><dt>Final term</dt><dd>${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</dd></div>
 
-          <div><dt>Units</dt><dd>3</dd></div>
+          <div><dt>Average</dt><dd>${grade?.grade != null ? Number(grade.grade).toFixed(2) : '-'}</dd></div>
         </dl>
       </details>`;
 
