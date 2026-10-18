@@ -1,0 +1,33 @@
+
+/* Plain, compact re-enrollment form for phones. */
+@media(max-width:640px) {
+ body[data-page="re-enrollment"] .main { padding:12px; min-width:0; }
+ body[data-page="re-enrollment"] #content { min-width:0; }
+ body[data-page="re-enrollment"] #content > .panel { padding:15px; background:#fff !important; border:1px solid #dce5ed !important; border-radius:12px; box-shadow:none !important; }
+ body[data-page="re-enrollment"] #content > .panel > .summary-grid { display:none; }
+ body[data-page="re-enrollment"] .panel-head { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+ body[data-page="re-enrollment"] .panel-head h2 { font-size:18px; line-height:1.3; margin:0; }
+ body[data-page="re-enrollment"] .panel-head .panel-subtitle { display:none; }
+ body[data-page="re-enrollment"] .badge { font-size:10px; padding:5px 9px; }
+ body[data-page="re-enrollment"] .notice { font-size:11px; line-height:1.5; padding:10px; border-radius:8px; background:#f7f9fc !important; border:1px solid #e0e7ee; }
+ body[data-page="re-enrollment"] #reEnrollForm { display:block; padding:0 !important; background:transparent !important; border:0 !important; box-shadow:none !important; margin-top:14px !important; }
+ body[data-page="re-enrollment"] .re-enroll-section { background:#fff !important; border:0 !important; border-top:1px solid #e2e8ef !important; border-radius:0 !important; box-shadow:none !important; padding:15px 0 !important; margin:0 !important; }
+ body[data-page="re-enrollment"] .re-enroll-section-head { padding:0 !important; border:0 !important; margin-bottom:12px; }
+ body[data-page="re-enrollment"] .re-enroll-section-head h3 { font-size:14px; color:#294c6b; margin:0; }
+ body[data-page="re-enrollment"] .re-enroll-section-head p { display:none; }
+ body[data-page="re-enrollment"] .re-enroll-section-grid { display:grid; grid-template-columns:minmax(0,1fr) !important; gap:12px; }
+ body[data-page="re-enrollment"] .field { min-width:0; gap:5px; margin:0; }
+ body[data-page="re-enrollment"] .field > label { font-size:11px; font-weight:600; color:#465e74; }
+ body[data-page="re-enrollment"] .field input:not([type="checkbox"]):not([type="radio"]),body[data-page="re-enrollment"] .field select,body[data-page="re-enrollment"] .field textarea { width:100%; min-width:0; max-width:100%; box-sizing:border-box; font-size:13px; padding:9px 10px; min-height:40px; border-radius:7px; border:1px solid #d3dfe9; background:#fff; }
+ body[data-page="re-enrollment"] .field input[type="file"] { font-size:11px !important; padding:7px !important; }
+ body[data-page="re-enrollment"] .field input[type="file"]::file-selector-button { font-size:11px; padding:7px; border:1px solid #d1deea; border-radius:5px; margin-right:7px; background:#f3f7fb; color:#355673; }
+ body[data-page="re-enrollment"] .field:has([name="willing_to_take_advance_course"]) > label { display:none; }
+ body[data-page="re-enrollment"] .field .notice:has(input[type="checkbox"]) { display:grid !important; gap:0 !important; padding:0; border:0; background:transparent !important; }
+ body[data-page="re-enrollment"] .field .notice label { display:flex !important; align-items:center; justify-content:flex-start; gap:9px; font-size:12px; line-height:1.45; padding:10px 0; border-bottom:1px solid #eef1f5; }
+ body[data-page="re-enrollment"] .field input[type="checkbox"] { flex:0 0 18px; width:18px !important; height:18px !important; min-height:18px; margin:0; accent-color:#3278b4; }
+ body[data-page="re-enrollment"] .re-enroll-submit-area { padding:12px 0 0 !important; background:transparent !important; border:0 !important; }
+ body[data-page="re-enrollment"] .re-enroll-submit-area .notice { display:none; }
+ body[data-page="re-enrollment"] #submitReEnroll { width:100%; min-height:44px; font-size:13px; padding:10px; border-radius:8px; }
+ body[data-page="re-enrollment"] .intro-copy h1 { font-size:22px; }
+ body[data-page="re-enrollment"] .intro-copy p { font-size:11px; }
+}

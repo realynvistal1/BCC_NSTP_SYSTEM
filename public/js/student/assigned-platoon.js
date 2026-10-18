@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
     }
 
     content.innerHTML = `
-      <section class="student-assignment" aria-labelledby="assignmentTitle">
+      <section class="student-assignment ${student.nstp_component === 'CWTS' ? 'cwts-assignment' : ''}" aria-labelledby="assignmentTitle">
         <div class="student-assignment-header">
           <span class="student-assignment-eyebrow">${esc(student.nstp_component || 'NSTP')} &bull; UNIT ASSIGNMENT</span>
           <span class="student-assignment-status ${hasAssignment ? 'is-assigned' : 'is-waiting'}">
