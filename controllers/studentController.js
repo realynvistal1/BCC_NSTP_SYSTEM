@@ -761,7 +761,7 @@ exports.serial = async (req, res) => {
 exports.attendance = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      `SELECT ar.*,ses.open_date,ses.close_date,ses.program,ses.ms_level,ses.school_year,
+      `SELECT ar.*,UNIX_TIMESTAMP(ar.created_at)*1000 AS marked_at_epoch,ses.open_date,ses.close_date,ses.program,ses.ms_level,ses.school_year,
               ses.mi_number,ses.mi_type,ses.is_advance_course
        FROM attendance_records ar
        JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id

@@ -1241,3 +1241,22 @@
 }
 .attendance-update-meta strong { font-size: inherit; color: #29486b; }
 .attendance-update-meta time, .attendance-meta-reason { font-size: 10px; }
+
+/* Compact student attendance presentation on phones. */
+body[data-page="attendance"] .student-attendance-header { padding:20px; gap:14px; }
+body[data-page="attendance"] .student-attendance-header h2 { font-size:25px; margin:6px 0; }
+body[data-page="attendance"] .student-attendance-header p { font-size:13px; }
+body[data-page="attendance"] .attendance-time-track { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:18px 16px; background:#f5f9fe; border-bottom:1px solid #deE8f3; }
+body[data-page="attendance"] .attendance-time-track i { display:none; }
+body[data-page="attendance"] .attendance-time-track small { font-size:11px; color:#58708a; }
+body[data-page="attendance"] .attendance-time-track strong { display:block; font-size:17px; color:#234e77; margin-top:5px; white-space:nowrap; }
+body[data-page="attendance"] .attendance-map.compact { height:230px; min-height:0; }
+body[data-page="attendance"] .location-status { font-size:12px; line-height:1.5; color:#526b83; }
+body[data-page="attendance"] .student-record-details { gap:12px; background:#f8fbff; }
+@media(max-width:640px) {
+ body[data-page="attendance"] .student-attendance-header-actions { width:100%; justify-content:space-between; gap:8px; }
+ body[data-page="attendance"] .student-attendance-header-actions .btn { min-height:38px; padding:8px 12px; font-size:12px; }
+ body[data-page="attendance"] .attendance-status-badge { font-size:11px; padding:7px 12px; }
+ body[data-page="attendance"] .attendance-location-panel { padding:14px; }
+ body[data-page="attendance"] .student-attendance-card .mark-attendance-btn { font-size:14px; min-height:44px; }
+}

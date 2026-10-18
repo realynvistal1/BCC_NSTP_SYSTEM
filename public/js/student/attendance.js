@@ -1,9 +1,15 @@
 let studentAttendanceMap = null;
 let studentLocationCapture = 0;
 
+function attendanceDisplayDate(value) {
+  if(typeof value==='number')return new Date(value);
+  const text=String(value||'').trim();
+  return new Date(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(text)&&!/(Z|[+-]\d{2}:?\d{2})$/.test(text)?text.replace(' ','T')+'+08:00':text);
+}
 function fmtA(value) {
   return value
-    ? new Date(value).toLocaleDateString('en-US', {
+    ? attendanceDisplayDate(value).toLocaleDateString('en-US', {
+      timeZone:'Asia/Manila',
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -14,7 +20,8 @@ function fmtA(value) {
 
 function fmtT(value) {
   return value
-    ? new Date(value).toLocaleTimeString('en-US', {
+    ? attendanceDisplayDate(value).toLocaleTimeString('en-US', {
+      timeZone:'Asia/Manila',
       hour: 'numeric',
       minute: '2-digit',
     })
@@ -23,8 +30,8 @@ function fmtT(value) {
 
 function effectiveSessionStatus(session) {
   const now = Date.now();
-  const open = new Date(session.open_date).getTime();
-  const close = new Date(session.close_date).getTime();
+  const open = attendanceDisplayDate(session.open_date).getTime();
+  const close = attendanceDisplayDate(session.close_date).getTime();
   const late = close + 15 * 60000;
 
   if (now < open) return 'scheduled';
@@ -107,7 +114,7 @@ function showStudentLocation(session, latitude, longitude, accuracyMeters) {
       || Math.abs(meters - Number(session.radius_meters || 100)) <= accuracyMeters;
     text.textContent = uncertain
       ? `Location uncertain: the red dot is an estimate, not confirmed outside or inside. Estimated distance: ${Math.round(meters)}m; device uncertainty: +/-${Math.round(accuracyMeters || 0)}m. On a laptop, try a phone with precise location enabled, then recapture.`
-      : `Latest device estimate shown in red - ${Math.round(meters)}m from the attendance point - accuracy +/-${Math.round(accuracyMeters)}m`;
+      : `Your location: ${Math.round(meters)}m away ? accuracy ?${Math.round(accuracyMeters)}m`;
   } else {
     text.textContent = 'Your location is shown in red.';
   }
@@ -225,17 +232,17 @@ async function loadStudentAttendance() {
 
         <div class="attendance-time-track">
           <div>
-            <small>Open</small>
+            <small>Starts</small>
             <strong>${fmtT(session.open_date)}</strong>
           </div>
           <i></i>
           <div>
-            <small>On-time Close</small>
+            <small>On time until</small>
             <strong>${fmtT(session.close_date)}</strong>
           </div>
           <i class="late"></i>
           <div>
-            <small>Late Until</small>
+            <small>Late until</small>
             <strong>${fmtT(session.late_deadline)}</strong>
           </div>
         </div>
@@ -280,12 +287,9 @@ function renderStudentAttendanceHistory(history, studentProgram) {
 
     const key = String(row.id || [rowProgram,row.ms_level,row.school_year,row.mi_number,row.mi_type,row.open_date,row.created_at].join('|'));
     const values = [
-      ['Level',`${isCwts ? 'CWTS' : 'MS'} ${esc(row.ms_level || '-')}`],
-      ['School year',row.school_year ? `SY ${esc(row.school_year)}` : '-'],
-      ['Session',`${isCwts ? 'CS' : 'MI'} ${esc(row.mi_number || '-')}`],
-      ['Type',esc(String(row.mi_type || '').toUpperCase())],
-      ['Date',esc(fmtA(row.open_date))], ['Marked at',esc(fmtT(row.created_at))],
-      ['Attendance update',attendanceUpdateDetails(row) || 'No corrections recorded'],
+            ['School year',row.school_year ? `SY ${esc(row.school_year)}` : '-'],
+      ['Marked at (PH time)',esc(fmtT(row.marked_at_epoch!=null?Number(row.marked_at_epoch):row.created_at))],
+      ...(attendanceUpdateDetails(row)?[['Attendance update',attendanceUpdateDetails(row)]]:[]),
     ];
     return `<details class="student-record-disclosure" data-record-key="${esc(key)}" ${opened.has(key)?'open':''}>
       <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))} &middot; ${isCwts?'CWTS':'MS'} ${esc(row.ms_level || '-')}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
