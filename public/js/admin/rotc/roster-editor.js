@@ -13,12 +13,13 @@ async function renderROTCRosterEditor(container) {
   const schedules = await API.get('/api/admin/rotc/enrollment-schedule');
   const latest = [...schedules].sort((a,b) => Number(b.id) - Number(a.id))[0];
   if (!latest) { container.innerHTML = '<section class="section-card">Create an enrollment schedule before setting up the roster.</section>'; return; }
-  let selected = latest, state, busy = false, dirty = false, setupDirty = false, studentSearch = '';
+  let selected = latest, state, busy = false, dirty = false, setupDirty = false, studentSearch = '', lastMove = null, movePopupPending = false;
   const endpoint = '/api/admin/rotc/roster/editor';
   const name = slot => `${slot.unit || `Battalion ${slot.battalion} / ${slot.company}`} / Platoon ${slot.platoon}`;
   const sort = rows => [...rows].sort((a,b) => `${a.last_name} ${a.first_name} ${a.middle_name || ''}`.localeCompare(`${b.last_name} ${b.first_name} ${b.middle_name || ''}`, 'en', {sensitivity:'base'}));
   async function load() {
     state = await API.get(`${endpoint}?ms_level=${encodeURIComponent(selected.ms_level)}&school_year=${encodeURIComponent(selected.year)}`);
+    if(lastMove&&!state.assignments?.some(row=>Number(row.record_id)===lastMove.recordId&&row.slot===lastMove.slot))lastMove=null;
     dirty = false; setupDirty = false; studentSearch = '';
     draw();
   }
@@ -100,6 +101,7 @@ async function renderROTCRosterEditor(container) {
     try {
       const result = await API.post(endpoint, { ms_level: selected.ms_level, school_year: selected.year, revision: state.revision, action, configuration: state.configuration, companies: state.companies, assignments: state.assignments, confirm: ['finalize','update'].includes(action) });
       if(action==='configure')container.querySelector('[data-setup-dialog]')?.close();
+      if(action==='save'&&lastMove)movePopupPending=true;
       await load();
       container.querySelector('[data-message]').textContent = {
         configure: 'Platoon setup saved. You can now assign students alphabetically.',
@@ -111,7 +113,7 @@ async function renderROTCRosterEditor(container) {
       }[action] || result.message;
       const titles={configure:'Setup saved',assign:'Students assigned',save:'Draft saved',finalize:'Roster finalized',edit:'Edit roster',update:'Roster updated'};
       const messages={configure:'Your companies, platoons and capacities are saved.',assign:'Review the student assignments before finalizing.',save:'Your roster changes are saved.',finalize:'Students can now view their assigned platoons.',edit:'Move students in this draft, then use Save & Update to publish.',update:'The updated assignments are now published.'};
-      showRosterNotice(titles[action]||'Saved',messages[action]||result.message);
+      if(!(action==='save'&&lastMove))showRosterNotice(titles[action]||'Saved',messages[action]||result.message);
     } catch(error) {
       const message = container.querySelector('[data-message]');
       message.textContent = error.message;
@@ -230,7 +232,8 @@ async function renderROTCRosterEditor(container) {
         if(!destinations.some(slot=>slot.key===target)&&!(target==='advance'&&advance))return;
         assignment.slot=target;
         if(destination&&destination.unit!=='HQ') destination.capacity=Math.max(Number(destination.capacity),state.assignments.filter(row=>row.slot===target).length);
-        dirty=true;dialog.close();draw();container.querySelector('[data-message]').textContent=student.first_name+' '+student.last_name+' moved to '+(destination?name(destination):'Advance Course'+(sexLabel?' - '+sexLabel:''))+'. Save Draft to keep this change.';
+        lastMove={slot:target,recordId:Number(student.record_id),scheduleId:Number(selected.id),studentName:student.first_name+' '+student.last_name,destination:destination?name(destination):'Advance Course'+(sexLabel?' - '+sexLabel:'')};
+        movePopupPending=true;dirty=true;dialog.close();draw();container.querySelector('[data-message]').textContent=student.first_name+' '+student.last_name+' moved to '+(destination?name(destination):'Advance Course'+(sexLabel?' - '+sexLabel:''))+'. Save Draft to keep this change.';
       };dialog.showModal();
     }
     container.querySelectorAll('[data-move-student]').forEach(button=>button.onclick=()=>{const student=state.students.find(row=>Number(row.record_id)===Number(button.dataset.moveStudent));if(student)moveStudent(student);});
@@ -266,6 +269,30 @@ async function renderROTCRosterEditor(container) {
     };
     container.querySelector('[data-clear-search]').onclick=()=>{studentSearch='';searchInput.value='';filterRoster();searchInput.focus();};
     if(studentSearch.trim())filterRoster();
+    if(movePopupPending&&lastMove&&lastMove.scheduleId===Number(selected.id)){
+      movePopupPending=false;
+      const notice=document.createElement('dialog');
+      notice.className='roster-feedback-dialog roster-move-result';
+      notice.setAttribute('aria-labelledby','moveSuccessTitle');
+      notice.innerHTML='<div class="roster-feedback-icon" aria-hidden="true">&#10003;</div><h3 id="moveSuccessTitle">'+(dirty?'Student moved':'Move saved')+'</h3><p><strong>'+esc(lastMove.studentName)+'</strong><br>'+esc(lastMove.destination)+'</p>'+(dirty?'<div class="move-result-note">Save Draft to keep this change.</div>':'')+'<div class="move-result-actions"><button type="button" class="btn" data-close-move>Close</button><button type="button" class="btn primary" data-view-moved>View student</button></div>';
+      document.body.appendChild(notice);
+      notice.addEventListener('close',()=>notice.remove(),{once:true});
+      notice.querySelector('[data-close-move]').onclick=()=>notice.close();
+      notice.showModal();
+      notice.querySelector('[data-view-moved]').onclick=()=>{
+        notice.close();
+        studentSearch='';searchInput.value='';filterRoster();
+        const student=state.students.find(row=>Number(row.record_id)===lastMove.recordId);
+        const assignment=(assignments||[]).find(row=>Number(row.record_id)===lastMove.recordId);
+        const key=assignment?.slot==='advance'?'roster-advance-'+student?.sex:'roster-'+assignment?.slot;
+        const card=[...container.querySelectorAll('[data-expand-card]')].find(card=>card.dataset.expandCard===key);
+        if(!card)return;
+        card.classList.add('open');card.querySelector('.roster-expand-body').style.display='block';card.querySelector('[data-expand]').setAttribute('aria-expanded','true');
+        const row=[...card.querySelectorAll('tbody tr')].find(row=>row.cells[1]?.textContent.trim()===String(student?.student_id));
+        container.querySelectorAll('.roster-student-highlight').forEach(row=>row.classList.remove('roster-student-highlight'));
+        const target=row||card;target.classList.add('roster-student-highlight');target.setAttribute('tabindex','-1');target.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});target.focus({preventScroll:true});
+      };
+    }
     const changeCycle = async event => {
       if (dirty && !confirm('Switch rosters without saving your latest changes?')) {
         container.querySelector('[data-level]').value = selected.ms_level;

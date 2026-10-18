@@ -366,3 +366,46 @@ body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-value { 
 
 .rotc-roster-editor .assignment-box [data-action="update"] { background:#188351; border:1px solid #188351; color:#fff; order:3; }
 .rotc-roster-editor .assignment-box [data-action="edit"] { background:#2869aa; border:1px solid #2869aa; color:#fff; }
+
+.rotc-roster-editor .roster-move-success { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 18px; margin:14px 0; border:1px solid #bfe2ce; border-left:4px solid #269366; border-radius:12px; background:#effaf4; color:#246b4c; }
+.rotc-roster-editor .roster-move-success strong,.rotc-roster-editor .roster-move-success span { display:block; }
+.rotc-roster-editor .roster-move-success span { margin-top:4px; font-size:12px; line-height:1.5; }
+.rotc-roster-editor .roster-move-success .btn { background:#fff; color:#23734f; border:1px solid #b8dcc8; white-space:nowrap; }
+.rotc-roster-editor .roster-student-highlight > td { background:#e6f7ed !important; border-bottom-color:#9ed2b5; }
+@media(max-width:600px){.rotc-roster-editor .roster-move-success{align-items:flex-start;flex-direction:column;}}
+
+.roster-move-result { margin:auto; }
+.roster-move-result .roster-feedback-icon { font-size:32px; font-weight:700; }
+.roster-move-result p strong { color:#2c526f; }
+.roster-move-result .move-result-note { padding:10px 12px; background:#f0f7ff; border:1px solid #d9e8f8; border-radius:9px; color:#527392; font-size:12px; margin-bottom:20px; }
+.roster-move-result .move-result-actions { display:flex; gap:10px; justify-content:center; }
+.roster-move-result .move-result-actions .btn { padding:10px 18px; border-radius:9px; border:1px solid #d4e2ef; background:#fff; color:#486781; cursor:pointer; }
+.roster-move-result .move-result-actions .primary { background:#28805c; border-color:#28805c; color:#fff; }
+
+/* Improve roster readability without changing its layout. */
+.rotc-roster-editor .roster-table { font-size:12px; }
+.rotc-roster-editor .roster-table th { font-size:10px; color:#365778; font-weight:750; letter-spacing:.045em; background:#eaf2fc; }
+.rotc-roster-editor .roster-table td { font-size:12px; color:#344f69; line-height:1.55; }
+.rotc-roster-editor .roster-table td:nth-child(2) strong { color:#245c91; font-size:11px; font-weight:700; }
+.rotc-roster-editor .roster-table td:nth-child(3) { color:#203f5e; font-weight:650; }
+.rotc-roster-editor .roster-table td:nth-child(4),.rotc-roster-editor .roster-table td:nth-child(5) { color:#486078; }
+.rotc-roster-editor .roster-table tbody tr:hover td { background:#edf5ff; }
+.rotc-roster-editor .roster-section-title h3 { color:#204e7a; font-size:16px; font-weight:750; }
+.rotc-roster-editor .roster-section-title > small { color:#386a98; font-size:12px; font-weight:650; }
+.rotc-roster-editor .company-card-head strong { color:#26547e; font-size:14px; font-weight:750; }
+.rotc-roster-editor .company-card-head small { color:#4d6b89; font-size:11px; font-weight:650; }
+.rotc-roster-editor .roster-expand-title { color:#214c75; font-size:13px; font-weight:750; }
+.rotc-roster-editor .roster-count { color:#275d8f; font-size:12px; font-weight:750; }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-label { font-size:10px; color:#45617e; font-weight:750; letter-spacing:.035em; }
+body .rotc-roster-editor .roster-summary-grid .roster-stat .roster-stat-value { color:#204b76; font-size:25px; font-weight:800; }
+.rotc-roster-editor .roster-stat-sub { color:#5f748b; font-size:11px; }
+.rotc-roster-editor .assignment-copy strong { font-size:15px; font-weight:750; }
+.rotc-roster-editor .assignment-copy p { color:#4d6782; font-size:12px; }
+.rotc-roster-editor .roster-current-filter h3 { font-size:14px; }
+.rotc-roster-editor .roster-current-filter p { color:#4c6886; font-size:12px; }
+.rotc-roster-editor [data-message]:not(:empty) { color:#265b8c; font-size:13px; font-weight:600; border-left:4px solid #4b92d4; }
+.rotc-roster-editor .roster-search-bar input { font-size:13px; color:#274b6c; }
+.rotc-roster-editor .roster-search-bar input::placeholder { color:#647d96; opacity:1; }
+.roster-move-result h3 { color:#226946; font-size:23px; }
+.roster-move-result p { color:#35566e; font-size:14px; }
+.roster-move-result p strong { display:inline-block; margin-bottom:8px; font-size:16px; color:#214a6c; }
