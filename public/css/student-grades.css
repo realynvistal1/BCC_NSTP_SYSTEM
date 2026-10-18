@@ -1,0 +1,33 @@
+
+body[data-page="grades"] .student-grade-panel { padding:20px; border:1px solid #d7e6f4; }
+body[data-page="grades"] .student-grade-panel > h2 { color:#254e76; font-size:20px; }
+body[data-page="grades"] .student-grade-panel > p { font-size:12px; color:#60778d; line-height:1.5; }
+body[data-page="grades"] .grade-result { --grade-color:#3e7eb9; --grade-tint:#eef6ff; border:1px solid #d8e5f0; border-left:4px solid var(--grade-color); background:#fff; overflow:hidden; }
+body[data-page="grades"] .grade-passed { --grade-color:#23845b; --grade-tint:#eef9f2; }
+body[data-page="grades"] .grade-failed { --grade-color:#b44d65; --grade-tint:#fff2f5; }
+body[data-page="grades"] .grade-pending { --grade-color:#a77c2c; --grade-tint:#fff9eb; }
+body[data-page="grades"] .grade-result > summary { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; padding:16px; align-items:center; background:var(--grade-tint); }
+body[data-page="grades"] .grade-result .student-record-title strong { font-size:16px; color:var(--grade-color); }
+body[data-page="grades"] .grade-result .student-record-title small { font-size:12px; color:#4b647d; }
+body[data-page="grades"] .grade-result .student-record-toggle { width:auto; flex-basis:auto; min-height:40px; font-size:11px; padding:8px 10px; color:var(--grade-color); }
+body[data-page="grades"] .grade-result .student-record-details { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:14px; background:#fff; }
+body[data-page="grades"] .grade-result .student-record-details > div { grid-column:auto; border-radius:9px; background:#f4f8fc; padding:12px; }
+body[data-page="grades"] .grade-result dt { font-size:11px; color:#5b728a; }
+body[data-page="grades"] .grade-result dd { font-size:17px; font-weight:750; color:#2d5476; margin-top:5px; }
+@media(max-width:640px) {
+ body[data-page="grades"] .main { padding:12px; min-width:0; }
+ body[data-page="grades"] .intro-copy h1 { font-size:23px; }
+ body[data-page="grades"] .intro-copy p { font-size:12px; }
+ body[data-page="grades"] .panel { padding:15px; border-radius:15px; }
+ body[data-page="grades"] .student-grade-panel > h2,body[data-page="grades"] .grade-next-step h2 { font-size:18px; }
+ body[data-page="grades"] .grade-next-step p { font-size:12px; line-height:1.5 !important; }
+ body[data-page="grades"] .grade-result > summary { grid-template-columns:minmax(0,1fr) auto; gap:9px; padding:13px; }
+ body[data-page="grades"] .grade-result .student-record-title strong { font-size:14px; }
+ body[data-page="grades"] .grade-result .student-record-title small { font-size:11px; }
+ body[data-page="grades"] .grade-result .student-record-toggle { grid-column:1/-1; width:100%; min-height:38px; }
+ body[data-page="grades"] .grade-result .badge { font-size:10px; padding:6px 9px; }
+ body[data-page="grades"] .grade-result .student-record-details { gap:7px; padding:10px; }
+ body[data-page="grades"] .grade-result .student-record-details > div { padding:10px 8px; }
+ body[data-page="grades"] .grade-result dt { font-size:10px; }
+ body[data-page="grades"] .grade-result dd { font-size:15px; }
+}

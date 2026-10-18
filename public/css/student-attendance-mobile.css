@@ -38,3 +38,22 @@
  body[data-page="attendance"] .attendance-time-track small { font-size:8px; }
  body[data-page="attendance"] .attendance-map.compact { height:170px; }
 }
+
+/* Aligned attendance history disclosures at every screen width. */
+body[data-page="attendance"] .student-record-disclosure { overflow:hidden; background:#fff; border:1px solid #d4e3f1; border-radius:12px; }
+body[data-page="attendance"] .student-record-disclosure > summary { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:14px; background:#f2f7fd; }
+body[data-page="attendance"] .student-record-title { min-width:0; }
+body[data-page="attendance"] .student-record-title strong { color:#254f77; }
+body[data-page="attendance"] .student-record-title small { color:#59748e; }
+body[data-page="attendance"] .student-record-toggle { grid-column:1/-1; display:flex; justify-content:space-between; width:100%; min-height:40px; background:#fff; border:1px solid #ccdeef; color:#326a9d; border-radius:8px; padding:9px 12px; font-size:12px; }
+body[data-page="attendance"] .student-record-toggle > [aria-hidden] { transition:transform .15s; }
+body[data-page="attendance"] .student-record-disclosure[open] .student-record-toggle > [aria-hidden] { transform:rotate(180deg); }
+body[data-page="attendance"] .student-record-disclosure[open] > summary { background:#eaf3fe; }
+body[data-page="attendance"] .student-record-details { border-top:1px solid #d8e6f3; }
+body[data-page="attendance"] .student-record-disclosure > summary:focus-visible { outline:3px solid #8ebbe8; outline-offset:-3px; }
+@media(max-width:640px) {
+ body[data-page="attendance"] .student-record-disclosure > summary { padding:11px; gap:8px; }
+ body[data-page="attendance"] .student-record-toggle { min-height:38px; font-size:11px; }
+ body[data-page="attendance"] .student-record-disclosure > summary > .badge { font-size:10px; padding:6px 9px; white-space:nowrap; }
+}
+@media(prefers-reduced-motion:reduce) { body[data-page="attendance"] .student-record-toggle > [aria-hidden] { transition:none; } }

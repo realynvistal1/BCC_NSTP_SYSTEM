@@ -292,7 +292,7 @@ function renderStudentAttendanceHistory(history, studentProgram) {
       ...(attendanceUpdateDetails(row)?[['Attendance update',attendanceUpdateDetails(row)]]:[]),
     ];
     return `<details class="student-record-disclosure" data-record-key="${esc(key)}" ${opened.has(key)?'open':''}>
-      <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))} &middot; ${isCwts?'CWTS':'MS'} ${esc(row.ms_level || '-')}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Hide details</span><span aria-hidden="true">&#9662;</span></span></summary>
+      <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))} &middot; ${isCwts?'CWTS':'MS'} ${esc(row.ms_level || '-')}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Close details</span><span aria-hidden="true">&#9662;</span></span></summary>
       <dl class="student-record-details">${values.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`).join('')}</dl>
     </details>`;
   });
