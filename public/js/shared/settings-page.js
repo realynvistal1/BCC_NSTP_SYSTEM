@@ -36,10 +36,10 @@ function passwordCard() {
         <div class="field">
           <label for="settingsNewPassword">New Password</label>
           <div class="settings-password-input">
-            <input id="settingsNewPassword" aria-describedby="settingsPasswordRequirements" type="password" name="newPassword" autocomplete="new-password" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." required>
+            <input id="settingsNewPassword" type="password" name="newPassword" autocomplete="new-password" minlength="8" pattern="(?=.*[0-9])(?=.*[^a-zA-Z0-9&#92;s]).{8,}" title="Use at least 8 characters, including a number and a symbol (e.g. !, @, #)." required>
             <button type="button" class="settings-password-toggle" aria-controls="settingsNewPassword" aria-label="Show new password">Show</button>
           </div>
-          <small id="settingsPasswordRequirements" class="settings-password-help">At least 8 characters, including a number and a symbol (e.g. !, @, #).</small>
+          
         </div>
 
         <div class="field">

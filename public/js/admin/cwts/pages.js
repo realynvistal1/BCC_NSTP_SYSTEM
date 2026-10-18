@@ -36,7 +36,7 @@ async function adminPage(_role, page, content) {
           <p>Approved students in each company for the current enrollment cycle.</p>
         </div>
         <div class="distribution-insights">
-          ${['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'].map(company =>
+          ${Object.keys(data.distribution || {}).map(company =>
             insight(`${company} Company`, Number(data.distribution?.[company] || 0), `Students in ${company} Company`)
           ).join('')}
         </div>

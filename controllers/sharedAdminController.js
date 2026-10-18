@@ -488,6 +488,19 @@ exports.dashboard = async (req, res) => {
       [programCode, programCode, programCode, scheduleId, scheduleId, scheduleId, scheduleId]
     );
 
+    let cwtsDistribution={};
+    if(programCode==='CWTS') {
+      const companyNames=await cwtsCompanies.list();
+      cwtsDistribution=Object.fromEntries(companyNames.map(name=>[name,0]));
+      if(assignmentPublished) {
+        const [members]=await db.execute(`SELECT smr.assignment_company company,COUNT(*) total FROM student_ms_records smr
+          JOIN students s ON s.id=smr.student_id
+          WHERE smr.program='CWTS' AND smr.status='approved' AND s.role='student'
+          AND (? IS NULL OR CAST(smr.schedule_id AS UNSIGNED)=?)
+          AND smr.assignment_company IS NOT NULL GROUP BY smr.assignment_company`,[scheduleId,scheduleId]);
+        for(const member of members)cwtsDistribution[member.company]=Number(member.total);
+      }
+    }
     let withdrawalSummary = { total: 0, pending: 0 };
     if (programCode === 'ROTC') {
       const [[withdrawalCounts]] = await db.execute(
@@ -517,14 +530,7 @@ exports.dashboard = async (req, res) => {
           hq: assignmentPublished ? Number(assigned.special_hq || 0) : 0,
         },
       } : {
-        distribution: {
-          Alpha: assignmentPublished ? Number(assigned.company_alpha || 0) : 0,
-          Bravo: assignmentPublished ? Number(assigned.company_bravo || 0) : 0,
-          Charlie: assignmentPublished ? Number(assigned.company_charlie || 0) : 0,
-          Delta: assignmentPublished ? Number(assigned.company_delta || 0) : 0,
-          Echo: assignmentPublished ? Number(assigned.company_echo || 0) : 0,
-          Foxtrot: assignmentPublished ? Number(assigned.company_foxtrot || 0) : 0,
-        },
+        distribution: cwtsDistribution,
       }),
       schedule: dashboardSchedule
         ? {
@@ -932,7 +938,7 @@ async function approveCwtsWithinCapacity(recordId, scheduleId) {
     const [[record]] = await connection.execute("SELECT status FROM student_ms_records WHERE id=? AND schedule_id=? AND program='CWTS' FOR UPDATE", [recordId, String(scheduleId)]);
     if (!record || ['withdrawn', 'dropped'].includes(record.status)) throw new Error('Enrollment is not available for approval.');
     const companyNames = await cwtsCompanies.list(connection);
-    const capacity = companyNames.length * 60;
+    const capacity = Math.min(360,companyNames.length * 60);
     const [[count]] = await connection.execute("SELECT COUNT(*) total FROM student_ms_records WHERE schedule_id=? AND program='CWTS' AND status='approved'", [String(scheduleId)]);
     if (record.status !== 'approved' && Number(count.total) >= capacity) {
       await connection.rollback();
@@ -1138,7 +1144,7 @@ exports.bulkApprove = async (req, res) => {
           approved + ' student' + (approved === 1 ? '' : 's') + ' approved.',
           capacitySkipped ? capacitySkipped + ' selected enrollment' + (capacitySkipped === 1 ? '' : 's') + ' remain pending because CWTS has reached its ' + cwtsCapacity + '-student capacity (' + (cwtsCapacity / 60) + ' companies with 60 slots each).' : '',
           cwtsCapacityReached && !capacitySkipped ? 'CWTS has reached its ' + cwtsCapacity + '-student capacity. Further approvals require additional company slots.' : '',
-          capacitySkipped ? 'Add a company to increase capacity by 60, or review and reject the remaining pending enrollments with a reason.' : '',
+          capacitySkipped ? 'CWTS accepts at most 360 students per enrollment schedule. Review remaining pending applications.' : '',
           skipped - capacitySkipped ? (skipped - capacitySkipped) + ' enrollment(s) were not eligible or already reviewed.' : '',
           failed ? failed + ' enrollment(s) could not be processed. Please try again.' : '',
         ].filter(Boolean).join(' ')
