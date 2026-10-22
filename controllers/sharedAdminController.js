@@ -340,6 +340,7 @@ function normalizedRosterGroup(group) {
 }
 
 async function approvedRecordRows(programCode, filters = {}) {
+  const photoColumn = filters.includePhoto ? ',s.photo' : '';
   const msLevel = readLevel(filters.msLevel, { allowBlank: true });
   const schoolYear = readSchoolYear(filters.schoolYear, { allowBlank: true });
   const search = readSearchTerm(filters.search, { allowBlank: true });
@@ -375,7 +376,7 @@ async function approvedRecordRows(programCode, filters = {}) {
             COALESCE(es.year,'') school_year,
             s.id student_db_id,s.student_id,s.first_name,s.middle_name,s.last_name,s.suffix,
             s.course,s.year_level,s.nstp_component,s.sex,s.birthdate,s.email,s.contact_number,s.has_medical_condition,s.medical_condition,
-            s.place_of_birth,s.religion,s.height,s.weight,s.blood_type,s.complexion,s.photo,
+            s.place_of_birth,s.religion,s.height,s.weight,s.blood_type,s.complexion${photoColumn},
             s.temporary_barangay,s.temporary_municipality,s.temporary_province,
             s.permanent_barangay,s.permanent_municipality,s.permanent_province,
             s.father_name,s.father_occupation,s.mother_name,s.mother_occupation,
@@ -2508,7 +2509,7 @@ exports.downloadRecordProfiles = async (req, res) => {
       course,
     };
 
-    const rows = await approvedRecordRows(programCode, filters);
+    const rows = await approvedRecordRows(programCode, { ...filters, includePhoto: true });
     if (!rows.length) {
       return res.status(404).json({ message: 'No approved student records matched the selected filters.' });
     }

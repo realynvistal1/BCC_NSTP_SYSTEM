@@ -256,8 +256,10 @@ async function renderAdminRecords(_program, content) {
   const program = 'ROTC';
   const apiProgram = 'rotc';
   const prefix = 'MS';
-  const rows = await API.get(`/api/admin/${apiProgram}/records`);
-  const schedules = await API.get(`/api/admin/${apiProgram}/enrollment-schedule`);
+  const [rows, schedules] = await Promise.all([
+    API.get(`/api/admin/${apiProgram}/records`, { timeoutMs: 30000 }),
+    API.get(`/api/admin/${apiProgram}/enrollment-schedule`, { timeoutMs: 30000 }),
+  ]);
 
   function schoolYearsForLevel(level = '') {
     return [...new Set([

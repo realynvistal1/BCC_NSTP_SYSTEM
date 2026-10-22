@@ -43,7 +43,8 @@ const API = {
 
     try {
       data = await response.json();
-    } catch {
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
       data = {};
     }
 
@@ -56,8 +57,16 @@ const API = {
     return data;
   },
 
-  get(url) {
-    return this.req(url);
+  get(url, { timeoutMs = 0, ...options } = {}) {
+    if (!timeoutMs) return this.req(url, options);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return this.req(url, { ...options, signal: controller.signal })
+      .catch((error) => {
+        if (controller.signal.aborted) throw new Error('The request is taking too long. Please try again.');
+        throw error;
+      })
+      .finally(() => clearTimeout(timer));
   },
 
   post(url, body) {

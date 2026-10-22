@@ -225,9 +225,11 @@ async function renderAdminRecords(_program, content) {
   const program = 'CWTS';
   const apiProgram = 'cwts';
   const prefix = 'CWTS';
-  let companyOptions = await API.get('/api/admin/cwts/companies');
-  const rows = await API.get(`/api/admin/${apiProgram}/records`);
-  const schedules = await API.get(`/api/admin/${apiProgram}/enrollment-schedule`);
+  let [companyOptions, rows, schedules] = await Promise.all([
+    API.get('/api/admin/cwts/companies', { timeoutMs: 30000 }),
+    API.get(`/api/admin/${apiProgram}/records`, { timeoutMs: 30000 }),
+    API.get(`/api/admin/${apiProgram}/enrollment-schedule`, { timeoutMs: 30000 }),
+  ]);
 
   function schoolYearsForLevel(level = '') {
     return [...new Set([

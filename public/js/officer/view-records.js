@@ -149,9 +149,11 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
 }
 
 async function renderOfficerRecords(content) {
-  let cwtsCompanyNames = await API.get('/api/officer/cwts-companies');
-  const rows = await API.get('/api/officer/records');
-  const scheduleOptions = await API.get('/api/officer/records/filter-options');
+  let [cwtsCompanyNames, rows, scheduleOptions] = await Promise.all([
+    API.get('/api/officer/cwts-companies', { timeoutMs: 30000 }),
+    API.get('/api/officer/records', { timeoutMs: 30000 }),
+    API.get('/api/officer/records/filter-options', { timeoutMs: 30000 }),
+  ]);
 
   content.innerHTML = `
     <section class="records-tools officer-record-tools">
