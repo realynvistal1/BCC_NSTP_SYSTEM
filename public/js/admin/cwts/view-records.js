@@ -128,7 +128,7 @@ function downloadRecordsExcel(rows, program, level, schoolYear) {
   `).join('');
 
   const columnWidths = [
-    34, 92, 92, 92, 54, 200, 86, 64, 92, 78, 58, 210, 74, 62, 62, 66,
+    34, 92, 92, 92, 54, 80, 86, 64, 92, 78, 58, 330, 74, 62, 62, 66,
   ];
   if (program === 'CWTS') columnWidths.splice(7, 1);
   const columnsXml = columnWidths

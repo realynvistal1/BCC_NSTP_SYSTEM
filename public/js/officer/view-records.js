@@ -89,7 +89,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
     const mergeAttr = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
     return `<Cell ss:StyleID="${style}"${mergeAttr}><Data ss:Type="String">${officerXmlSafe(value)}</Data></Cell>`;
   };
-  const widths = [34, 92, 92, 92, 54, 200, 86, 64, 92, 78, 58, 210, 74, 62, 62, 66];
+  const widths = [34, 92, 92, 92, 54, 80, 86, 64, 92, 78, 58, 330, 74, 62, 62, 66];
   if (program === 'CWTS') widths.splice(7, 1);
   const columns = widths.map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`).join('');
   const styles = `

@@ -529,61 +529,74 @@ function drawRotcRegistrationPage(doc, record, assets, pageIndex, total, command
   doc.font('Helvetica').fontSize(7.5).fillColor('#475569').text('(Last Name)', leftMargin + 52, y + 17, { width: 86, align: 'center' });
   lineField(doc, '', student.first_name, leftMargin + 158, y, 170, { labelWidth: 0, valueFontSize: 9.6, labelFontSize: 8.8 });
   doc.font('Helvetica').fontSize(7.5).fillColor('#475569').text('(First Name)', leftMargin + 194, y + 17, { width: 96, align: 'center' });
-  lineField(doc, '', student.middle_name, leftMargin + 336, y, 174, { labelWidth: 0, valueFontSize: 9.6, labelFontSize: 8.8 });
+  lineField(doc, '', student.middle_name, leftMargin + 336, y, 160, { labelWidth: 0, valueFontSize: 9.6, labelFontSize: 8.8 });
   doc.font('Helvetica').fontSize(7.5).fillColor('#475569').text('(Middle Name)', leftMargin + 370, y + 17, { width: 104, align: 'center' });
 
+  // Align all form lines to a shared 496-point grid. Give phone numbers and
+  // long academic/address values enough space instead of shrinking them.
+  const formWidth = 496;
+  const rightColumn = leftMargin + 258;
+  const field = (label, value, x, atY, fieldWidth, labelWidth = 78) =>
+    lineField(doc, label, value, x, atY, fieldWidth, { labelWidth, valueFontSize: 9.5, labelFontSize: 8.5 });
+  const fullField = (label, value, atY, labelWidth = 78) => field(label, value, leftMargin, atY, formWidth, labelWidth);
+  const heading = (label, atY) => doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#111827').text(label, leftMargin, atY);
+
   y += 46;
-  doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#111827').text('Temporary Address:', leftMargin, y);
+  heading('Temporary Address:', y);
   y += 18;
-  lineField(doc, 'No./St/Vill/Brgy:', student.temporary_barangay, leftMargin + 30, y, 445, { labelWidth: 96, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('No./St/Vill/Brgy:', student.temporary_barangay, y);
   y += 22;
-  lineField(doc, 'Municipality:', student.temporary_municipality, leftMargin + 30, y, 206, { labelWidth: 70, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Religion:', student.religion, leftMargin + 338, y, 158, { labelWidth: 48, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Municipality:', student.temporary_municipality, leftMargin, y, 242);
+  field('Religion:', student.religion, rightColumn, y, 238, 74);
   y += 22;
-  lineField(doc, 'Province:', student.temporary_province, leftMargin + 30, y, 206, { labelWidth: 54, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Tel/Cell No.:', student.contact_number, leftMargin + 286, y, 210, { labelWidth: 68, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Province:', student.temporary_province, leftMargin, y, 242);
+  field('Mobile No.:', student.contact_number, rightColumn, y, 238, 74);
   y += 22;
-  lineField(doc, 'Course', student.course, leftMargin, y, 166, { labelWidth: 38, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'School:', 'Buenavista Community College', leftMargin + 172, y, 188, { labelWidth: 42, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Place of Birth', student.place_of_birth, leftMargin + 366, y, 142, { labelWidth: 72, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('Course:', student.course, y);
   y += 22;
-  lineField(doc, 'Date of Birth', formatProfileDate(student.birthdate), leftMargin, y, 154, { labelWidth: 66, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Height:', student.height, leftMargin + 158, y, 90, { labelWidth: 36, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Weight:', student.weight, leftMargin + 252, y, 92, { labelWidth: 40, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Complexion:', student.complexion, leftMargin + 348, y, 160, { labelWidth: 58, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('School:', 'Buenavista Community College', y);
   y += 22;
-  lineField(doc, 'Blood Type:', student.blood_type, leftMargin + 232, y, 118, { labelWidth: 58, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Sex:', student.sex, leftMargin + 354, y, 102, { labelWidth: 26, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('Place of Birth:', student.place_of_birth, y);
+  y += 22;
+  field('Date of Birth:', formatProfileDate(student.birthdate), leftMargin, y, 242);
+  field('Sex:', student.sex, rightColumn, y, 238, 74);
+  y += 22;
+  field('Height:', student.height, leftMargin, y, 154, 42);
+  field('Weight:', student.weight, leftMargin + 170, y, 154, 44);
+  field('Complexion:', student.complexion, leftMargin + 340, y, 156, 66);
+  y += 22;
+  field('Blood Type:', student.blood_type, leftMargin, y, 242);
 
   y += 40;
-  doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#111827').text('Permanent Address:', leftMargin, y);
+  heading('Permanent Address:', y);
   y += 18;
-  lineField(doc, 'No./St/Vill/Brgy:', student.permanent_barangay, leftMargin + 30, y, 445, { labelWidth: 96, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('No./St/Vill/Brgy:', student.permanent_barangay, y);
   y += 22;
-  lineField(doc, 'Municipality:', student.permanent_municipality, leftMargin + 30, y, 206, { labelWidth: 70, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Municipality:', student.permanent_municipality, leftMargin, y, 242);
   y += 22;
-  lineField(doc, 'Province:', student.permanent_province, leftMargin + 30, y, 206, { labelWidth: 54, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Tel/Cell No.:', student.contact_number, leftMargin + 286, y, 210, { labelWidth: 68, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Province:', student.permanent_province, leftMargin, y, 242);
+  field('Mobile No.:', student.contact_number, rightColumn, y, 238, 74);
 
   y += 34;
-  lineField(doc, 'Father:', student.father_name, leftMargin, y, 250, { labelWidth: 40, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Occupation:', student.father_occupation, leftMargin + 258, y, 250, { labelWidth: 58, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Father:', student.father_name, leftMargin, y, 242, 50);
+  field('Occupation:', student.father_occupation, rightColumn, y, 238, 74);
   y += 22;
-  lineField(doc, 'Mother:', student.mother_name, leftMargin, y, 250, { labelWidth: 46, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Occupation:', student.mother_occupation, leftMargin + 258, y, 250, { labelWidth: 58, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Mother:', student.mother_name, leftMargin, y, 242, 50);
+  field('Occupation:', student.mother_occupation, rightColumn, y, 238, 74);
 
   y += 30;
-  doc.font('Helvetica').fontSize(8.6).fillColor('#111827').text('Person to be notified in case of emergency:', leftMargin, y);
+  heading('Person to be notified in case of emergency:', y);
   y += 18;
-  lineField(doc, 'Name:', student.emergency_contact_name, leftMargin, y, 238, { labelWidth: 38, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Relationship:', student.emergency_contact_relationship, leftMargin + 246, y, 140, { labelWidth: 70, valueFontSize: 9, labelFontSize: 8.2 });
-  lineField(doc, 'Contact No.:', student.emergency_contact_contact_number, leftMargin + 392, y, 116, { labelWidth: 54, valueFontSize: 9, labelFontSize: 8.2 });
+  fullField('Name:', student.emergency_contact_name, y);
   y += 22;
-  lineField(doc, 'Address:', student.emergency_contact_address, leftMargin, y, 508, { labelWidth: 48, valueFontSize: 9, labelFontSize: 8.2 });
+  field('Relationship:', student.emergency_contact_relationship, leftMargin, y, 242);
+  field('Contact No.:', student.emergency_contact_contact_number, rightColumn, y, 238, 74);
+  y += 22;
+  fullField('Address:', student.emergency_contact_address, y);
 
   y += 34;
   const advanceText = Number(student.willing_to_take_advance_course) ? '[ / ] YES      [ ] NO' : '[ ] YES      [ / ] NO';
-  lineField(doc, 'Are you willing to take the advance course?', advanceText, leftMargin, y, 360, { labelWidth: 210, valueFontSize: 8.8, labelFontSize: 8.2 });
+  fullField('Are you willing to take the advance course?', advanceText, y, 250);
 
   doc.font('Helvetica')
     .fontSize(9.5)
