@@ -1,0 +1,25 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').resolve(__dirname,'../../frontend/assets/common.js'),'utf8');
+const controls={append(node){box.children.push(node);}};
+const box={children:[],querySelector(selector){return selector==='.term-filter-controls'?controls:this.children.find(n=>(n.className||'').split(' ').includes(selector.slice(1)));},append(node){this.children.push(node);}};
+const select=()=>({value:'',dataset:{},innerHTML:'',closest(){return box;}});
+const year=select(),semester=select(),heading={};
+const document={getElementById(id){return id.endsWith('Year')?year:id.endsWith('Semester')?semester:heading;},createElement(){return {setAttribute(){}};}};
+const context=vm.createContext({document,esc:s=>String(s)});
+vm.runInContext(source.slice(source.indexOf('function termMetadata(')),context);
+const periods=[{id:1,school_year:'2026-2027',semester:'Full Year'},{id:2,school_year:'2025-2026',semester:'1st Semester'}];
+const subjects=[{id:11,period_id:1},{id:12,period_id:2}];let shown=[];
+context.termFilters('teachingTerm',periods,matches=>{shown=subjects.filter(matches).map(s=>s.id);},subjects);
+assert.deepEqual(shown,[11,12]);
+assert.ok(semester.innerHTML.includes('2nd Semester (no records yet)'));
+semester.value='2nd Semester';semester.onchange();assert.deepEqual(shown,[]);
+box.querySelector('.term-filter-reset').onclick();
+year.value='2026-2027';year.onchange();assert.deepEqual(shown,[11]);
+assert.ok(semester.innerHTML.includes('1st Semester (no records yet)'));
+semester.value='Full Year';semester.onchange();assert.deepEqual(shown,[11]);
+year.value='2025-2026';year.onchange();assert.equal(semester.value,'');assert.deepEqual(shown,[12]);
+box.querySelector('.term-filter-reset').onclick();assert.deepEqual(shown,[11,12]);
+context.termFilters('teachingTerm',periods,matches=>{shown=subjects.filter(matches).map(s=>s.id);},subjects);assert.deepEqual(shown,[11,12]);
+console.log('PASS: missing assignment metadata, actual semester options, year/semester changes, reset, and refresh preservation.');
+

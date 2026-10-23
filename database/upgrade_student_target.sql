@@ -1,0 +1,1 @@
+ALTER TABLE periods ADD COLUMN required_students INT UNSIGNED NOT NULL DEFAULT 40;

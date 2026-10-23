@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/redesign.css"><link rel="stylesheet" href="/assets/v4.css"><link rel="stylesheet" href="/assets/v5.css"><title>Instructor Portal · FacultyEval</title></head><body class="auth-page bright-auth faculty-theme"><div class="auth-shell unified-auth">
+
+ <aside class="auth-info auth-showcase"><a class="brand brand-light" href="/"><span class="brand-mark">FE</span><span>FacultyEval<small>Instructor Portal</small></span></a>
+ <div class="auth-copy"><span class="eyebrow pale">INSTRUCTOR ACCESS</span><h1>Make teaching better.<br><em>One link at a time.</em></h1><p>Manage your profile, share student evaluation links, and view your results.</p>
+ <div class="portal-chip">✦ Secure instructor accounts</div></div>
+ <a class="auth-back" href="/">← Back to portal selection</a></aside>
+ <main class="auth-card"><div class="login-intro" id="loginView"><span class="eyebrow">INSTRUCTOR LOGIN</span><h1>Welcome to your portal</h1><p>Sign in to continue.</p>
+ <form id="login" data-role="faculty"><div class="field"><label for="email">Email address</label><input id="email" type="email" name="email" autocomplete="username" required placeholder="name@school.edu"></div><div class="field"><label for="password">Password</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Your password"><button type="button" class="pass-toggle" data-target="password" aria-label="Show password">Show</button></div></div><button class="btn wide large" type="submit">Sign in →</button></form><a class="forgot-link" href="/forgot-password.html">Forgot password?</a>
+ <p class="auth-switch">New instructor? <button type="button" class="link-btn" id="showRegister">Create an account →</button></p>
+ </div>
+
+ <div id="registerView" class="hidden wizard-root"><div class="row spaced"><div><span class="eyebrow">NEW INSTRUCTOR</span><h1>Create an account</h1></div><button type="button" class="btn secondary small" id="showLogin">← Login</button></div>
+ <div class="wizard-progress"><div class="wizard-steps"><span class="wizard-dot active">1</span><span class="wizard-dot">2</span><span class="wizard-dot">3</span></div><div class="progress-track"><div id="registrationProgress" style="width:33.33%"></div></div></div>
+ <form id="register" novalidate>
+ <fieldset class="wizard-step"><legend>Personal information</legend><p class="step-note">Enter your basic details.</p>
+ <div class="form-grid"><div class="field"><label>First name *</label><input name="firstName" required maxlength="65" autocomplete="given-name" placeholder="First name"></div><div class="field"><label>Last name *</label><input name="lastName" required maxlength="65" autocomplete="family-name" placeholder="Last name"></div><div class="field"><label>Middle name</label><input name="middleName" maxlength="65" placeholder="Optional"></div><div class="field"><label>Faculty ID</label><input name="employeeId" maxlength="40" placeholder="Optional"></div><div class="field"><label>Contact number</label><input name="contactNumber" maxlength="25" inputmode="tel" placeholder="09XX XXX XXXX"></div></div>
+ </fieldset>
+ <fieldset class="wizard-step hidden"><legend>Teaching information</legend><p class="step-note">Choose your department and photo.</p>
+ <div class="field"><label>Department *</label><select name="department" required><option value="">Select department</option><option>IT DEPARTMENT</option><option>CRIMINOLOGY DEPARTMENT</option><option>HM DEPARTMENT</option><option>EDUCATION DEPARTMENT</option><option>TOURISM DEPARTMENT</option><option>ICT DEPARTMENT</option></select></div>
+ <div class="field"><label for="designation">Position (optional)</label><input id="designation" type="text" name="designation" maxlength="90" placeholder="Enter your position"></div>
+ <div class="photo-drop"><div id="photoPreview" class="avatar-preview"><img src="/assets/avatar.svg" alt="Photo preview"></div><div><strong>Profile photo (optional)</strong><p>JPG, PNG, or WebP</p><label class="btn secondary small file-label" for="profilePhoto">Choose photo</label><input id="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" class="visually-hidden"><button type="button" id="removePhoto" class="text-button">Remove</button><span id="registerPhotoState" class="photo-status" role="status"></span></div></div>
+ </fieldset>
+ <fieldset class="wizard-step hidden"><legend>Account details</legend><p class="step-note">Create your login credentials.</p>
+ <div class="field"><label>Email address *</label><input type="email" name="email" required maxlength="190" autocomplete="email" placeholder="name@school.edu"></div>
+ <div class="field"><label for="registerPassword">Password *</label><div class="password-wrap"><input id="registerPassword" name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters"><button type="button" class="pass-toggle" data-target="registerPassword" aria-label="Show password" aria-pressed="false">Show</button></div></div>
+ <div class="field"><label for="registerConfirmPassword">Confirm password *</label><div class="password-wrap"><input id="registerConfirmPassword" name="confirm" type="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="Enter your password again"><button type="button" class="pass-toggle" data-target="registerConfirmPassword" aria-label="Show confirm password" aria-pressed="false">Show</button></div></div>
+ <div class="notice">Your account needs administrator approval before you can sign in.</div>
+ </fieldset>
+ <div class="wizard-controls"><button type="button" class="btn secondary" id="wizardBack">← Back</button><span id="stepLabel" class="muted">Step 1 of 3</span><button type="button" class="btn" id="wizardNext">Next →</button><button type="submit" class="btn hidden" id="registerSubmit">Create account ✓</button></div>
+ </form></div>
+</main></div><script src="/assets/common.js"></script><script src="/assets/portal-login.js"></script></body></html>

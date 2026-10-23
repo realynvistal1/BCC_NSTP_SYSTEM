@@ -1,0 +1,20 @@
+{
+  "name": "faculty-evaluation-system",
+  "version": "5.0.0",
+  "private": true,
+  "description": "Two-portal Faculty Evaluation System with step-by-step instructor profiles, MySQL and anonymous student rating links",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "create-admin": "node backend/scripts/create-admin.js",
+    "doctor": "node backend/scripts/doctor.js",
+    "check": "node backend/scripts/check-project.js",
+    "smoke": "node backend/scripts/smoke-test.js",
+    "setup": "node backend/scripts/setup.js",
+    "upgrade-student-target": "node backend/scripts/upgrade-student-target.js",
+    "test-student-target": "node backend/scripts/test-student-target.js"
+  }
+}

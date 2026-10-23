@@ -1,0 +1,23 @@
+{
+  "Quality of Teaching": [
+    "The instructor communicates lessons clearly.",
+    "The instructor demonstrates knowledge of the subject.",
+    "The instructor answers student questions clearly.",
+    "The instructor maintains an organized and respectful class.",
+    "The instructor begins classes on time."
+  ],
+  "Course Content": [
+    "The course objectives are clearly explained.",
+    "The course covers the topics in the syllabus.",
+    "The learning materials are relevant to the subject.",
+    "The instructor provides learning materials on time.",
+    "The course activities help me understand the lessons."
+  ],
+  "Examination & Assessment": [
+    "The instructor explains the grading criteria clearly.",
+    "Examinations cover the lessons discussed.",
+    "The instructor grades student work fairly.",
+    "The instructor provides feedback on assessments on time.",
+    "The feedback helps me improve my work."
+  ]
+}
