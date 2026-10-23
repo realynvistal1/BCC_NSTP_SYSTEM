@@ -353,7 +353,7 @@ async function showStudentAttendanceOffense(offense) {
 
 async function guard(expected) {
   try {
-    const data = await API.get('/api/auth/me', { timeoutMs: 20000 });
+    const data = await API.get('/api/auth/me');
     const session = data.user || data;
 
     if (expected && session.portal !== expected) {
@@ -384,10 +384,7 @@ async function guard(expected) {
     }
 
     return { ...data, user: session };
-  } catch (error) {
-    // A slow network is not an expired login. Let the page display a retry
-    // instead of sending the user back through the sign-in flow.
-    if (error.status !== 401 && error.status !== 403) throw error;
+  } catch {
     location.href = portalLogin(expected);
     return null;
   }
@@ -822,29 +819,23 @@ function showPageError(error) {
 function loadScriptOnce(src) {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-page-module="${src}"]`);
-    if (existing?.dataset.loaded === 'true') return resolve();
-    const script = existing || document.createElement('script');
-    let timer;
-    const finish = (error) => {
-      clearTimeout(timer);
-      script.removeEventListener('load', onLoad);
-      script.removeEventListener('error', onError);
-      if (error) reject(error);
-      else resolve();
-    };
-    const onLoad = () => {
-      script.dataset.loaded = 'true';
-      finish();
-    };
-    const onError = () => finish(new Error('The page tools could not be loaded. Please try again.'));
-    script.addEventListener('load', onLoad, { once: true });
-    script.addEventListener('error', onError, { once: true });
-    timer = setTimeout(() => finish(new Error('The page tools took too long to load. Please try again.')), 20000);
-    if (!existing) {
-      script.src = src;
-      script.dataset.pageModule = src;
-      document.body.appendChild(script);
+
+    if (existing) {
+      if (existing.dataset.loaded === 'true') return resolve();
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Page module failed to load.')), { once: true });
+      return;
     }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.dataset.pageModule = src;
+    script.addEventListener('load', () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', () => reject(new Error('Page module failed to load.')), { once: true });
+    document.body.appendChild(script);
   });
 }
 
@@ -852,8 +843,7 @@ async function bootstrapPortalPage({ expectedPortal, shellRole, moduleSrc, rende
   // Build the final shell before the auth request so the sidebar does not restyle
   // or resize after the first paint.
   preparePortalShell(shellRole);
-  showPageLoading('Checking your session...');
-  let loadingStep = 'Checking your session';
+  showPageLoading();
 
   try {
     const auth = await guard(expectedPortal);
@@ -866,20 +856,16 @@ async function bootstrapPortalPage({ expectedPortal, shellRole, moduleSrc, rende
       auth
     );
 
-    loadingStep = 'Preparing this page';
-    showPageLoading('Preparing this page...');
     await loadScriptOnce(moduleSrc);
 
     const content = document.getElementById('content');
     if (!content) throw new Error('Page content container was not found.');
 
-    loadingStep = 'Loading page data';
-    showPageLoading('Loading page data...');
     await render(content, auth);
     window.requestAnimationFrame(() => content.classList.add('content-ready'));
   } catch (error) {
     console.error('Page bootstrap error:', error);
-    showPageError(new Error(`${loadingStep}: ${error.message || 'Please try again.'}`));
+    showPageError(error);
   }
 }
 
