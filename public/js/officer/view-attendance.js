@@ -450,9 +450,6 @@ function renderOfficerAttendanceTable(container, sessions, program) {
       <strong>${sessionCountLabel(sessions.length)}</strong>
       <span>${esc(program === 'ADVANCE_COURSE' ? 'Advance Course' : program)} attendance results</span>
     </div>
-    <div class="attendance-session-breakdown" aria-label="Matching attendance sessions">
-      ${sessions.map(session => `<div><strong>${esc(session.program === 'CWTS' ? 'CWTS' : Number(session.is_advance_course || 0) === 1 ? 'Advance Course' : 'Regular ROTC')} · ${esc(session.program === 'CWTS' ? 'CS' : 'MI')} ${esc(session.mi_number)} ${esc(session.mi_type === 'out' ? 'Time Out' : 'Time In')}</strong><span>Session #${esc(session.id)} · ${esc(new Date(session.open_date).toLocaleString('en-PH'))}</span></div>`).join('')}
-    </div>
     <section class="attendance-summary-card officer-session-table-card">
       <div class="director-attendance-heading"><h2>Attendance Overview</h2></div>
       <div class="attendance-record-overview">
