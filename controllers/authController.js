@@ -573,7 +573,7 @@ exports.requestStudentResetCode = async (req, res) => {
 
     if (!emailService.hasEmailConfig()) {
       return res.status(500).json({
-        message: 'Gmail SMTP is not configured yet. Add GMAIL_USER and GMAIL_APP_PASSWORD in .env first.',
+        message: 'Email service is temporarily unavailable. Please contact the system administrator.',
       });
     }
 
@@ -779,7 +779,7 @@ exports.requestAdminResetCode = async (req, res) => {
 
     if (!emailService.hasEmailConfig()) {
       return res.status(500).json({
-        message: 'Gmail SMTP is not configured yet. Add GMAIL_USER and GMAIL_APP_PASSWORD in .env first.',
+        message: 'Email service is temporarily unavailable. Please contact the system administrator.',
       });
     }
 
