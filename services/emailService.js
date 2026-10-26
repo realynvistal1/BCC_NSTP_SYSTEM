@@ -2,31 +2,34 @@ const nodemailer = require('nodemailer');
 
 function hasEmailConfig() {
   return Boolean(
-    String(process.env.GMAIL_USER || '').trim()
-    && String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '')
+    String(process.env.SMTP_HOST || '').trim() &&
+    String(process.env.SMTP_USER || '').trim() &&
+    String(process.env.SMTP_PASS || '')
   );
 }
 
 function transporter() {
   if (!hasEmailConfig()) {
-    throw new Error('Gmail SMTP is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in .env.');
+    throw new Error('Namecheap SMTP is not configured.');
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: String(process.env.SMTP_SECURE || 'true') === 'true',
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 20000,
     auth: {
-      user: String(process.env.GMAIL_USER || '').trim(),
-      pass: String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 }
 
 async function sendPasswordResetCode({ to, code, portalLabel }) {
   const mailer = transporter();
-  const from = String(process.env.GMAIL_USER || '').trim();
+  const from = String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
 
   await mailer.sendMail({
     from: `"BCC NSTP System" <${from}>`,
@@ -54,7 +57,7 @@ async function sendPasswordResetCode({ to, code, portalLabel }) {
 
 async function sendPasswordChangeCode({ to, code, portalLabel }) {
   await transporter().sendMail({
-    from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,
+    from: `"BCC NSTP System" <${String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim()}>`,
     to,
     subject: `${portalLabel} Password Change Code`,
     text: [
@@ -71,7 +74,7 @@ async function sendPasswordChangeCode({ to, code, portalLabel }) {
 
 async function sendEmailChangeCode({ to, code, portalLabel, destination, newEmail }) {
   await transporter().sendMail({
-    from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,
+    from: `"BCC NSTP System" <${String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim()}>`,
     to,
     subject: `${portalLabel} Email Change Verification`,
     text: [
@@ -93,7 +96,7 @@ module.exports = {
   sendEmailChangeCode,
   async sendInstructorInvitation({to,name,url}) {
     await transporter().sendMail({
-      from: `"BCC NSTP System" <${String(process.env.GMAIL_USER || '').trim()}>`,to,
+      from: `"BCC NSTP System" <${String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim()}>`,to,
       subject:'NSTP CWTS Attendance Invitation',
       text:[`Hello ${name},`,'The NSTP Director has invited you to use CWTS attendance.',
         'Set your own password using this link:',url,
