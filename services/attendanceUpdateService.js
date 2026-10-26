@@ -1,3 +1,4 @@
+const { displaySuffix } = require('./nameSuffixService');
 const db = require('../config/database');
 
 // Keep stored actor emails for audit compatibility; expose names separately.
@@ -12,7 +13,7 @@ async function decorateAttendanceUpdates(records) {
   students.forEach(actor => {
     const middleName = String(actor.middle_name || '').trim();
     const middleInitial = middleName ? `${Array.from(middleName)[0].toLocaleUpperCase()}.` : '';
-    actors.set(actor.email, [actor.first_name, middleInitial, actor.last_name, actor.suffix].filter(Boolean).join(' '));
+    actors.set(actor.email, [actor.first_name, middleInitial, actor.last_name, displaySuffix(actor.suffix)].filter(Boolean).join(' '));
   });
   instructors.forEach(actor=>actors.set(actor.email,[actor.first_name,actor.last_name].join(' ')));
   const ids = records.filter(row => row.verified_at).map(row => row.record_id || row.id).filter(Boolean);

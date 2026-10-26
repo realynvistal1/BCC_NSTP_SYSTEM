@@ -700,6 +700,11 @@ function initPasswordToggles() {
   });
 }
 
+function displaySuffix(value) {
+  const text = String(value ?? '').trim();
+  return /^(?:n\s*\/?\s*a\.?|none|null|not applicable|no suffix|-+)$/i.test(text) ? '' : text;
+}
+
 function formToObject(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
@@ -713,6 +718,44 @@ async function fileAsDataUrl(file) {
     reader.onerror = () => reject(new Error('Unable to read the selected file.'));
     reader.readAsDataURL(file);
   });
+}
+
+// Accept up to 5 MiB from the picker, but send images at 1 MiB or less.
+// PDFs retain their original bytes; never rewrite saved requirements.
+async function enrollmentFileAsDataUrl(file) {
+  const original = await fileAsDataUrl(file);
+  if (!file || file.size <= 1024 * 1024 || !/^image\/(jpeg|png|webp)$/i.test(file.type)) return original;
+  const maxEncodedBytes = 4 * Math.ceil(1024 * 1024 / 3);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = original;
+    });
+    if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 40000000) throw new Error('Image dimensions are too large.');
+    const canvas = document.createElement('canvas');
+    try {
+      for (const edge of [2400, 2000, 1600]) {
+        const scale = Math.min(1, edge / Math.max(image.naturalWidth, image.naturalHeight));
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        for (const quality of [0.9, 0.82]) {
+          const optimized = canvas.toDataURL('image/jpeg', quality);
+          if (optimized.startsWith('data:image/jpeg;base64,') && optimized.split(',')[1].length <= maxEncodedBytes) return optimized;
+        }
+      }
+    } finally {
+      canvas.width = canvas.height = 0;
+    }
+  } catch {
+    // Never silently submit a large image when browser optimization fails.
+  }
+  throw new Error('This image could not be reduced to 1 MB. Please select a smaller JPG, PNG, or WEBP image and keep document text readable.');
 }
 
 function confirmLogout() {

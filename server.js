@@ -41,7 +41,7 @@ app.use("/api", generalApiRateLimit);
 app.use("/api/auth", authConcurrencyLimit);
 app.use("/api/auth", authRateLimit);
 // Reject abusive traffic before allocating and parsing request bodies.
-app.use(express.json({ limit: "10mb", inflate: false }));
+app.use(require('./middleware/requestBodyMiddleware'));
 app.use(express.urlencoded({ extended: true, limit: "10mb", inflate: false, parameterLimit: 100, depth: 5 }));
 app.use(cookieParser());
 // Prevent stale HTML/API responses from causing an empty page after refresh.

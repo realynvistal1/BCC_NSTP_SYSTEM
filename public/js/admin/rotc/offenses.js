@@ -2,7 +2,7 @@ function offenseName(row) {
   const middleInitial = row.middle_name
     ? ` ${String(row.middle_name).charAt(0)}.`
     : '';
-  const suffix = row.suffix ? ` ${row.suffix}` : '';
+  const suffix = displaySuffix(row.suffix) ? ` ${displaySuffix(row.suffix)}` : '';
 
   return `${row.last_name || ''}, ${row.first_name || ''}${middleInitial}${suffix}`.trim();
 }

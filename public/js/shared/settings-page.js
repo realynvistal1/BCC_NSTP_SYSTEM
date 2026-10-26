@@ -98,7 +98,7 @@ function studentProfile(student, assignmentAssigned) {
     displayNamePart(student.first_name),
     displayNamePart(student.middle_name),
     displayNamePart(student.last_name),
-    displayNamePart(student.suffix),
+    displayNamePart(displaySuffix(student.suffix)),
   ].filter(Boolean).join(' ');
   const temporaryAddress = [
     student.temporary_barangay,

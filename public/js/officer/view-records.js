@@ -109,7 +109,7 @@ function downloadOfficerRecordsExcel(rows, program, level, schoolYear) {
       row.last_name,
       row.first_name,
       row.middle_name || '',
-      row.suffix || 'N/A',
+      displaySuffix(row.suffix) || 'N/A',
       officerCourseCode(row.course),
       program === 'ROTC'
         ? (Number(row.willing_to_take_advance_course) ? 'Advance Course' : row.special_unit || row.rotc_company || '-')
@@ -479,7 +479,7 @@ async function renderOfficerRecords(content) {
         <tr>
           <td>${index + 1}</td>
           <td><strong>${esc(row.student_id)}</strong></td>
-          <td>${esc(row.last_name)}, ${esc(row.first_name)}${row.suffix ? ` ${esc(row.suffix)}` : ''}</td>
+          <td>${esc(row.last_name)}, ${esc(row.first_name)}${displaySuffix(row.suffix) ? ` ${esc(displaySuffix(row.suffix))}` : ''}</td>
           <td>${esc(row.course)}</td>
           <td><span class="level-pill">${row.program === 'CWTS' ? 'CWTS' : 'MS'} ${esc(row.ms_level)}</span></td>
           <td>${row.school_year ? `SY ${esc(row.school_year)}` : '-'}</td>
@@ -527,7 +527,7 @@ async function renderOfficerRecords(content) {
       const present = attendance.filter((item) => item.status === 'present').length;
       const late = attendance.filter((item) => item.status === 'late').length;
       const absent = attendance.filter((item) => item.status === 'absent').length;
-      const recordFullName = `${student.first_name} ${student.last_name}${student.suffix ? ` ${student.suffix}` : ''}`;
+      const recordFullName = `${student.first_name} ${student.last_name}${displaySuffix(student.suffix) ? ` ${displaySuffix(student.suffix)}` : ''}`;
       const recordInitials = `${String(student.first_name || '').charAt(0)}${String(student.last_name || '').charAt(0)}`.toUpperCase() || 'ST';
 
       body.innerHTML = `
@@ -549,7 +549,7 @@ async function renderOfficerRecords(content) {
             <h3>Personal Information</h3>
             <div class="record-info-grid">
               ${officerInfoItem('Student ID', student.student_id)}
-              ${officerInfoItem('Name', `${student.last_name}, ${student.first_name} ${student.middle_name || ''}${student.suffix ? ` ${student.suffix}` : ''}`)}
+              ${officerInfoItem('Name', `${student.last_name}, ${student.first_name} ${student.middle_name || ''}${displaySuffix(student.suffix) ? ` ${displaySuffix(student.suffix)}` : ''}`)}
               ${officerInfoItem('Course', student.course)}
               ${officerInfoItem('Year Level', student.year_level)}
               ${officerInfoItem('Sex', student.sex)}

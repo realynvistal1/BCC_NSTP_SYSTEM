@@ -1,3 +1,4 @@
+const { displaySuffix } = require('./nameSuffixService');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const sharp = require('sharp');
@@ -81,7 +82,7 @@ function ordinal(number) {
 function fullName(student) {
   const middle = String(student.middle_name || '').trim();
   const initials = middle.split(/\s+/).filter(Boolean).map(part => `${part.charAt(0).toUpperCase()}.`).join(' ');
-  return [student.first_name, initials, student.last_name, student.suffix]
+  return [student.first_name, initials, student.last_name, displaySuffix(student.suffix)]
     .map(value => String(value || '').trim()).filter(Boolean).join(' ');
 }
 
@@ -290,7 +291,7 @@ function drawCwtsBody(doc, { student, serial, settings }, width) {
 
   doc.font('Helvetica-Bold').fillColor('#111827').fontSize(25);
   const surname = String(student.last_name || '').trim();
-  const givenNames = [student.first_name, student.middle_name, student.suffix]
+  const givenNames = [student.first_name, student.middle_name, displaySuffix(student.suffix)]
     .map(value => String(value || '').trim()).filter(Boolean).join(' ');
   const recipient = [surname, givenNames].filter(Boolean).join(', ').toUpperCase();
   while (doc.widthOfString(recipient) > width - 216 && doc._fontSize > 14) {

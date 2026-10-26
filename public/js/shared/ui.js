@@ -504,7 +504,7 @@ function enrollmentAssignment(x, p) {
 function enrollmentRow(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
   const level = (p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`) + (Number(x.is_retake) ? ' / Retake' : '');
-  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}${x.suffix ? ` ${displayNamePart(x.suffix)}` : ''}`;
+  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)}${displaySuffix(x.suffix) ? ` ${displayNamePart(displaySuffix(x.suffix))}` : ''}`;
   const photo = `<img class="student-avatar-img" src="/api/admin/${p}/enrollments/${encodeURIComponent(x.record_id)}/photo" alt="${esc(fullName)} 2x2 photo" data-initials="${esc(studentInitials(x))}" loading="lazy">`;
 
   return `
@@ -612,7 +612,7 @@ function documentPreviewCard(label, url) {
 function enrollmentDetailModal(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
   const assignment = enrollmentAssignment(x, p);
-  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)} ${displayNamePart(x.middle_name)} ${displayNamePart(x.suffix)}`
+  const fullName = `${displayNamePart(x.last_name)}, ${displayNamePart(x.first_name)} ${displayNamePart(x.middle_name)} ${displayNamePart(displaySuffix(x.suffix))}`
     .replace(/\s+/g, ' ')
     .trim();
   const personal = [
@@ -1156,8 +1156,8 @@ function rosterName(x){
   return `${esc(displayNamePart(x.last_name||''))}, ${esc(displayNamePart(x.first_name||''))}${x.middle_name?` ${
     esc(displayNamePart(x.middle_name[0]))
   }
-  .`:''}${x.suffix?` ${
-    esc(x.suffix)
+  .`:''}${displaySuffix(x.suffix)?` ${
+    esc(displaySuffix(x.suffix))
   }
   `:''}`
 }

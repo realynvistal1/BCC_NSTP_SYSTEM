@@ -174,7 +174,7 @@ function downloadGradesExcel(rows, grades, program, level, schoolYear) {
         student.last_name || '',
         student.first_name || '',
         student.middle_name || '',
-        student.suffix || '',
+        displaySuffix(student.suffix) || '',
         student.year_level || '',
         courseCode(student.course),
         gradeValue(grades.get(`${student.student_id}|${currentLevel}`)?.midterm),
@@ -391,7 +391,7 @@ async function renderAdminGrades(_program, content) {
         const gradedAlready = hasGrade(student, level);
         const gradeState = studentGradeState(student, level);
         const middleInitial = student.middle_name ? ` ${esc(student.middle_name[0])}.` : '';
-        const suffix = student.suffix ? ` ${esc(student.suffix)}` : '';
+        const suffix = displaySuffix(student.suffix) ? ` ${esc(displaySuffix(student.suffix))}` : '';
         const statusBadge = gradeState === 'failed'
           ? '<span class="badge danger grade-result-badge">Failed</span>'
           : gradeState === 'passed'

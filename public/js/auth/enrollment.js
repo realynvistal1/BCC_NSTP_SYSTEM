@@ -32,10 +32,10 @@
     entry.promise=(async()=>{
       try{
         if(file.size>MAX_FILE)throw new Error('File exceeds 5 MB.');
-        const value=await fileAsDataUrl(file);
+        const value=await enrollmentFileAsDataUrl(file);
         if(!value||!String(value).startsWith('data:'))throw new Error('Empty file.');
         return {value};
-      }catch(error){return {error:new Error(uploadFields[input.name]+': cannot read this file. Select it again from your phone\'s Downloads or Files folder.')};}
+      }catch(error){return {error:new Error(uploadFields[input.name]+': '+(error.message.includes('reduced to 1 MB')?error.message:'cannot read this file. Select it again from your phone\'s Downloads or Files folder.'))};}
     })();
     uploadCache.set(input.name,entry);return entry;
   }
@@ -234,10 +234,6 @@
       if(start!==null&&end!==null)input.setSelectionRange(start,end);
     });
   });
-  if(f.suffix){
-    f.suffix.setAttribute('autocapitalize','characters');
-    f.suffix.addEventListener('input',()=>{f.suffix.value=f.suffix.value.toLocaleUpperCase('en-PH')});
-  }
   f.student_id.addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,10);e.target.value=d.length>6?`${d.slice(0,6)}-${d.slice(6)}`:d});
   [f.contact_number,f.emergency_contact_contact_number].forEach(input=>input.addEventListener('input',e=>{let d=e.target.value.replace(/\D/g,'').slice(0,11);if(d.length>=2&&!d.startsWith('09'))d='09'+d.slice(2);e.target.value=d}));
   const addressFields=['barangay','municipality','province'];

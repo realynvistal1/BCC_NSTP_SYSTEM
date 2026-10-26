@@ -19,6 +19,7 @@ const {
   readLimitedText,
 } = require('../services/requestValidationService');
 const uploadValidation = require('../services/uploadValidationService');
+const { enrollmentSuffix } = require('../services/nameSuffixService');
 
 function levelLabelFor(program, level) {
   return program === 'ROTC' ? `MS ${level}` : `CWTS ${level}`;
@@ -539,7 +540,7 @@ exports.register = async (req, res) => {
       body.last_name,
       body.first_name,
       body.middle_name || '',
-      body.suffix || null,
+      enrollmentSuffix(body.suffix),
       body.religion,
       body.birthdate,
       body.sex,

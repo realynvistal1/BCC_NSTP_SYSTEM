@@ -398,10 +398,9 @@ async function renderReEnrollment(c){
         const xrayFile=s.saved_requirements?.xray_file?null:$('#reXrayFile')?.files?.[0];
         const files=[medicalFile,corFile,(componentSelect?.value||s.nstp_component)==='ROTC'?xrayFile:null].filter(Boolean);
         if(files.some(file=>file.size>5*1024*1024))throw new Error('Each requirement must be 5 MB or smaller.');
-        if(files.reduce((sum,file)=>sum+4*Math.ceil(file.size/3),0)>9*1024*1024)throw new Error('The selected files are too large together. Use smaller images or PDFs (under 6 MB total). Saved requirements do not need uploading again.');
-        if(medicalFile)payload.medical_certificate=await fileAsDataUrl(medicalFile);
-        if(corFile)payload.cor_file=await fileAsDataUrl(corFile);
-        if((componentSelect?.value||s.nstp_component)==='ROTC'&&xrayFile)payload.xray_file=await fileAsDataUrl(xrayFile);
+        if(medicalFile)payload.medical_certificate=await enrollmentFileAsDataUrl(medicalFile);
+        if(corFile)payload.cor_file=await enrollmentFileAsDataUrl(corFile);
+        if((componentSelect?.value||s.nstp_component)==='ROTC'&&xrayFile)payload.xray_file=await enrollmentFileAsDataUrl(xrayFile);
         submitBtn.disabled=true;
         submitBtn.textContent='Submitting...';
         const out=await API.post('/api/student/re-enroll',payload);
