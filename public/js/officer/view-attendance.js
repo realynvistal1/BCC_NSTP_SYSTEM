@@ -676,7 +676,7 @@ async function openStatusModal(sessionId, student) {
 
       const offense = current !== 'absent' && selected === 'absent';
       $('#offenseChangeNotice', modal).innerHTML = offense
-        ? '<div class="warning-banner reject-note"><div><strong>Attendance Offense</strong><span>Changing this student to Absent will record an attendance offense. First occurrence = warning; second occurrence = settlement required.</span></div></div>'
+        ? '<div class="warning-banner reject-note" role="note"><div><div><strong>Attendance Offense</strong></div><p>Marking this student as Absent will record an attendance offense. The first offense results in a warning. The second offense requires settlement.</p></div></div>'
         : '';
     };
   });
