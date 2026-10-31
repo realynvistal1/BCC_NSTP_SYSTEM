@@ -18,11 +18,7 @@ function officerStudentRows(rows) {
         ' ' +
         (x.middle_name || '') +
         ' ' +
-        x.last_name +
-        ' ' +
-        x.course +
-        ' ' +
-        (x.assignment || '')
+        x.last_name
       ).toLowerCase()
     );
     const level = x.ms_level
@@ -46,7 +42,7 @@ function officerStudentRows(rows) {
 function officerEnrollmentPanel(program,rows,tone){
   const approved=rows.filter(x=>x.status==='approved').length,pending=rows.filter(x=>x.status==='pending').length,rejected=rows.filter(x=>x.status==='rejected').length,correction=rows.filter(x=>String(x.status).toLowerCase().includes('correction')).length;
   const key=program.toLowerCase();
-  return `<section class="section-card director-enrollment-section" data-enrollment-list="${key}"><div class="section-heading director-list-heading"><div><span class="director-section-kicker">${program} ENROLLMENT</span><h2>${program} Enrolled Students</h2><p>Read-only monitoring list of students who submitted ${program} enrollment. Approval and rejection remain with the ${program} Admin.</p></div><a class="btn small" href="${program==='ROTC'?'/officer/rotc/battalion-1':'/officer/cwts'}">View ${program==='ROTC'?'ROTC Roster':'CWTS Companies'}</a></div><div class="director-mini-stats"><span><strong>${rows.length}</strong>Total</span><span class="ok"><strong>${approved}</strong>Approved</span><span class="wait"><strong>${pending}</strong>Pending</span><span class="bad"><strong>${rejected}</strong>Rejected</span></div><div class="director-list-tools"><div class="director-search"><span>${icon('records')}</span><input type="search" placeholder="Search student name, ID, course or assignment..." data-list-search="${key}"></div><div class="director-status-tabs" data-list-tabs="${key}"><button class="active" data-status-filter="all">All <b>${rows.length}</b></button><button data-status-filter="pending">Pending <b>${pending}</b></button><button data-status-filter="approved">Approved <b>${approved}</b></button><button data-status-filter="rejected">Rejected <b>${rejected}</b></button>${correction?`<button data-status-filter="needs correction">Needs Correction <b>${
+  return `<section class="section-card director-enrollment-section" data-enrollment-list="${key}"><div class="section-heading director-list-heading"><div><span class="director-section-kicker">${program} ENROLLMENT</span><h2>${program} Enrolled Students</h2><p>Read-only monitoring list of students who submitted ${program} enrollment. Approval and rejection remain with the ${program} Admin.</p></div><a class="btn small" href="${program==='ROTC'?'/officer/rotc/battalion-1':'/officer/cwts'}">View ${program==='ROTC'?'ROTC Roster':'CWTS Companies'}</a></div><div class="director-mini-stats"><span><strong>${rows.length}</strong>Total</span><span class="ok"><strong>${approved}</strong>Approved</span><span class="wait"><strong>${pending}</strong>Pending</span><span class="bad"><strong>${rejected}</strong>Rejected</span></div><div class="director-list-tools"><div class="director-search"><span>${icon('records')}</span><input type="search" placeholder="Search by name or student ID..." data-list-search="${key}"></div><div class="director-status-tabs" data-list-tabs="${key}"><button class="active" data-status-filter="all">All <b>${rows.length}</b></button><button data-status-filter="pending">Pending <b>${pending}</b></button><button data-status-filter="approved">Approved <b>${approved}</b></button><button data-status-filter="rejected">Rejected <b>${rejected}</b></button>${correction?`<button data-status-filter="needs correction">Needs Correction <b>${
     correction
   }
   </b></button>`:''}</div></div><div class="director-table" data-list-table="${key}">${table(['#','Student ID','Name','Course','Year','Level','Status','Assignment'],officerStudentRows(rows))}</div><p class="director-list-note" data-list-count="${key}">Showing ${rows.length} of ${rows.length} enrolled students.</p></section>`
@@ -237,9 +233,10 @@ async function officerPageBase(page,c){
     return
   }
   if(page==='battalion-1'||page==='battalion-2'){
-    const rows=await API.get(`/api/officer/roster/${page}`),bn=page==='battalion-1'?1:2,label=bn===1?'Male':'Female',companies=[...new Set(rows.flatMap(row=>[row,...(row.enrollments||[])]).map(row=>row.rotc_company).filter(Boolean))],capacity=Infinity,state={level:'',schoolYear:''};
+    const rows=await API.get(`/api/officer/roster/${page}`),bn=page==='battalion-1'?1:2,label=bn===1?'Male':'Female',state={level:'',schoolYear:''};
     const render=()=>{
       const filtered=filterRosterRows(rows,state);
+      const companies=[...new Set(filtered.map(row=>row.rotc_company).filter(Boolean))];
       const grouped={};
       companies.forEach(co=>{grouped[co]={};filtered.filter(row=>row.rotc_company===co).forEach(row=>{grouped[co][row.rotc_platoon]=[]})});
       filtered.forEach(x=>{if(grouped[x.rotc_company]&&grouped[x.rotc_company][x.rotc_platoon])grouped[x.rotc_company][x.rotc_platoon].push(x)});
@@ -251,13 +248,21 @@ async function officerPageBase(page,c){
     return
   }
   if(page==='cwts'){
-    const rows=await API.get('/api/officer/roster/cwts'),companies=await API.get('/api/officer/cwts-companies'),cap=companies.length*60,state={level:'',schoolYear:''};
+    const rows=await API.get('/api/officer/roster/cwts'),companyDetails=await API.get('/api/officer/cwts-companies?details=1'),state={level:'',schoolYear:''};
+    const companyLimit=name=>{
+      const members=filterRosterRows(rows,state).filter(row=>row.company===name);
+      const limits=members.map(row=>Number(companyDetails.find(company=>company.name===name && Number(company.schedule_id)===Number(row.schedule_id))?.capacity ?? companyDetails.find(company=>company.name===name && !company.schedule_id)?.capacity)||null);
+      return limits.length && limits.every(value=>value===limits[0]) ? limits[0] : null;
+    };
     const render=()=>{
       const filtered=filterRosterRows(rows,state);
+      const companies=[...new Set(filtered.map(row=>row.company).filter(Boolean))];
+      const limits=companies.map(companyLimit);
+      const cap=limits.every(Number.isFinite)?limits.reduce((sum,value)=>sum+value,0):null;
       const grouped={};
       companies.forEach(x=>grouped[x]=[]);
       filtered.forEach(x=>{if(grouped[x.company])grouped[x.company].push(x)});
-      c.innerHTML=`<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div>${officerRosterFilterBar(rows,'CWTS',state)}<div class="roster-summary-grid four">${rosterSummary('Total Assigned',filtered.length,'students','slate')}${rosterSummary('Total Capacity',cap,companies.length+' companies','slate')}${rosterSummary('Available Slots',cap-filtered.length,'remaining','green')}${rosterSummary('Companies',companies.length,'60 slots each','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${co}`,co,grouped[co],60,['blue','green','amber','purple','rose','cyan'][i])).join('')}</div>`;
+      c.innerHTML=`<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">NSTP DIRECTOR</div><h2>CWTS Company List</h2><p>View all approved CWTS company assignments and member rosters.</p></div></div>${officerRosterFilterBar(rows,'CWTS',state)}<div class="roster-summary-grid four">${rosterSummary('Total Assigned',filtered.length,'students','slate')}${rosterSummary('Total Capacity',cap??'Unavailable',companies.length+' companies','slate')}${rosterSummary('Available Slots',cap===null?'Unavailable':Math.max(0,cap-filtered.length),'remaining','green')}${rosterSummary('Companies',companies.length,'assigned companies','slate')}</div><div class="roster-stack">${companies.map((co,i)=>officerExpander(`off-cwts-${co}`,co,grouped[co],companyLimit(co)??Infinity,['blue','green','amber','purple','rose','cyan'][i])).join('')}</div>`;
       bindOfficerRosterFilters(state, render);
       bindOfficerExpanders();
     };
