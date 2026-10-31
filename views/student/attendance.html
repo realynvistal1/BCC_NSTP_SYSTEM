@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="/assets/images/bcclogo-removebg-preview.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Attendance | BCC NSTP</title>
@@ -11,9 +12,9 @@
   <link rel="stylesheet" href="/assets/css/modal.css">
   <link rel="stylesheet" href="/assets/css/attendance.css?v=20261018-readable-mobile">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="/assets/css/student-design.css?v=20261014">
+  <link rel="stylesheet" href="/assets/css/student-design.css?v=20261029-restored">
   <link rel="stylesheet" href="/assets/css/student-mobile.css?v=20261014-profile">
-  <link rel="stylesheet" href="/assets/css/student-attendance-mobile.css?v=20261018-history-dropdown">
+  <link rel="stylesheet" href="/assets/css/student-attendance-mobile.css?v=20261029-compact-filters">
 </head>
 <body data-role="student" data-page="attendance" data-title="Attendance" data-subtitle="Check in to your active geolocation attendance session.">
   <div class="top-mobile"><button class="btn" id="mobileMenuButton" type="button">☰</button><strong class="student-mobile-brand" data-enhanced="true"><img src="/assets/images/bcclogo-removebg-preview.png" alt="Buenavista Community College logo"><span>BCC NSTP<small>Student Portal</small></span></strong></div>
@@ -32,7 +33,7 @@
       <section id="studentAttendanceActive" class="student-attendance-column"></section>
 
       <section class="attendance-history-section">
-        <div class="section-heading"><div><h2>Attendance History</h2><p id="studentAttendanceHistoryDescription">Your recorded attendance.</p></div><button class="btn" id="refreshAttendanceHistory" type="button">Refresh</button></div>
+        <div class="section-heading"><div><h2>Attendance History</h2><p id="studentAttendanceHistoryDescription" hidden></p></div><button class="btn" id="refreshAttendanceHistory" type="button">Refresh</button></div>
         <div id="studentAttendanceHistory"></div>
       </section>
 
