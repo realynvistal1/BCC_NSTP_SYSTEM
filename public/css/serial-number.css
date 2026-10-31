@@ -1,3 +1,7 @@
+body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .main {
+  min-width: 0;
+}
+
 .serial-toolbar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -540,7 +544,7 @@ body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .seri
   border-color: var(--serial-accent);
 }
 body:is([data-role="rotc"], [data-role="cwts"])[data-page="serial-number"] .panel > .table-wrap {
-  overflow: hidden;
+  overflow-x: auto;
   border: 1px solid #d9e5f1;
   border-radius: 14px;
   box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
