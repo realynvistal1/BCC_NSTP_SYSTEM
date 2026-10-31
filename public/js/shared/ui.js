@@ -17,7 +17,7 @@ function showEnrollmentApprovalResult(result, error = false) {
     const counted = typeof result.approved === 'number';
     dialog.setAttribute('aria-labelledby', 'enrollmentResultTitle');
     dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error || capacityFull ? 'warning' : ''}" aria-hidden="true">${error || capacityFull ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : capacityFull ? 'CWTS capacity reached' : 'Students approved'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved now</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Pending in this schedule</span></div></div>` : ''}
-      ${counted && capacityFull && capacity ? `<p class="enrollment-result-explanation">CWTS has <strong>${esc(capacity)} slots</strong> across ${esc(capacity / 60)} companies. ${pending ? `The remaining <strong>${esc(pending)} students were not approved</strong> and stay pending.` : 'All available slots are now filled.'}</p><div class="enrollment-result-next"><strong>What to do next</strong><p>Add a company for 60 more slots, or review and reject pending enrollments with a reason.</p></div>` : `<p class="enrollment-result-explanation">${esc(result.message)}</p>`}
+      ${counted && capacityFull && capacity ? `<p class="enrollment-result-explanation">CWTS has <strong>${esc(capacity)} slots</strong> using the configured company limits. ${pending ? `The remaining <strong>${esc(pending)} students were not approved</strong> and stay pending.` : 'All available slots are now filled.'}</p><div class="enrollment-result-next"><strong>What to do next</strong><p>Add a company or increase its capacity, or review and reject pending enrollments with a reason.</p></div>` : `<p class="enrollment-result-explanation">${esc(result.message)}</p>`}
       <button type="button" class="btn primary enrollment-result-done">Close</button></div>`;
     dialog.querySelectorAll('button').forEach(button => button.onclick = () => dialog.close());
     dialog.addEventListener('close', () => {dialog.remove();resolve();}, {once:true});
@@ -551,7 +551,7 @@ function detailSection(title, fields) {
 }
 
 function isPreviewableImage(url = '') {
-  return /^data:image\//i.test(url) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url);
+  return /^\/api\/(?:admin\/(?:rotc|cwts)|officer)\/students\/\d+\/files\/[^?]+\?preview=image(?:&|$)/.test(url) || /^data:image\//i.test(url) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url);
 }
 
 function openFileInNewTab(url) {
@@ -596,7 +596,7 @@ function documentPreviewCard(label, url) {
   const image = isPreviewableImage(url);
   return `<div class="document-preview-card">
     ${image
-      ? `<button type="button" class="document-thumb image preview-file-btn" data-url="${esc(url)}" data-label="${esc(label)}"><img src="${url}" alt="${esc(label)}"></button>`
+      ? `<button type="button" class="document-thumb image preview-file-btn" data-url="${esc(url)}" data-label="${esc(label)}"><img loading="lazy" decoding="async" src="${esc(url)}" alt="${esc(label)}"></button>`
       : `<button type="button" class="document-thumb file open-file-new-tab" data-url="${esc(url)}" aria-label="Open ${esc(label)} in a new tab">${icon('records')}</button>`}
     <div class="document-copy">
       <strong>${esc(label)}</strong>
@@ -820,7 +820,7 @@ async function renderEnrollmentList(p,c){
     all:rows.length,pending:rows.filter(x=>x.status==='pending').length,approved:rows.filter(x=>x.status==='approved').length,rejected:rows.filter(x=>x.status==='rejected').length
   }
   ;
-  c.innerHTML=`<section class="page-intro-banner ${p}"><div><div class="intro-kicker">${program} Administration</div><h2>Enrollment List</h2><p>View and manage all ${program} enrollments.</p></div><div class="intro-total"><strong id="enrollmentTotalValue">${rows.length}</strong><span id="enrollmentTotalLabel">Total Enrollments</span></div></section><section class="enrollment-controls-panel"><div class="enrollment-search-row"><div class="search-box-panel">${icon('records')}<input id="enrollmentSearch" placeholder="Search by name, Student ID, or email..."></div><div class="status-tabs">${['all','pending','approved','rejected'].map(k=>`<button class="status-tab ${k==='all'?'active':''}" data-status="${k}">${
+  c.innerHTML=`<section class="page-intro-banner ${p}"><div><div class="intro-kicker">${program} Administration</div><h2>Enrollment List</h2><p>View and manage all ${program} enrollments.</p></div><div class="intro-total"><strong id="enrollmentTotalValue">${rows.length}</strong><span id="enrollmentTotalLabel">Total Enrollments</span></div></section><section class="enrollment-controls-panel"><div class="enrollment-search-row"><div class="search-box-panel">${icon('records')}<input id="enrollmentSearch" placeholder="Search by name or student ID..."></div><div class="status-tabs">${['all','pending','approved','rejected'].map(k=>`<button class="status-tab ${k==='all'?'active':''}" data-status="${k}">${
     k[0].toUpperCase()+k.slice(1)
   }
   <span>${
@@ -868,7 +868,7 @@ async function renderEnrollmentList(p,c){
     if(pref==='medics'&&Number(x.willing_to_be_medics||0)!==1)return false;
     if(pref==='mp'&&Number(x.willing_to_be_military_police||0)!==1)return false;
     if(pref==='advance'&&Number(x.willing_to_take_advance_course||0)!==1)return false;
-    if(q&&!`${x.first_name} ${x.last_name} ${x.student_id} ${x.email} ${x.course} ${x.year_level}`.toLowerCase().includes(q))return false;
+    if(q&&!`${x.first_name} ${x.middle_name || ''} ${x.last_name} ${x.student_id}`.toLowerCase().includes(q))return false;
     return true;
   }
   function getFiltered(includeStatus=true,overrides={}){
@@ -1634,8 +1634,20 @@ async function renderCWTSCompanyRoster(c) {
     API.get("/api/admin/cwts/enrollment-schedule"),
     API.get("/api/admin/cwts/enrollments"),
   ]);
-  let companies = await API.get("/api/admin/cwts/companies");
-  const limit = 60;
+  let companies = [], companyDetails = [], configurationLocked = true;
+  const companyLimit = name => Number(companyDetails.find(row=>row.name===name)?.capacity || 60);
+  const selectedSchedule = () => schedules.find(item=>String(item.ms_level)===selectedLevel && String(item.year)===selectedYear);
+  const setupUrl = () => '/api/admin/cwts/companies?schedule_id='+encodeURIComponent(selectedSchedule()?.id || '');
+  let setupRequest = 0;
+  async function refreshCompanies(){
+    const request=++setupRequest;
+    const cycle=selectedSchedule();
+    if(!cycle){companies=[];companyDetails=[];configurationLocked=true;return true;}
+    const [details, configuration]=await Promise.all([API.get(setupUrl()+'&details=1'),API.get(setupUrl()+'&configuration=1')]);
+    if(request!==setupRequest)return false;
+    companyDetails=details;companies=details.map(row=>row.name);configurationLocked=configuration.locked;
+    return true;
+  }
   const latest = [...schedules].sort((a, b) => Number(b.id) - Number(a.id))[0];
   let selectedLevel = String(latest?.ms_level || "1");
   let selectedYear = String(latest?.year || "");
@@ -1658,11 +1670,15 @@ async function renderCWTSCompanyRoster(c) {
       String(row.ms_level || "") === selectedLevel
       && String(row.school_year || "") === selectedYear
     ));
+    // Empty companies remain available during setup, but not in assigned cycle rosters.
+    const visibleCompanies = schedule?.platoons_assigned_at
+      ? [...new Set(rows.map(row => row.company).filter(Boolean))]
+      : [...new Set([...companies, ...rows.map(row => row.company).filter(Boolean)])];
     const grouped = Object.fromEntries(
-      companies.map((company) => [company, rows.filter((row) => row.company === company)])
+      visibleCompanies.map((company) => [company, rows.filter((row) => row.company === company)])
     );
     const shown = Object.fromEntries(
-      companies.map((company) => [
+      visibleCompanies.map((company) => [
         company,
         [...grouped[company]].sort((a, b) => {
           const last = String(a.last_name || "").localeCompare(String(b.last_name || ""), undefined, { sensitivity: "base" });
@@ -1673,17 +1689,19 @@ async function renderCWTSCompanyRoster(c) {
       ])
     );
 
-    const total = companies.reduce((sum, company) => sum + shown[company].length, 0);
-    const capacity = companies.length * limit;
+    const total = visibleCompanies.reduce((sum, company) => sum + shown[company].length, 0);
+    const capacity = visibleCompanies.reduce((sum,name)=>sum+companyLimit(name),0);
     const closed = Boolean(schedule) && Date.now() > new Date(schedule.deadline).getTime();
     const alreadyAssigned = Boolean(schedule?.platoons_assigned_at);
+    const companySetupLocked = !schedule || configurationLocked || alreadyAssigned;
     const pendingReview = schedule
       ? enrollments.filter((row) => (
         String(row.schedule_id || "") === String(schedule.id)
         && row.status === "pending"
       )).length
       : 0;
-    const canAssign = Boolean(schedule) && closed && !alreadyAssigned && pendingReview === 0;
+    const totalApproved = schedule ? enrollments.filter(row=>String(row.schedule_id)===String(schedule.id) && row.status==='approved').length : 0;
+    const canAssign = Boolean(schedule) && closed && !alreadyAssigned && pendingReview === 0 && companies.length > 0 && capacity >= totalApproved;
     const scheduleValue = alreadyAssigned ? "Assigned" : closed ? "Closed" : "Open / Upcoming";
     const scheduleSubtext = alreadyAssigned
       ? "Company roster available"
@@ -1694,13 +1712,13 @@ async function renderCWTSCompanyRoster(c) {
         : "Waiting to close";
     const scheduleTone = alreadyAssigned ? "green" : closed && pendingReview === 0 ? "green" : "amber";
 
-    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, `${companies.length} companies`, "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${companies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, limit, rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index % 6])).join("")}</div>`;
+    c.innerHTML = `<div class="page-intro-banner emerald"><div><div class="page-intro-kicker">CWTS ADMIN</div><h2>CWTS Company List</h2><p>Assign approved students alphabetically after the selected enrollment schedule closes.</p></div><div class="filter-row"><select id="cwtsRosterLevel">${levels.map((level) => `<option value="${esc(level)}" ${selectedLevel === String(level) ? "selected" : ""}>CWTS ${esc(level)}</option>`).join("")}</select><select id="cwtsRosterYear">${years.map((year) => `<option value="${esc(year)}" ${selectedYear === String(year) ? "selected" : ""}>SY ${esc(year)}</option>`).join("")}</select></div></div><section class="section-card"><div class="section-heading"><h2>Current Filter</h2><p>Showing CWTS ${esc(selectedLevel || "-")} - SY ${esc(selectedYear || "-")}.</p></div></section><div class="roster-summary-grid four">${rosterSummary("Total Assigned", total, "students", "slate")}${rosterSummary("Total Capacity", capacity, `${visibleCompanies.length} companies`, "slate")}${rosterSummary("Available Slots", capacity - total, "remaining", "green")}${rosterSummary("Schedule", scheduleValue, scheduleSubtext, scheduleTone)}</div><div class="assignment-box ${canAssign ? "ready" : "waiting"}"><div class="assignment-copy"><span class="assignment-icon">${alreadyAssigned ? "Done" : canAssign ? "Ready" : "Pending"}</span><div><strong>Company Assignment</strong><p>${alreadyAssigned ? "Companies have been assigned for this enrollment schedule. This action can only be used once." : pendingReview > 0 ? `Review the remaining ${pendingReview} pending enrollment${pendingReview === 1 ? "" : "s"} before assigning companies.` : canAssign ? `CWTS ${esc(selectedLevel)} enrollment for SY ${esc(selectedYear)} is closed. You can now assign approved students alphabetically.` : schedule && !companies.length ? "Add companies and save their capacities for this enrollment schedule." : schedule && capacity < totalApproved ? `Increase capacity to cover all ${totalApproved} approved students.` : schedule ? `Waiting for the CWTS ${esc(selectedLevel)} enrollment schedule for SY ${esc(selectedYear)} to close before assignment.` : "Choose a valid CWTS level and school year."}</p></div></div><button class="btn primary assign-wide" id="assignCompanies" ${canAssign ? "" : "disabled"}>${alreadyAssigned ? "Companies Already Assigned" : pendingReview > 0 ? "Review Pending Enrollments" : canAssign ? "Assign Companies" : !companies.length ? "Set Up Companies First" : capacity < totalApproved ? "Increase Company Capacity" : "Assignment Locked"}</button><div id="assignCompanyResult"></div></div><div class="roster-stack">${visibleCompanies.map((company, index) => expanderCard(`cwts-${company}`, company, shown[company].length, companyLimit(company), rosterRows(shown[company]), ["blue", "green", "amber", "purple", "rose", "cyan"][index % 6])).join("")}</div>`;
 
     companies.forEach(company => {
       const card = c.querySelector('[data-expand-card="cwts-' + CSS.escape(company) + '"]');
       if (!card) return;
-      const hasAssignedStudents = allCycleRows.some(row => row.company === company);
-      if (hasAssignedStudents) return;
+      const hasAssignedStudents = rows.some(row => row.company === company);
+      if (hasAssignedStudents || companySetupLocked) return;
       card.classList.add('cwts-company-menu-card');
       const menu = document.createElement('div');
       menu.className = 'cwts-company-actions';
@@ -1720,12 +1738,12 @@ async function renderCWTSCompanyRoster(c) {
         dropdown.hidden=true; toggle.setAttribute('aria-expanded','false');
         const dialog=document.createElement('dialog'); dialog.className='logout-dialog';
         dialog.setAttribute('aria-label','Delete company');
-        dialog.innerHTML=`<form class="logout-dialog-content"><h2>Delete ${esc(company)} Company?</h2><p>This removes 60 CWTS slots. Companies with assignment records or required capacity cannot be deleted.</p><p data-error role="alert" hidden></p><div class="logout-dialog-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn danger">Delete Company</button></div></form>`;
+        dialog.innerHTML=`<form class="logout-dialog-content"><h2>Delete ${esc(company)} Company?</h2><p>This removes ${companyLimit(company)} CWTS slots. Only this enrollment schedule?s setup will change.</p><p data-error role="alert" hidden></p><div class="logout-dialog-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn danger">Delete Company</button></div></form>`;
         dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
         dialog.addEventListener('close',()=>{dialog.remove();toggle.focus();},{once:true});
         dialog.querySelector('form').onsubmit=async event=>{
           event.preventDefault(); const button=dialog.querySelector('[type="submit"]');button.disabled=true;
-          try { const result=await API.req('/api/admin/cwts/companies/'+encodeURIComponent(company), {method:'DELETE'});companies=result.companies;notifyCwtsCompanyChange();dialog.close();draw();toast(result.message); }
+          try { const result=await API.req('/api/admin/cwts/companies/'+encodeURIComponent(company)+'?schedule_id='+schedule.id, {method:'DELETE'});await refreshCompanies();notifyCwtsCompanyChange();dialog.close();draw();toast(result.message); }
           catch(error){const node=dialog.querySelector('[data-error]');node.hidden=false;node.textContent=error.message;button.disabled=false;}
         };
         document.body.appendChild(dialog);dialog.showModal();
@@ -1735,6 +1753,8 @@ async function renderCWTSCompanyRoster(c) {
     addCompanyButton.type = 'button';
     addCompanyButton.className = 'btn small primary';
     addCompanyButton.textContent = '+ Add Company';
+    addCompanyButton.disabled=companySetupLocked;
+    if(companySetupLocked)addCompanyButton.title='Locked after company assignment.';
     const filterCard = c.querySelector('.section-card');
     filterCard.classList.add('cwts-company-toolbar');
     const filterHeading = filterCard.querySelector('.section-heading');
@@ -1742,20 +1762,22 @@ async function renderCWTSCompanyRoster(c) {
     while (filterHeading.firstChild) filterCopy.appendChild(filterHeading.firstChild);
     filterHeading.append(filterCopy, addCompanyButton);
     addCompanyButton.onclick = () => {
-      const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel','India','Juliet','Kilo','Lima','Mike','November','Oscar','Papa','Quebec','Romeo','Sierra','Tango','Uniform','Victor','Whiskey','Xray','Yankee','Zulu'];
-      const suggested = names.find(name => !companies.some(c => c.toLowerCase() === name.toLowerCase())) || '';
+      if(companySetupLocked)return;
+      const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel'];
+      const availableNames = names.filter(name => !companies.some(company => company.toLowerCase() === name.toLowerCase()));
+      if (!availableNames.length) { toast('All company names have already been added for this schedule.'); return; }
       const dialog = document.createElement('dialog');
       dialog.className = 'logout-dialog';
       dialog.setAttribute('aria-label', 'Add CWTS company');
-      dialog.innerHTML = `<form class="logout-dialog-content"><h2>Add CWTS Company</h2><p>Each company adds 60 slots to CWTS enrollment capacity.</p><label class="field" style="text-align:left;margin-top:18px">Company name<input name="name" value="${esc(suggested)}" maxlength="30" pattern="[A-Za-z][A-Za-z -]{0,29}" required></label><p class="company-create-error" role="alert" hidden></p><div class="logout-dialog-actions"><button class="btn" type="button" data-cancel>Cancel</button><button class="btn primary" type="submit">Add Company</button></div></form>`;
+      dialog.innerHTML = `<form class="logout-dialog-content"><h2>Add CWTS Company</h2><p>Set the number of students this company can hold.</p><label class="field" style="text-align:left;margin-top:18px">Company name<select name="name" required>${availableNames.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('')}</select></label><label class="field" style="text-align:left;margin-top:14px">Student capacity<input name="capacity" type="number" min="1" max="1000" step="1" value="60" required></label><p class="company-create-error" role="alert" hidden></p><div class="logout-dialog-actions"><button class="btn" type="button" data-cancel>Cancel</button><button class="btn primary" type="submit">Add Company</button></div></form>`;
       dialog.querySelector('[data-cancel]').onclick = () => dialog.close();
       dialog.addEventListener('close', () => { dialog.remove(); addCompanyButton.focus(); }, {once:true});
       dialog.querySelector('form').onsubmit = async event => {
         event.preventDefault();
         const submit = dialog.querySelector('[type="submit"]'); submit.disabled = true;
         try {
-          const result = await API.post('/api/admin/cwts/companies', {name:dialog.querySelector('[name="name"]').value.trim()});
-          companies = result.companies; notifyCwtsCompanyChange(); dialog.close(); draw(); toast(result.message);
+          const result = await API.post('/api/admin/cwts/companies', {schedule_id:schedule.id,name:dialog.querySelector('[name="name"]').value.trim(),capacity:Number(dialog.querySelector('[name="capacity"]').value)});
+          await refreshCompanies(); notifyCwtsCompanyChange(); dialog.close(); draw(); toast(result.message);
         } catch(error) { const node=dialog.querySelector('.company-create-error'); node.hidden=false; node.textContent=error.message; submit.disabled=false; }
       };
       document.body.appendChild(dialog); dialog.showModal();
@@ -1767,27 +1789,46 @@ async function renderCWTSCompanyRoster(c) {
         <small>${total} students total</small>
       </div>
       <div class="roster-summary-grid six company-count-grid">
-        ${companies.map((company, index) => rosterSummary(
+        ${visibleCompanies.map((company, index) => `<div class="cwts-capacity-summary">` + rosterSummary(
           company,
           shown[company].length,
-          `of ${limit} assigned`,
+          `of ${companyLimit(company)} assigned`,
           companyTones[index % companyTones.length]
-        )).join("")}
+        ) + `<button type="button" class="btn small cwts-edit-capacity" data-company-capacity="${esc(company)}" ${companySetupLocked ? 'disabled title="Locked after company assignment."' : ''}>${companySetupLocked ? 'Capacity locked' : 'Edit capacity'}</button></div>`).join("")}
       </div>
     `;
     c.querySelector(".assignment-box")?.insertAdjacentHTML("beforebegin", companyTotalsMarkup);
+    c.querySelectorAll('[data-company-capacity]').forEach(button=>button.onclick=()=>{
+      if(companySetupLocked)return;
+      const name=button.dataset.companyCapacity;
+      const dialog=document.createElement('dialog');dialog.className='logout-dialog';
+      dialog.setAttribute('aria-label','Edit company capacity');
+      dialog.innerHTML=`<form class="logout-dialog-content"><h2>${esc(name)} capacity</h2><label class="field" style="text-align:left;margin-top:16px">Student capacity<input name="capacity" type="number" min="1" max="1000" step="1" value="${companyLimit(name)}" required></label><p>Applies only to this enrollment schedule.</p><p data-error role="alert" hidden></p><div class="logout-dialog-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn primary">Save Capacity</button></div></form>`;
+      dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
+      dialog.addEventListener('close',()=>{dialog.remove();button.focus();},{once:true});
+      dialog.querySelector('form').onsubmit=async event=>{
+        event.preventDefault();const save=dialog.querySelector('[type="submit"]');save.disabled=true;
+        try{const result=await API.patch('/api/admin/cwts/companies/'+encodeURIComponent(name)+'/capacity',{schedule_id:schedule.id,capacity:Number(dialog.querySelector('[name="capacity"]').value)});await refreshCompanies();notifyCwtsCompanyChange();dialog.close();draw();toast(result.message);}
+        catch(error){const node=dialog.querySelector('[data-error]');node.hidden=false;node.textContent=error.message;save.disabled=false;}
+      };
+      document.body.appendChild(dialog);dialog.showModal();
+    });
 
-    $("#cwtsRosterLevel").onchange = (event) => {
-      selectedLevel = event.target.value;
-      const matching = schedules.find((item) => String(item.ms_level || "") === selectedLevel);
-      if (matching) selectedYear = String(matching.year || selectedYear);
-      draw();
+    async function switchSetup(level, year) {
+      const previousLevel=selectedLevel, previousYear=selectedYear;
+      c.inert=true;
+      selectedLevel=level;selectedYear=year;
+      try { if(await refreshCompanies()) draw(); }
+      catch(error) { selectedLevel=previousLevel;selectedYear=previousYear;draw();toast(error.message); }
+      finally { c.inert=false; }
+    }
+    $("#cwtsRosterLevel").onchange = event => {
+      const level=event.target.value;
+      const matching=schedules.find(item=>String(item.ms_level||'')===level && String(item.year||'')===selectedYear)
+        || schedules.find(item=>String(item.ms_level||'')===level);
+      return switchSetup(level,String(matching?.year||selectedYear));
     };
-
-    $("#cwtsRosterYear").onchange = (event) => {
-      selectedYear = event.target.value;
-      draw();
-    };
+    $("#cwtsRosterYear").onchange = event => switchSetup(selectedLevel,event.target.value);
 
     const assign = $("#assignCompanies");
     if (assign && canAssign) {
@@ -1797,6 +1838,7 @@ async function renderCWTSCompanyRoster(c) {
         assign.textContent = "Assigning Companies...";
         try {
           const result = await API.post("/api/admin/cwts/auto-assign", {
+            schedule_id: schedule.id,
             ms_level: selectedLevel,
             school_year: selectedYear,
           });
@@ -1813,6 +1855,7 @@ async function renderCWTSCompanyRoster(c) {
     bindRosterExpanders();
   };
 
+  await refreshCompanies();
   draw();
 }
 
