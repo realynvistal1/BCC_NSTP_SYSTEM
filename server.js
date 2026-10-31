@@ -228,6 +228,8 @@ res.status(500).json({ message: "Unexpected server error." });
 });
 async function startServer() {
 await require('./database/ensure-local-mysql').ensureLocalMysql();
+await require('./database/migrate-cwts-capacity').ensureCwtsCapacity(require('./config/database'));
+await require('./database/migrate-cwts-schedule-setup').ensureCwtsScheduleSetup(require('./config/database'));
 await require('./database/migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(require('./config/database'));
 await require('./database/migrate-grade-attempts').ensureGradeAttempts(require('./config/database'));
 const server = app.listen(PORT, HOST, (error) => {
