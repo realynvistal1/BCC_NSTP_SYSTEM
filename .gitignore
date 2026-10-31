@@ -18,3 +18,10 @@ npm-debug.log*
 /tmp/
 /outputs/serial-upload-*/
 /outputs/**/*_preview.png
+
+# Private hosted database export
+/bcccewcd_BCC_DATABASE.sql
+
+/bcccewcd_BCC_DATABASE.sql.gz
+
+/bcccewcd_BCC_DATABASE (1).sql
