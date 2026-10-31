@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
  <head>
+  <link rel="icon" type="image/png" href="/assets/images/bcclogo-removebg-preview.png">
   <meta charset="utf-8"/>
   <meta content="width=device-width,initial-scale=1" name="viewport"/>
   <title>
@@ -642,6 +643,7 @@
         <label>
          2x2 Photo
         </label>
+        <p id="photoUploadInstructions" style="margin: 6px 0 12px; font-size: 13px; line-height: 1.6; color: #475569;">Upload a clear, upright 2x2 portrait photo of yourself wearing a plain white T-shirt against a plain white background. Face the camera and keep your face and shoulders fully visible. Upload the original digital photo, not a photo of a printed picture. Make sure the image is not sideways, upside down, blurry, or stretched.</p>
         <div class="enrollment-photo-upload-row">
          <label class="enrollment-dropzone enrollment-photo-dropzone">
           <svg viewbox="0 0 24 24">
@@ -651,7 +653,7 @@
           <span id="photoLabel">
            Click to upload photo
           </span>
-          <input accept="image/*" name="photo_file" required="" type="file"/>
+          <input accept="image/*" name="photo_file" aria-describedby="photoUploadInstructions" required="" type="file"/>
          </label>
          <img alt="Photo preview" class="enrollment-photo-preview hidden" id="photoPreview"/>
         </div>
