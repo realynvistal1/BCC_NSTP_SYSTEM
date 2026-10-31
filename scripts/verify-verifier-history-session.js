@@ -1,0 +1,4 @@
+const assert=require('node:assert/strict'),db=require('../config/database'),controller=require('../controllers/rotcVerifierController');
+(async()=>{try{for(const [mi,type] of [['1','in'],['1','out'],['2','in']]){
+let code=200,rows;await controller.audit({query:{ms_level:'1',school_year:'2026-2027',mi_number:mi,mi_type:type}},{status(n){code=n;return this},json(v){rows=v}});assert.equal(code,200);assert(rows.every(r=>String(r.ms_level)==='1'&&r.school_year==='2026-2027'&&String(r.mi_number)===mi&&r.mi_type===type));console.log('PASS SQL history filter: MI',mi,type,rows.length,'updates');
+}let code;await controller.audit({query:{ms_level:'1',school_year:'2026-2027',mi_number:'1',mi_type:'bad'}},{status(n){code=n;return this},json(){}});assert.equal(code,400);console.log('PASS invalid type rejected');}finally{await db.end()}})().catch(e=>{console.error(e);process.exitCode=1});
