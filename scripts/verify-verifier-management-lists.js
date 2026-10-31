@@ -11,8 +11,8 @@ const context={console,$:selector=>nodes[selector],esc:value=>String(value??''),
 vm.createContext(context);vm.runInContext(fs.readFileSync('public/js/shared/rotc-verifiers.js','utf8'),context);
 const assignments=Array.from({length:14},(_,i)=>({id:i+1,active:i<11?1:0,eligible:i===10?0:1,first_name:'Student',last_name:String(i+1),student_id:'ID-'+(i+1),battalion:1,company:'Alpha',platoon:1,ms_level:1,school_year:'2026-2027',mi_number:1,mi_type:'in'}));
 assignments.forEach((a,i)=>{if(i%2===0){a.active=String(a.active);a.eligible=String(a.eligible);}});
-const log=Array.from({length:12},(_,i)=>({id:i+1,first_name:'Student',last_name:String(i+1),student_id:'ID-'+(i+1),mi_number:1,mi_type:'in',previous_status:'present',status:'absent'}));
-const state={access:'all',search:'',historySearch:'',assignmentPage:1,historyPage:1,assignmentsOpen:true,historyOpen:true};
+const log=Array.from({length:12},(_,i)=>({ms_level:1,school_year:'2026-2027',id:i+1,first_name:'Student',last_name:String(i+1),student_id:'ID-'+(i+1),mi_number:1,mi_type:'in',previous_status:'present',status:'absent'}));
+const state={miNumber:'1',miType:'in',cycle:{ms_level:'1',school_year:'2026-2027'},access:'all',search:'',historySearch:'',assignmentPage:1,historyPage:1,assignmentsOpen:true,historyOpen:true};
 context.renderVerifierManagementLists({},assignments,log,state);
 const rows=()=>[...nodes['#verifierAssignmentResults'].innerHTML.matchAll(/class="verifier-assignment-row"/g)].length;
 assert.equal(rows(),5);assert(!nodes['#verifierAssignmentResults'].innerHTML.includes('Revoked'));
@@ -36,3 +36,30 @@ nodes['#verifierHistorySearch'].oninput({target:{value:'ID-12'}});assert.equal(s
 nodes['#verifierAssignmentsDisclosure'].ontoggle({target:{open:false}});assert.equal(state.assignmentsOpen,false);
 nodes['#verifierHistoryDisclosure'].ontoggle({target:{open:false}});assert.equal(state.historyOpen,false);
 console.log('PASS: five-row assignment/history pagination, active/revoked/blocked filters, search, empty states, correct history indices and collapsed state.');
+
+assignments.push({...assignments[0],id:90,student_id:'MS2-ONLY',ms_level:2,school_year:'2026-2027'});
+assignments.push({...assignments[0],id:91,student_id:'OLD-YEAR',ms_level:1,school_year:'2025-2026'});
+log.push({...log[0],id:90,student_id:'MS2-ONLY',ms_level:2,school_year:'2026-2027'});
+log.push({...log[0],id:91,student_id:'OLD-YEAR',ms_level:1,school_year:'2025-2026'});
+state.access='all';state.search='';state.historySearch='';state.assignmentPage=1;state.historyPage=1;
+context.renderVerifierManagementLists({},assignments,log,state);
+assert.match(nodes['#verifierAssignmentPagination'].innerHTML,/of 14/);
+assert.match(nodes['#verifierHistoryPagination'].innerHTML,/of 12/);
+state.cycle={ms_level:'2',school_year:'2026-2027'};
+context.renderVerifierManagementLists({},assignments,log,state);
+assert.match(nodes['#verifierAssignmentResults'].innerHTML,/MS2-ONLY/);assert(!nodes['#verifierAssignmentResults'].innerHTML.includes('OLD-YEAR'));
+assert.match(nodes['#verifierHistoryResults'].innerHTML,/MS2-ONLY/);assert.match(nodes['#verifierHistoryResults'].innerHTML,/data-view-change="12"/);
+assert.match(nodes['#verifierAssignmentPagination'].innerHTML,/of 1/);assert.match(nodes['#verifierHistoryPagination'].innerHTML,/of 1/);
+state.cycle=null;context.renderVerifierManagementLists({},assignments,log,state);
+assert.equal(rows(),0);assert.match(nodes['#verifierAssignmentResults'].innerHTML,/Select an MS level/);assert.match(nodes['#verifierHistoryPagination'].innerHTML,/of 0/);
+console.log('PASS: both lists follow MS level and school year; no selection shows no records; scoped counts and history indices preserved.');
+
+state.cycle={ms_level:'2',school_year:'2026-2027'};state.miNumber='1';state.miType='in';
+log.push({...log[12],id:92,student_id:'OUT-ONLY',mi_type:'out'});
+log.push({...log[12],id:93,student_id:'MI2-ONLY',mi_number:2});
+context.renderVerifierManagementLists({},assignments,log,state);
+assert.match(nodes['#verifierHistoryResults'].innerHTML,/MS2-ONLY/);assert(!nodes['#verifierHistoryResults'].innerHTML.includes('OUT-ONLY'));assert(!nodes['#verifierHistoryResults'].innerHTML.includes('MI2-ONLY'));
+state.miType='out';context.renderVerifierManagementLists({},assignments,log,state);assert.match(nodes['#verifierHistoryResults'].innerHTML,/OUT-ONLY/);assert(!nodes['#verifierHistoryResults'].innerHTML.includes('MS2-ONLY'));
+state.miNumber='2';state.miType='in';context.renderVerifierManagementLists({},assignments,log,state);assert.match(nodes['#verifierHistoryResults'].innerHTML,/MI2-ONLY/);
+state.miType='';context.renderVerifierManagementLists({},assignments,log,state);assert.match(nodes['#verifierHistoryPagination'].innerHTML,/of 0/);
+console.log('PASS: MI 1 IN, MI 1 OUT and MI 2 histories stay separate; incomplete filters show no history.');
