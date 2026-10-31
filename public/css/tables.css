@@ -376,3 +376,22 @@
   }
 }
 
+
+/* Concise offense detail: one status strip and plain information rows. */
+.offense-simple-body { padding: 20px 24px; }
+.offense-simple-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 15px; border: 1px solid #e1e6ed; border-radius: 9px; background: #f8fafc; color: #334155; }
+.offense-simple-status.warning { background: #fff9ed; border-color: #f0d9a7; color: #8a5919; }
+.offense-simple-status.restricted { background: #fff4f4; border-color: #efcccc; color: #a03b3b; }
+.offense-simple-status.resolved { background: #f0f8f3; border-color: #c9e1d1; color: #39704e; }
+.offense-simple-status strong { font-size: 15px; }
+.offense-simple-status span { font-size: 12px; white-space: nowrap; }
+.offense-simple-details { margin: 16px 0 0; }
+.offense-simple-details > div { display: flex; justify-content: space-between; gap: 18px; padding: 11px 0; border-bottom: 1px solid #edf0f4; font-size: 13px; line-height: 1.5; }
+.offense-simple-details > div:last-child { border-bottom: 0; }
+.offense-simple-details dt { color: #718096; }
+.offense-simple-details dd { margin: 0; color: #334155; text-align: right; font-weight: 600; }
+@media (max-width: 520px) {
+  .offense-simple-body { padding: 16px; }
+  .offense-simple-details > div { flex-direction: column; gap: 3px; }
+  .offense-simple-details dd { text-align: left; }
+}
