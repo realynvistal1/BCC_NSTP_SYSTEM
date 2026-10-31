@@ -33,3 +33,19 @@
 }
 
 .re-saved-requirement { display:block; padding:10px 12px; border:1px solid #cee7da; border-radius:7px; color:#286b4c; background:#f0faf4; font-size:12px; line-height:1.5; }
+
+/* Keep replacement upload controls within a phone-width viewport. */
+@media (max-width: 600px) {
+  body[data-page="re-enrollment"] #reEnrollForm,
+  body[data-page="re-enrollment"] .re-enroll-section-grid > .field { min-width: 0; max-width: 100%; }
+  body[data-page="re-enrollment"] #reEnrollForm input[type="file"] {
+    display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    padding: 9px; font-size: 12px; overflow: hidden;
+  }
+  body[data-page="re-enrollment"] #reEnrollForm input[type="file"]::file-selector-button {
+    padding: 7px 9px; margin-right: 7px; border: 1px solid #ccd9e7; border-radius: 6px;
+    background: #f1f5fa; color: #334e6b; font: inherit;
+  }
+  body[data-page="re-enrollment"] #reEnrollForm select { width: 100%; min-width: 0; max-width: 100%; font-size: 14px; }
+  body[data-page="re-enrollment"] #reEnrollForm .field small { line-height: 1.5; overflow-wrap: anywhere; }
+}
