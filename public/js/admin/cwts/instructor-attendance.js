@@ -50,8 +50,12 @@ function openCwtsCorrection(row,assignment,reload,trigger){
   dialog.addEventListener('cancel',e=>{if(saving)e.preventDefault();});dialog.addEventListener('close',()=>{dialog.remove();trigger?.focus();},{once:true});
   dialog.querySelector('[data-review]').onclick=async()=>{close();await reload();};
   const form=dialog.querySelector('form'),submit=form.querySelector('[type=submit]');
+  const unchangedStatus=()=>!form.elements.status.value||form.elements.status.value===row.status;
+  const updateSaveState=()=>{submit.disabled=saving||stale||unchangedStatus();};
+  form.elements.status.onchange=updateSaveState;
+  updateSaveState();
   form.onsubmit=async event=>{
-    event.preventDefault();if(saving||stale)return;
+    event.preventDefault();if(saving||stale||unchangedStatus())return;
     const reason=form.elements.reason.value.trim();if(!reason){form.elements.reason.setCustomValidity('Enter a reason.');form.elements.reason.reportValidity();return;}
     saving=true;dialog.querySelectorAll('button').forEach(b=>b.disabled=true);submit.textContent='Saving…';
     try{
@@ -59,7 +63,7 @@ function openCwtsCorrection(row,assignment,reload,trigger){
       dialog.close();toast(result.message);await reload();
     }catch(error){const message=form.querySelector('.attendance-save-error');message.hidden=false;message.textContent=error.message;
       if([401,403,409].includes(error.status)){stale=true;dialog.querySelector('[data-review]').hidden=false;}
-    }finally{saving=false;dialog.querySelectorAll('button').forEach(b=>b.disabled=false);submit.disabled=stale;submit.textContent='Save';}
+    }finally{saving=false;dialog.querySelectorAll('button').forEach(b=>b.disabled=false);submit.disabled=stale||unchangedStatus();submit.textContent='Save';}
   };
   form.elements.reason.oninput=()=>form.elements.reason.setCustomValidity('');document.body.appendChild(dialog);dialog.showModal();
 }
