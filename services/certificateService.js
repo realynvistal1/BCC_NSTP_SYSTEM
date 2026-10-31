@@ -2,6 +2,25 @@ const { displaySuffix } = require('./nameSuffixService');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const sharp = require('sharp');
+const { randomBytes } = require('node:crypto');
+
+// Reader-enforced restrictions; these do not prevent screenshots or bypass tools.
+function certificateProtection() {
+  return {
+    pdfVersion: '1.7',
+    ownerPassword: randomBytes(32).toString('hex'),
+    userPassword: '',
+    permissions: {
+      printing: 'highResolution',
+      modifying: false,
+      copying: false,
+      annotating: false,
+      fillingForms: false,
+      contentAccessibility: true,
+      documentAssembly: false,
+    },
+  };
+}
 
 function dataUrlBuffer(value) {
   if (!value || !/^data:image\//.test(value)) return null;
@@ -217,7 +236,8 @@ function drawRotcSigners(doc, settings, width) {
 
   signers.forEach(([name, label, signature], index) => {
     const x = 70 + index * spacing;
-    putImage(doc, signature, x + spacing / 2 - 75, y - 14, 150, 38);
+    // Center the signature on the printed name rather than above it.
+    putImage(doc, signature, x + spacing / 2 - 75, y, 150, 38);
 
     doc.font('Helvetica-Bold')
       .fillColor('#111827')
@@ -359,7 +379,7 @@ function drawCwtsSigners(doc, settings, width) {
   ];
 
   signers.forEach((signer) => {
-    putImage(doc, signer.signature, signer.x + signer.width / 2 - 70, signer.y - 34, 140, 40);
+    putImage(doc, signer.signature, signer.x + signer.width / 2 - 70, signer.y - 12, 140, 40);
 
     doc.font('Helvetica-Bold')
       .fillColor('#111827')
@@ -758,58 +778,85 @@ async function registrationFormsPdf(res, { records, program, assets, filters }) 
 }
 
 async function certificatePdf(res, { student, serial, settings, program, assets }) {
-  const preparedSettings = await prepareCertificateSettings(settings, program);
-  const doc = new PDFDocument({
-    size: program === 'ROTC' ? 'LEGAL' : 'A4',
-    layout: 'landscape',
-    margin: 24,
-  });
   const filename = `${student.student_id || 'student'}-${serial.serial_number}.pdf`
     .replace(/[^a-zA-Z0-9._-]/g, '-');
-
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  doc.pipe(res);
-
-  drawCertificateByProgram(doc, {
-    student,
-    serial,
-    settings: preparedSettings,
-    program,
-    assets,
-  });
-  doc.end();
+  return flattenedCertificatesPdf(res, { records: [{ student, serial }], settings, program, assets, filename });
 }
 
 async function certificatesPdf(res, { records, settings, program, assets }) {
+  const filename = `${String(program || 'nstp').toLowerCase()}-filtered-certificates.pdf`;
+  return flattenedCertificatesPdf(res, { records, settings, program, assets, filename });
+}
+
+async function certificatePageImage(record, settings, program, assets) {
+  const source = new PDFDocument({ size: program === 'ROTC' ? 'LEGAL' : 'A4', layout: 'landscape', margin: 24 });
+  const chunks = [];
+  const complete = new Promise((resolve, reject) => {
+    source.on('data', chunk => chunks.push(chunk));
+    source.on('end', resolve);
+    source.on('error', reject);
+  });
+  drawCertificateByProgram(source, { ...record, settings, program, assets });
+  source.end();
+  await complete;
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const pdfRoot = path.dirname(require.resolve('pdfjs-dist/package.json'));
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(Buffer.concat(chunks)),
+    standardFontDataUrl: path.join(pdfRoot, 'standard_fonts').replace(/\\/g, '/') + '/',
+    useSystemFonts: false,
+    isEvalSupported: false,
+  });
+  try {
+    const pdf = await task.promise;
+    if (pdf.numPages !== 1) throw new Error('Certificate must fit on one page.');
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 200 / 72 });
+    const surface = pdf.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
+    try {
+      await page.render({ canvasContext: surface.context, viewport, background: '#ffffff' }).promise;
+      return surface.canvas.toBuffer('image/png');
+    } finally {
+      pdf.canvasFactory.destroy(surface);
+      page.cleanup();
+    }
+  } finally {
+    await task.destroy();
+  }
+}
+
+async function flattenedCertificatesPdf(res, { records, settings, program, assets, filename }) {
+  if (!records.length) throw new Error('No certificates to download.');
   const preparedSettings = await prepareCertificateSettings(settings, program);
   const pageOptions = {
     size: program === 'ROTC' ? 'LEGAL' : 'A4',
     layout: 'landscape',
     margin: 24,
   };
-  const doc = new PDFDocument(pageOptions);
-  const filename = `${String(program || 'nstp').toLowerCase()}-filtered-certificates.pdf`;
+  // Render before sending headers. Never fall back to a PDF with separate signatures.
+  let image = await certificatePageImage(records[0], preparedSettings, program, assets);
+  const doc = new PDFDocument({ ...pageOptions, ...certificateProtection() });
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Cache-Control', 'no-store');
+  doc.on('error', error => res.destroy(error));
   doc.pipe(res);
-
-  records.forEach((record, index) => {
-    if (index > 0) {
-      doc.addPage(pageOptions);
+  try {
+    for (let index = 0; index < records.length; index++) {
+      if (index > 0) {
+        image = await certificatePageImage(records[index], preparedSettings, program, assets);
+        doc.addPage(pageOptions);
+      }
+      // Exactly one opaque image per page: no individual signature objects or text layer.
+      doc.image(image, 0, 0, { width: doc.page.width, height: doc.page.height });
     }
-
-    drawCertificateByProgram(doc, {
-      student: record.student,
-      serial: record.serial,
-      settings: preparedSettings,
-      program,
-      assets,
-    });
-  });
-
-  doc.end();
+    doc.end();
+  } catch (error) {
+    doc.destroy();
+    res.destroy(error);
+    throw error;
+  }
 }
 
 module.exports = {
