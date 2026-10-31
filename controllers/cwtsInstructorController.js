@@ -108,6 +108,7 @@ exports.verify=endpoint(async(req,res)=>{
     const [[before]]=await connection.execute('SELECT * FROM attendance_records WHERE student_id=? AND attendance_session_id=? FOR UPDATE',[studentId,allowed.id]);
     if(before ? (!Number.isSafeInteger(req.body.expected_version)||req.body.expected_version!==Number(before.record_version)) : req.body.expected_version!==null)
       fail(409,'This record has changed. Refresh and review it before saving.');
+    if(before?.status===status)fail(400,'Attendance is already marked with this status. Choose a different status.');
     const falseClaim=status==='absent'&&(offenses.isAttendanceClaim(before)||Number(before?.false_present)===1);
     const newFalseClaim=falseClaim&&!Number(before?.false_present);
     let recordId=before?.id;
@@ -128,11 +129,15 @@ exports.verify=endpoint(async(req,res)=>{
   }catch(error){await connection.rollback();throw error;}finally{connection.release();}
 });
 exports.audit=endpoint(async(req,res)=>{
+  const level=String(req.query?.ms_level||''),year=String(req.query?.school_year||''),mi=String(req.query?.mi_number||''),type=String(req.query?.mi_type||'').toLowerCase();
+  const scoped=Boolean(level||year||mi||type);
+  if(scoped&&(!['1','2'].includes(level)||!/^\d{4}-\d{4}$/.test(year)||!/^([1-9]|1[0-5])$/.test(mi)||!['in','out'].includes(type)))return res.status(400).json({message:'Select CWTS level, school year, CS number, and IN or OUT.'});
+  const filter=scoped?'WHERE ses.ms_level=? AND ses.school_year=? AND ses.mi_number=? AND ses.mi_type=?':'';
   const [rows]=await db.execute(`SELECT l.*,s.student_id,s.first_name,s.last_name,i.first_name verifier_first_name,i.last_name verifier_last_name,
     a.company,ses.mi_number,ses.mi_type,ses.ms_level,ses.school_year,'CWTS' program,'Instructor' verifier_role
     FROM cwts_attendance_verification_log l JOIN attendance_records ar ON ar.id=l.record_id
     JOIN students s ON s.id=ar.student_id JOIN cwts_instructors i ON i.id=l.instructor_id
     JOIN cwts_instructor_assignments a ON a.id=l.assignment_id
-    JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id ORDER BY l.id DESC LIMIT 200`);
+    JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id ${filter} ORDER BY l.id DESC ${scoped?'':'LIMIT 200'}`,scoped?[level,year,Number(mi),type]:[]);
   res.json(rows);
 });
