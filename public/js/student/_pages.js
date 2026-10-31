@@ -1,4 +1,4 @@
-﻿async function studentPage(page,c){
+async function studentPage(page,c){
   const d=await API.get('/api/student/dashboard');
   const s=d.student||{
   }
@@ -216,6 +216,7 @@ function organizeReEnrollmentForm(form,isRotc){
     if(!fields.length)return;
     const card=document.createElement('section');
     card.className='re-enroll-section';
+    if(title==='Enrollment Requirements')card.classList.add('re-requirements-section');
     card.innerHTML=`<div class="re-enroll-section-head"><div><h3>${esc(title)}</h3><p>${esc(description)}</p></div></div><div class="re-enroll-section-grid"></div>`;
     const grid=card.querySelector('.re-enroll-section-grid');
     fields.forEach((item)=>grid.appendChild(item));
@@ -244,8 +245,8 @@ function organizeReEnrollmentForm(form,isRotc){
       field('[name="willing_to_take_advance_course"]'),
     ]);
   }
-  section('Enrollment Requirements','Upload replacements only when a document needs to be updated.',[
-    field('#reMedicalCertificate'),field('#reCorFile'),field('#reXrayFile'),
+  section('Enrollment Requirements','Upload a new COR. Reuse your saved Medical Certificate and X-ray, or upload replacements.',[
+    field('#reMedicalCertificate'),field('#reXrayFile'),field('#reCorFile'),
   ]);
 
   const remaining=Array.from(form.children).filter((item)=>item.classList?.contains('field'));
@@ -316,14 +317,22 @@ async function renderReEnrollment(c){
       const field=input.closest('.field');
       const saved=Boolean(s.saved_requirements?.[key]);
       field.querySelector('label').textContent=label;
-      if(saved){
-        input.disabled=true;input.hidden=true;
-        const status=document.createElement('span');status.className='re-saved-requirement';status.textContent='Already submitted - reused for this enrollment.';
-        field.appendChild(status);
+      input.disabled=false;input.hidden=false;
+      if(key==='cor_file'){
+        input.required=true;
+        const note=document.createElement('small');note.textContent='Upload your COR for the second semester.';field.appendChild(note);
+      }else if(saved){
+        const choice=document.createElement('select');choice.setAttribute('aria-label',label+' upload option');
+        choice.innerHTML='<option value="reuse">Reuse saved file</option><option value="new">Upload new file</option>';
+        input.before(choice);
+        const sync=()=>{input.disabled=choice.value==='reuse';input.hidden=input.disabled;input.required=!input.disabled;if(input.disabled)input.value='';};
+        choice.onchange=sync;sync();
       }else{
-        const note=document.createElement('small');note.textContent='No saved file. Upload PDF or image, up to 5 MB.';field.appendChild(note);
+        input.required=true;
+        const note=document.createElement('small');note.textContent='Upload your '+label.toLowerCase()+'.';field.appendChild(note);
       }
     }
+
     organizeReEnrollmentForm(form,supportsRotc);
     const componentSelect=$('#reNstpComponent');
     const targetNotice=c.querySelector('.panel > .notice');
@@ -351,6 +360,8 @@ async function renderReEnrollment(c){
       const xrayField=form.querySelector('#reXrayFile')?.closest('.field');
       preferenceSection?.classList.toggle('hidden',!rotc);
       xrayField?.classList.toggle('hidden',!rotc);
+      const xrayInput=form.querySelector('#reXrayFile');
+      if(xrayInput){const choice=xrayField.querySelector('select');xrayInput.disabled=!rotc||choice?.value==='reuse';xrayInput.required=rotc&&!xrayInput.disabled;}
       const selectedSchedule=scheduleByProgram.get(selected)||data.schedule;
       if(targetNotice){
         targetNotice.innerHTML=`<strong>Target Level:</strong> ${esc(selected==='ROTC'?`MS ${data.target_level||'1'}`:`CWTS ${data.target_level||'1'}`)}${selectedSchedule?.year?` • <strong>School Year:</strong> ${esc(selectedSchedule.year)}`:''}`;
@@ -393,9 +404,10 @@ async function renderReEnrollment(c){
         payload.willing_to_take_advance_course=form.querySelector('input[name="willing_to_take_advance_course"]')?.checked?1:0;
         payload.willing_to_be_medics=form.querySelector('input[name="willing_to_be_medics"]')?.checked?1:0;
         payload.willing_to_be_military_police=form.querySelector('input[name="willing_to_be_military_police"]')?.checked?1:0;
-        const medicalFile=s.saved_requirements?.medical_certificate?null:$('#reMedicalCertificate')?.files?.[0];
-        const corFile=s.saved_requirements?.cor_file?null:$('#reCorFile')?.files?.[0];
-        const xrayFile=s.saved_requirements?.xray_file?null:$('#reXrayFile')?.files?.[0];
+        const medicalFile=$('#reMedicalCertificate')?.disabled?null:$('#reMedicalCertificate')?.files?.[0];
+        const corFile=$('#reCorFile')?.files?.[0];
+        if(!corFile)throw new Error('Upload a new COR for this enrollment.');
+        const xrayFile=$('#reXrayFile')?.disabled?null:$('#reXrayFile')?.files?.[0];
         const files=[medicalFile,corFile,(componentSelect?.value||s.nstp_component)==='ROTC'?xrayFile:null].filter(Boolean);
         if(files.some(file=>file.size>5*1024*1024))throw new Error('Each requirement must be 5 MB or smaller.');
         if(medicalFile)payload.medical_certificate=await enrollmentFileAsDataUrl(medicalFile);
