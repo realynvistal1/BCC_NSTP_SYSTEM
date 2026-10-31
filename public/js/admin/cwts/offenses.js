@@ -69,7 +69,7 @@ async function renderAdminOffenses(_program, content, auth) {
             <option value="">All School Years</option>
             ${years.map((year) => `<option value="${esc(year)}">SY ${esc(year)}</option>`).join('')}
           </select>
-          <input id="offenseSearch" type="search" placeholder="Search by name, student ID, or course...">
+          <input id="offenseSearch" type="search" placeholder="Search by name or student ID...">
           <button class="clear-filter-btn" id="clearOffenseFilters" type="button">Clear Filters</button>
         </div>
       </div>
@@ -125,7 +125,7 @@ async function renderAdminOffenses(_program, content, auth) {
 
       if (
         query
-        && !`${offenseName(row)} ${row.student_no || ''} ${row.course || ''}`
+        && !`${offenseName(row)} ${row.student_no || ''}`
           .toLowerCase()
           .includes(query)
       ) {
@@ -157,7 +157,7 @@ async function renderAdminOffenses(_program, content, auth) {
 
       if (
         query
-        && !`${offenseName(row)} ${row.student_no || ''} ${row.course || ''}`
+        && !`${offenseName(row)} ${row.student_no || ''}`
           .toLowerCase()
           .includes(query)
       ) {
@@ -229,7 +229,6 @@ async function renderAdminOffenses(_program, content, auth) {
     const recordedAt = row.created_at ? new Date(row.created_at).toLocaleString() : 'Not available';
     const updatedAt = row.updated_at ? new Date(row.updated_at).toLocaleString() : recordedAt;
     const accessLabel = second ? (settled ? 'Access Restored' : 'Access Restricted') : 'Access Allowed';
-    const accessTone = second ? (settled ? 'accent-success' : 'accent-danger') : 'accent-info';
 
     body.innerHTML = `
       <div class="offense-detail-card offense-detail-modal">
@@ -246,52 +245,18 @@ async function renderAdminOffenses(_program, content, auth) {
           </div>
           <button class="modal-close" id="offenseClose" type="button" aria-label="Close offense detail">&times;</button>
         </div>
-        <div class="offense-detail-body">
-          <div class="offense-rule-banner ${second ? (settled ? 'resolved' : 'restricted') : 'warning'}">
-            <span>${second ? 'SECOND OFFENSE' : 'FIRST OFFENSE'}</span>
-            <div>
-              <strong>${second ? (settled ? 'Settlement completed' : 'Administrative settlement required') : 'Student warning issued'}</strong>
-              <p>${second
-                ? (settled
-                  ? 'The offense has been settled and the student may use the system normally.'
-                  : 'The student is restricted from normal system use until an administrator marks this offense as settled.')
-                : (acknowledged
-                  ? 'The student acknowledged the warning. No administrative settlement is required.'
-                  : 'The student must acknowledge this warning. No administrative settlement is required.')}</p>
-            </div>
+        <div class="offense-detail-body offense-simple-body">
+          <div class="offense-simple-status ${second ? (settled ? 'resolved' : 'restricted') : 'warning'}">
+            <strong>${second ? (settled ? 'Settlement completed' : 'Settlement required') : 'Warning'}</strong>
+            <span>${second ? '2nd offense' : '1st offense'}</span>
           </div>
-          <div class="offense-detail-summary">
-            <div class="offense-detail-item ${second ? 'accent-danger' : 'accent-warning'}">
-              <small>Offense Level</small>
-              <strong>${second ? '2nd Offense' : '1st Offense'}</strong>
-              <span>${second ? 'Not following attendance instructions' : 'Formal attendance warning'}</span>
-            </div>
-            <div class="offense-detail-item ${accessTone}">
-              <small>Student Account Access</small>
-              <strong>${accessLabel}</strong>
-              <span>${second && !settled ? 'Blocked until settlement' : 'Normal system access'}</span>
-            </div>
-            <div class="offense-detail-item ${acknowledged ? 'accent-success' : 'accent-warning'}">
-              <small>Warning Acknowledgement</small>
-              <strong>${acknowledged ? 'Acknowledged' : 'Awaiting Student'}</strong>
-              <span>${acknowledged ? new Date(row.warning_acknowledged_at).toLocaleString() : 'No acknowledgement recorded'}</span>
-            </div>
-            <div class="offense-detail-item ${second ? (settled ? 'accent-success' : 'accent-danger') : 'accent-info'}">
-              <small>Settlement Requirement</small>
-              <strong>${second ? (settled ? 'Settled' : 'Action Required') : 'Not Required'}</strong>
-              <span>${second ? (settled ? `Updated ${updatedAt}` : 'Administrator action needed') : 'First offense only'}</span>
-            </div>
-            <div class="offense-detail-item">
-              <small>Record Created</small>
-              <strong>${recordedAt}</strong>
-              <span>Initial offense record</span>
-            </div>
-            <div class="offense-detail-item">
-              <small>Last Updated</small>
-              <strong>${updatedAt}</strong>
-              <span>Latest offense activity</span>
-            </div>
-          </div>
+          <dl class="offense-simple-details">
+            <div><dt>Account access</dt><dd>${accessLabel}</dd></div>
+            ${!second ? `<div><dt>Warning</dt><dd>${acknowledged ? 'Acknowledged' : 'Awaiting acknowledgement'}</dd></div>` : ''}
+            <div><dt>Date recorded</dt><dd>${esc(recordedAt)}</dd></div>
+            ${updatedAt !== recordedAt ? `<div><dt>Last updated</dt><dd>${esc(updatedAt)}</dd></div>` : ''}
+            ${!second && acknowledged ? `<div><dt>Acknowledged on</dt><dd>${esc(new Date(row.warning_acknowledged_at).toLocaleString())}</dd></div>` : ''}
+          </dl>
         </div>
         <div class="offense-detail-actions">
           ${second && !settled
