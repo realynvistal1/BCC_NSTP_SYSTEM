@@ -72,7 +72,7 @@
 }
 .grade-tools {
   display: grid;
-  grid-template-columns: 180px 190px 160px 1fr auto auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding-bottom: 14px
 }
@@ -315,4 +315,12 @@
   .grade-input-grid {
     grid-template-columns: 1fr 1fr
   }
+}
+
+/* Keep search and export controls on a second row below grade filters. */
+.grade-tools input {
+  grid-column: span 2;
+}
+@media (max-width: 800px) {
+  .grade-tools input { grid-column: 1 / -1; }
 }
