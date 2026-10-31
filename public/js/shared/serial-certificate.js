@@ -216,11 +216,11 @@ async function renderAdminSerial(content, program) {
   }
   function filtered() {
     return cycleRows().filter((row) => {
-      const query = state.q.toLowerCase();
+      const query = state.q.trim().toLowerCase();
 
       if (
         query
-        && !`${row.student_no} ${row.first_name} ${row.last_name} ${row.course}`
+        && !`${row.student_no} ${row.first_name} ${row.last_name}`
           .toLowerCase()
           .includes(query)
       ) {
@@ -425,7 +425,7 @@ async function renderAdminSerial(content, program) {
       <div class="panel">
         <div class="serial-toolbar">
           <div class="search-box">
-            <input id="serialSearch" placeholder="Search Student ID, name, or course" value="${esc(state.q)}">
+            <input id="serialSearch" placeholder="Search Student ID or name" value="${esc(state.q)}">
           </div>
           <label class="serial-filter"><select id="serialElig">
               <option>All</option>
@@ -523,8 +523,12 @@ async function renderAdminSerial(content, program) {
     }
 
     $('#serialSearch').oninput = (event) => {
+      const { selectionStart, selectionEnd } = event.target;
       state.q = event.target.value;
       draw();
+      const search = $('#serialSearch');
+      search.focus({ preventScroll: true });
+      search.setSelectionRange(selectionStart, selectionEnd);
     };
     $('#serialElig').onchange = (event) => {
       state.elig = event.target.value;
