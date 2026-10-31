@@ -205,3 +205,11 @@ This build recreates the old assignment screens:
 - ROTC Platoon List with MS selector, summary cards, enrollment-close lock, Assign Platoons action, Battalion 1 (Male), Battalion 2 (Female), Advance Course, and Special Platoon sections.
 - ROTC rules: Alpha–Delta for Battalion 1, Echo–Hotel for Battalion 2, 4 platoons/company, 37 cadets/platoon; medical condition -> HQ, Medics preference -> Medics (37 max), MP preference -> MP (37 max), Advance Course kept separate.
 - CWTS Company List with Alpha–Foxtrot, 60 students/company, automatic company assignment on approval, capacity summaries, alphabetical sorting, and expandable company member tables.
+
+## CWTS company capacity
+
+CWTS administrators can choose a capacity from 1 to 1,000 when adding a company and use **Edit capacity** below its summary card. A company's capacity applies to all CWTS levels and school years. Company setup is locked once any CWTS schedule has completed assignment or existing student company assignments are present; add, edit, and delete are blocked on both the page and server. Changing a limit before assignment does not move or reassign students. Reductions are rejected if they fall below assigned students or leave insufficient total capacity for approved enrollments.
+
+Startup automatically runs the additive capacity migration. Existing companies keep their default 60 slots, and their pre-migration company rows are backed up in the private .local-backups folder. For a manual deployment, run npm run db:migrate:cwts-capacity before starting the updated app. Take a current production backup first; deploy the updated service, controllers, route, schema/migration, server, and UI together. No online changes were made by the local migration.
+
+Validation: npm run verify:cwts-capacity.
