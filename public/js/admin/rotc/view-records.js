@@ -276,9 +276,13 @@ async function renderAdminRecords(_program, content) {
 
   content.innerHTML = `
     <section class="records-tools rotc-record-tools">
+      <div class="records-filter-heading">
+        <span class="records-filter-emblem" aria-hidden="true">${icon('records')}</span>
+        <div><h2>Filter Student Records</h2><p>Narrow the list, then download the records you need.</p></div>
+      </div>
       <div class="record-search">
         <span>${icon('records')}</span>
-        <input id="recordSearch" placeholder="Search by name, student ID, or course...">
+        <input id="recordSearch" placeholder="Search by name or student ID...">
       </div>
       <select id="recordLevel">
         <option value="">All ${prefix} Levels</option>
@@ -383,7 +387,7 @@ async function renderAdminRecords(_program, content) {
       (!level || String(row.ms_level) === level)
       && (!schoolYear || row.school_year === schoolYear)
       && (!course || String(row.course || '').trim() === course)
-      && (!query || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`.toLowerCase().includes(query))
+      && (!query || `${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id}`.toLowerCase().includes(query))
     ));
   }
 
