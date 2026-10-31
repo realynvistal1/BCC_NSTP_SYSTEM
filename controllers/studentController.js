@@ -968,10 +968,13 @@ exports.markAttendance = async (req, res) => {
 };
 
 exports.reEnroll = async (req, res) => {
-  const connection = await db.getConnection();
+  let connection;
+  let transactionOpen=false;
 
   try {
+    connection=await db.getConnection();
     await connection.beginTransaction();
+    transactionOpen=true;
     await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE', [req.user.id]);
     const context = await resolveReEnrollContext(req.user.id, connection);
     if (context.status !== 200) {
@@ -1068,12 +1071,10 @@ exports.reEnroll = async (req, res) => {
           required: true,
         }))
       : null;
-    const corFile = body.cor_file == null || String(body.cor_file).trim() === ''
-      ? (student.cor_file || null)
-      : uploadValidation.validateDocumentUpload(body.cor_file, {
-        label: 'Certificate of Registration',
-        required: true,
-      });
+    const corFile = uploadValidation.validateDocumentUpload(body.cor_file, {
+      label: 'New Certificate of Registration for this enrollment',
+      required: true,
+    });
 
     await connection.execute(
       `UPDATE students SET
@@ -1136,6 +1137,7 @@ exports.reEnroll = async (req, res) => {
     );
 
     await connection.commit();
+    transactionOpen=false;
 
     return res.json({
       message: mode === 'retry'
@@ -1144,15 +1146,23 @@ exports.reEnroll = async (req, res) => {
     });
   } catch (error) {
     try {
-      await connection.rollback();
+      if(transactionOpen&&connection)await connection.rollback();
     } catch {
       // Ignore rollback errors after the main failure.
     }
 
-    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to complete this request. Please try again later.' });
+    transactionOpen=false;
+    const documentError = /^(Medical certificate|X-ray|New Certificate of Registration for this enrollment) (is required\.|must be |is too large\.)/.test(String(error.message || ''));
+    if(documentError)return res.status(400).json({message:error.message});
+    if(error.code==='ER_NET_PACKET_TOO_LARGE')return res.status(503).json({message:'The database upload limit is too small. Please contact your administrator.'});
+    if(!error.status)console.error('Re-enrollment failed:', {code:error.code||error.name});
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to submit re-enrollment. Please try again or contact your administrator.' });
   } finally {
     // Also release the transaction when validation returns before commit.
-    try { await connection.rollback(); } finally { connection.release(); }
+    if(connection){
+      try {if(transactionOpen)await connection.rollback();}catch{/* Connection may already be closed; preserve the original response. */}
+      finally{connection.release();}
+    }
   }
 };
 
@@ -1225,7 +1235,12 @@ exports.certificateSettings = async (req, res) => {
       [program]
     );
 
-    return res.json(rows[0] || {});
+    // Original signature images must remain available only to authorized staff.
+    const settings = Object.fromEntries(
+      Object.entries(rows[0] || {}).filter(([key]) => !key.toLowerCase().includes('signature'))
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(settings);
   } catch (error) {
     return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
   }
