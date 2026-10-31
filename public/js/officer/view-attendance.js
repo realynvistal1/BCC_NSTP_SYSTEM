@@ -334,7 +334,7 @@ function renderOfficerAttendanceTable(container, sessions, program) {
       const groupOk = !showRosterFilter || state.group === 'all' || officerStudentGroup(student) === state.group;
       const companyOk = !showCompanyFilter || state.company === 'all' || officerStudentFilterValue(student, state.group, program) === state.company;
       const platoonOk = !showPlatoonFilter || state.platoon === 'all' || officerStudentPlatoon(student) === state.platoon;
-      const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${officerAssignment(student) || ''} ${student.session_school_year || ''} ${student.session_ms_level || ''} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase();
+      const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''}`.toLowerCase();
       const rawStatus = String(student.attendance_status || '').toLowerCase();
       const status = ['present', 'late', 'absent'].includes(rawStatus) ? rawStatus : 'unmarked';
       const statusOk = state.status === 'all' || status === state.status;
@@ -805,12 +805,12 @@ async function openOfficerRecords(id) {
         const groupOk = group === 'all' || officerStudentGroup(student) === group;
         const companyOk = company === 'all' || officerStudentFilterValue(student, group, session.program) === company;
         const platoonOk = platoon === 'all' || officerStudentPlatoon(student) === platoon;
-        const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${officerAssignment(student) || ''}`.toLowerCase();
+        const text = `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''}`.toLowerCase();
         return groupOk && companyOk && platoonOk && text.includes(query);
       });
 
       $$('tbody tr', body).forEach((row) => {
-        const textOk = row.textContent.toLowerCase().includes(query);
+        const textOk = (row.cells[0]?.textContent || '').toLowerCase().includes(query);
         const groupOk = group === 'all' || row.dataset.group === group;
         const companyOk = company === 'all' || row.dataset.company === company;
         const platoonOk = platoon === 'all' || row.dataset.platoon === platoon;
