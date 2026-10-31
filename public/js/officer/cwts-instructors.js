@@ -1,8 +1,15 @@
-const cwtsManagementState={accountSearch:'',accountPage:1,assignmentPage:1,historyPage:1,access:'all'};
+function cwtsMatchesCycle(row, selection) {
+  return Boolean(selection?.ms_level&&selection?.school_year)&&String(row.ms_level)===String(selection.ms_level)&&row.school_year===selection.school_year;
+}
+function cwtsMatchesHistorySession(row, selection) {
+  return cwtsMatchesCycle(row,selection)&&Boolean(selection.mi_number)&&['in','out'].includes(selection.mi_type)
+    &&String(row.mi_number)===String(selection.mi_number)&&String(row.mi_type).toLowerCase()===selection.mi_type;
+}
+const cwtsManagementState={accountSearch:'',accountPage:1,assignmentPage:1,historyPage:1,access:'all',assignmentSearch:'',historySearch:''};
 function latestCwtsAssignmentSession(sessions) {
   return [...sessions].sort((a,b)=>new Date(b.open_date).getTime()-new Date(a.open_date).getTime()||Number(b.id)-Number(a.id))[0];
 }
-function bindCwtsSessionFilters(sessions,hasInstructor,assignments=[],instructors=[]){
+function bindCwtsSessionFilters(sessions,hasInstructor,assignments=[],instructors=[],onSessionChange=()=>{},savedSelection={}){
   const fields=['#cwtsAssignLevel','#cwtsAssignYear','#cwtsAssignNumber','#cwtsAssignType','#cwtsAssignSession'].map(selector=>$(selector));
   const keys=['ms_level','school_year','mi_number','mi_type','id'];
   const prompts=['Select CWTS level','Select school year','Select CS number','Select IN or OUT','Select session date'];
@@ -21,7 +28,7 @@ function bindCwtsSessionFilters(sessions,hasInstructor,assignments=[],instructor
     const matches = instructors.filter(i => i.status !== 'disabled' && (i.first_name + ' ' + i.last_name).toLowerCase().includes(query));
     instructorSelect.innerHTML = '<option value="" disabled>Select an instructor</option>' + matches.map(i => '<option value="' + i.id + '">' + esc(i.first_name + ' ' + i.last_name) + '</option>').join('');
     instructorSelect.value = matches.some(i => String(i.id) === selected) ? selected : '';
-    if ($('#cwtsInstructorMatches')) $('#cwtsInstructorMatches').textContent = matches.length ? matches.length + ' matching instructor(s).' : 'No instructors match your search.';
+    if ($('#cwtsInstructorMatches')) $('#cwtsInstructorMatches').textContent = query && !matches.length ? 'No instructors match your search.' : '';
     const occupied=assignments.find(a=>Number(a.active)===1&&String(a.attendance_session_id)===fields[4].value&&a.company===companySelect.value);
     for(const option of instructorSelect.options){
       if(!option.value)continue;
@@ -34,7 +41,7 @@ function bindCwtsSessionFilters(sessions,hasInstructor,assignments=[],instructor
     if ($('#cwtsInstructorSearch')) $('#cwtsInstructorSearch').disabled=Boolean(occupied);
     const available=instructors.some(i=>i.status!=='disabled'&&!activeInstructors.has(String(i.id)));
     warning.hidden=!occupied&&available;
-    warning.textContent=occupied?`Company ${occupied.company} already has an instructor: ${occupied.first_name} ${occupied.last_name}. Choose another company.`:'No available instructors. Revoke an active assignment to make its instructor available.';
+    warning.textContent=occupied?`Company ${occupied.company} already has an instructor: ${occupied.first_name} ${occupied.last_name}. Choose another company.`:instructors.some(i=>i.status!=='disabled') ? 'All instructors are assigned. Revoke an assignment to free one.' : 'Invite an instructor to get started.';
     button.disabled=!hasInstructor||!fields[4].value||!companySelect.value||!instructorSelect.value||Boolean(occupied);
   }
   function update(from){
@@ -55,12 +62,18 @@ function bindCwtsSessionFilters(sessions,hasInstructor,assignments=[],instructor
     $('#cwtsSessionHint').textContent=!sessions.length?'Create a CWTS attendance session first.':'';
     $('#cwtsSessionHint').hidden=Boolean(sessions.length);
     availability();
+    onSessionChange(Object.fromEntries(keys.slice(0,4).map((key,i)=>[key,fields[i].value])));
   }
   fields.forEach((field,i)=>field.onchange=()=>update(i+1));
   companySelect.onchange=availability;
   instructorSelect.onchange=availability;
   if ($('#cwtsInstructorSearch')) $('#cwtsInstructorSearch').oninput=availability;
   update(0);
+  for(let i=0;i<4;i++){
+    const saved=String(savedSelection[keys[i]]||'');
+    if(!saved||!Array.from(fields[i].options).some(option=>option.value===saved))break;
+    fields[i].value=saved;update(i+1);
+  }
 }
 function cwtsSessionLabel(s){return `CS ${s.mi_number} ${String(s.mi_type).toUpperCase()} · CWTS ${s.ms_level} · ${s.school_year} · ${attendanceUpdateDate(s.open_date)}`;}
 function cwtsPage(rows,page){const pages=Math.max(1,Math.ceil(rows.length/5));page=Math.min(Math.max(1,page),pages);return {rows:rows.slice((page-1)*5,page*5),page,pages,total:rows.length};}
@@ -70,18 +83,20 @@ function cwtsPager(node,page,onPage){
 }
 async function renderCwtsInstructors(){
   const content=$('#content');const generation=(content.cwtsGeneration||0)+1;content.cwtsGeneration=generation;
-  const [data,log]=await Promise.all([API.get('/api/officer/cwts-instructors'),API.get('/api/officer/cwts-verification-log')]);
+  const data=await API.get('/api/officer/cwts-instructors');
+  let log=[],historyRequest=0;
   if(content.cwtsGeneration!==generation)return;
   const enabled=data.instructors.filter(i=>i.status!=='disabled');
   const heading=(n,title,copy)=>`<div class="cwts-heading"><span class="cwts-step">${n}</span><div><h2>${title}</h2><p>${copy}</p></div></div>`;
   content.innerHTML=`<div class="cwts-workspace">${!data.email_ready?'<div class="cwts-note warning" role="status">Email invitations are not ready. Ask the system administrator to connect email delivery and the school website address. Existing instructor assignments can still be managed.</div>':''}
     <div class="cwts-two-column"><section class="panel cwts-mint">${heading('1','Invite an instructor','Their own account, using the existing CWTS login.')}
-    <form id="cwtsInviteForm" class="cwts-form"><label class="field">First name<input name="first_name" maxlength="100" autocomplete="given-name" required></label><label class="field">Last name<input name="last_name" maxlength="100" autocomplete="family-name" required></label><label class="field">Instructor email<input name="email" type="email" maxlength="255" autocomplete="email" required></label><p class="cwts-help">The email contains a one-time link to set a password, valid for 24 hours. Only the instructor chooses their password.</p><button class="btn primary" ${data.email_ready?'':'disabled'}>Create account &amp; send invitation</button></form></section>
+    <form id="cwtsInviteForm" class="cwts-form"><label class="field">First name<input name="first_name" maxlength="100" autocomplete="given-name" required></label><label class="field">Last name<input name="last_name" maxlength="100" autocomplete="family-name" required></label><label class="field">Instructor email<input name="email" type="email" maxlength="255" autocomplete="email" required></label><p class="cwts-help">Password setup link expires in 24 hours.</p><button class="btn primary" ${data.email_ready?'':'disabled'}>Create account &amp; send invitation</button></form></section>
     <section class="panel cwts-violet">${heading('2','Assign company attendance','Choose the instructor for one company and CS IN/OUT session.')}
-    <form id="cwtsAssignForm" class="cwts-form"><div class="cwts-session-fields"><label class="field">CWTS level<select id="cwtsAssignLevel" required></select></label><label class="field">School year<select id="cwtsAssignYear" required disabled></select></label><label class="field">CS number<select id="cwtsAssignNumber" required disabled></select></label><label class="field">Attendance type<select id="cwtsAssignType" required disabled></select></label></div><input type="hidden" name="session_id" id="cwtsAssignSession"><label class="field">Company<select name="company" required><option value="">Select company</option>${data.companies.map(c=>`<option value="${esc(c)}">Company ${esc(c)}</option>`).join('')}</select></label><div class="field"><label for="cwtsInstructorSearch">Instructor</label><div class="cwts-connected-picker"><div class="cwts-instructor-search"><span aria-hidden="true">${icon('records')}</span><input id="cwtsInstructorSearch" type="search" placeholder="Search instructor name" autocomplete="off" aria-controls="cwtsInstructorPicker"></div><label class="cwts-picker-label" for="cwtsInstructorPicker">Select an instructor</label><select id="cwtsInstructorPicker" name="instructor_id" size="5" required aria-describedby="cwtsInstructorMatches"><option value="" disabled selected>Select an instructor</option>${enabled.map(i=>`<option value="${i.id}">${esc(i.first_name+' '+i.last_name)}</option>`).join('')}</select></div><small id="cwtsInstructorMatches" role="status" aria-live="polite"></small></div><p class="cwts-help" id="cwtsSessionHint" role="status"></p><div class="cwts-note">One active assignment per instructor. Revoke an assignment before changing its instructor.</div>${!data.sessions.length?'<p class="cwts-help">Create a CWTS attendance session first.</p>':''}<button class="btn primary" ${enabled.length&&data.sessions.length?'':'disabled'}>Save assignment</button></form></section></div>
-    <section class="panel cwts-blue"><details open><summary class="cwts-heading"><div><h2>Instructor accounts</h2><p>${data.instructors.length} accounts · invitation delivery and access</p></div></summary><div class="cwts-toolbar"><label>Find an instructor<input id="cwtsAccountSearch" type="search" placeholder="Name or email" value="${esc(cwtsManagementState.accountSearch)}"></label><button class="btn" id="cwtsRefresh">Refresh</button></div><div id="cwtsAccounts"></div><div class="cwts-pagination" id="cwtsAccountPages"></div></details></section>
-    <section class="panel cwts-mint"><details open><summary class="cwts-heading"><div><h2>Company assignments</h2><p>Each assignment is limited to the selected company and session.</p></div></summary><div class="cwts-toolbar"><label>Assignment access<select id="cwtsAssignmentFilter"><option value="all">All assignments</option><option value="active">Active</option><option value="pending">Awaiting invitation</option><option value="disabled">Account disabled</option><option value="revoked">Revoked</option></select></label></div><div id="cwtsAssignments"></div><div class="cwts-pagination" id="cwtsAssignmentPages"></div></details></section>
-    <section class="panel cwts-violet" id="attendanceChanges"><details open><summary class="cwts-heading"><div><h2>CWTS attendance updates</h2><p>Latest ${log.length} updates · five per page</p></div></summary><div id="cwtsHistory"></div><div class="cwts-pagination" id="cwtsHistoryPages"></div></details></section></div>`;
+    <form id="cwtsAssignForm" class="cwts-form"><div class="cwts-session-fields"><label class="field">CWTS level<select id="cwtsAssignLevel" required></select></label><label class="field">School year<select id="cwtsAssignYear" required disabled></select></label><label class="field">CS number<select id="cwtsAssignNumber" required disabled></select></label><label class="field">Attendance type<select id="cwtsAssignType" required disabled></select></label></div><input type="hidden" name="session_id" id="cwtsAssignSession"><label class="field">Company<select name="company" required><option value="">Select company</option>${data.companies.map(c=>`<option value="${esc(c)}">Company ${esc(c)}</option>`).join('')}</select></label><div class="field"><label for="cwtsInstructorSearch">Instructor</label><div class="cwts-connected-picker"><div class="cwts-instructor-search"><span aria-hidden="true">${icon('records')}</span><input id="cwtsInstructorSearch" type="search" placeholder="Search instructor name" autocomplete="off" aria-controls="cwtsInstructorPicker"></div><label class="cwts-picker-label" for="cwtsInstructorPicker">Select an instructor</label><select id="cwtsInstructorPicker" name="instructor_id" size="5" required aria-describedby="cwtsInstructorMatches"><option value="" disabled selected>Select an instructor</option>${enabled.map(i=>`<option value="${i.id}">${esc(i.first_name+' '+i.last_name)}</option>`).join('')}</select></div><small id="cwtsInstructorMatches" role="status" aria-live="polite"></small></div><p class="cwts-help" id="cwtsSessionHint" role="status"></p><button class="btn primary" ${enabled.length&&data.sessions.length?'':'disabled'}>Save assignment</button></form></section></div>
+    <section class="panel cwts-blue"><details open><summary class="cwts-heading"><div><h2>Instructor accounts</h2><p>${data.instructors.length} accounts · invitation delivery and access</p></div></summary><div class="cwts-toolbar"><label>Find an instructor<input id="cwtsAccountSearch" type="search" placeholder="Search instructor name" value="${esc(cwtsManagementState.accountSearch)}"></label><button class="btn" id="cwtsRefresh">Refresh</button></div><div id="cwtsAccounts"></div><div class="cwts-pagination" id="cwtsAccountPages"></div></details></section>
+    <div class="cwts-management-lists">
+    <section class="panel cwts-mint"><details open><summary class="cwts-heading"><span class="cwts-list-icon" aria-hidden="true">${icon('users')}</span><div><span class="cwts-list-eyebrow">Assigned instructors</span><h2>Company assignments</h2><p>Each assignment is limited to the selected company and session.</p></div><span class="cwts-list-count" id="cwtsAssignmentCount">0 active</span></summary><div class="cwts-toolbar"><label>Find an instructor<input id="cwtsAssignmentSearch" type="search" placeholder="Search instructor name" value="${esc(cwtsManagementState.assignmentSearch)}"></label><label>Access<select id="cwtsAssignmentFilter"><option value="all">All assignments</option><option value="active">Active</option><option value="pending">Awaiting invitation</option><option value="disabled">Account disabled</option><option value="revoked">Revoked</option></select></label></div><div id="cwtsAssignments"></div><div class="cwts-pagination" id="cwtsAssignmentPages"></div></details></section>
+    <section class="panel cwts-violet" id="attendanceChanges"><details open><summary class="cwts-heading"><span class="cwts-list-icon" aria-hidden="true">${icon('records')}</span><div><span class="cwts-list-eyebrow">Activity log</span><h2>CWTS attendance updates</h2><p>Latest ${log.length} updates · five per page</p></div><span class="cwts-list-count" id="cwtsHistoryCount">0 updates</span></summary><div class="cwts-toolbar"><label>Find an update<input id="cwtsHistorySearch" type="search" placeholder="Student name or ID" value="${esc(cwtsManagementState.historySearch)}"></label><button class="btn small" id="cwtsHistoryRefresh" type="button">${icon('refresh')} Refresh</button></div><div id="cwtsHistory"></div><div class="cwts-pagination" id="cwtsHistoryPages"></div></details></section></div></div>`;
   const mutate=async(button,url,body,method='patch')=>{
     button.disabled=true;
     try{const result=await API[method](url,body);toast(result.message);await renderCwtsInstructors();}
@@ -89,7 +104,7 @@ async function renderCwtsInstructors(){
   };
   function drawAccounts(){
     const query=cwtsManagementState.accountSearch.trim().toLowerCase();
-    const page=cwtsPage(data.instructors.filter(i=>`${i.first_name} ${i.last_name} ${i.email}`.toLowerCase().includes(query)),cwtsManagementState.accountPage);cwtsManagementState.accountPage=page.page;
+    const page=cwtsPage(data.instructors.filter(i=>`${i.first_name} ${i.last_name}`.toLowerCase().includes(query)),cwtsManagementState.accountPage);cwtsManagementState.accountPage=page.page;
     $('#cwtsAccounts').innerHTML=table(['Instructor','Account','Invitation','Actions'],page.rows.map(i=>{
       const expired=i.delivery_status==='sent'&&Number(i.invitation_expires)<Date.now();
       const delivery=expired?'Link expired':({not_sent:'Not sent',sent:'Sent',failed:'Delivery failed',accepted:'Password set'}[i.delivery_status]||'Not sent');
@@ -100,15 +115,17 @@ async function renderCwtsInstructors(){
     $('#cwtsAccounts').querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>mutate(b,`/api/officer/cwts-instructors/${b.dataset.account}/status`,{status:b.dataset.status}));
   }
   function drawAssignments(){
+    const count=$('#cwtsAssignmentCount');if(count)count.textContent=data.assignments.filter(a=>cwtsMatchesCycle(a,cwtsManagementState.session)&&Number(a.active)===1&&a.instructor_status==='active').length+' active';
     const access=a=>Number(a.active)?a.instructor_status:'revoked';
-    const page=cwtsPage(data.assignments.filter(a=>cwtsManagementState.access==='all'||access(a)===cwtsManagementState.access),cwtsManagementState.assignmentPage);cwtsManagementState.assignmentPage=page.page;
-    $('#cwtsAssignments').innerHTML=table(['Instructor','Company & session','Access','Action'],page.rows.map(a=>`<tr><td><strong>${esc(a.first_name+' '+a.last_name)}</strong></td><td><strong>Company ${esc(a.company)}</strong><small>${esc(cwtsSessionLabel(a))}</small></td><td><span class="cwts-badge ${access(a)}">${esc(access(a)==='pending'?'Awaiting invitation':access(a))}</span></td><td>${Number(a.active)?`<button class="btn small" data-revoke-cwts="${a.id}">Revoke assignment</button>`:'Access removed'}</td></tr>`));
+    const page=cwtsPage(data.assignments.filter(a=>cwtsMatchesCycle(a,cwtsManagementState.session)&&(cwtsManagementState.access==='all'||access(a)===cwtsManagementState.access)&&[a.first_name,a.last_name].join(' ').toLowerCase().includes(cwtsManagementState.assignmentSearch.trim().toLowerCase())),cwtsManagementState.assignmentPage);cwtsManagementState.assignmentPage=page.page;
+    $('#cwtsAssignments').innerHTML=page.rows.length?table(['Instructor','Company & session','Access','Action'],page.rows.map(a=>`<tr><td><strong>${esc(a.first_name+' '+a.last_name)}</strong></td><td><div class="cwts-assigned-company">${icon('platoon')}<strong>Company ${esc(a.company)}</strong></div><div class="cwts-session-tags"><span>CWTS ${esc(a.ms_level)}</span><span>SY ${esc(a.school_year)}</span><span>CS ${esc(a.mi_number)} / ${esc(a.mi_type.toUpperCase())}</span></div></td><td><span class="cwts-badge ${access(a)}">${esc(access(a)==='pending'?'Awaiting invitation':access(a))}</span></td><td>${Number(a.active)?`<button class="btn small" data-revoke-cwts="${a.id}">${icon('logout')} Revoke Access</button>`:'Access removed'}</td></tr>`)):'<div class="cwts-list-empty"><span aria-hidden="true">&#9671;</span><strong>No matching assignments</strong><p>Try another search or choose All assignments.</p></div>';
     cwtsPager($('#cwtsAssignmentPages'),page,p=>{cwtsManagementState.assignmentPage=p;drawAssignments();});
     $('#cwtsAssignments').querySelectorAll('[data-revoke-cwts]').forEach(b=>b.onclick=()=>mutate(b,`/api/officer/cwts-instructor-assignments/${b.dataset.revokeCwts}/revoke`,{}));
   }
   function drawHistory(){
-    const page=cwtsPage(log,cwtsManagementState.historyPage);cwtsManagementState.historyPage=page.page;
-    $('#cwtsHistory').innerHTML=page.rows.length?page.rows.map(r=>`<article class="attendance-history-row"><div class="attendance-history-student"><strong>${esc(r.first_name+' '+r.last_name)}</strong><span>Company ${esc(r.company)} · CS ${r.mi_number} ${esc(r.mi_type.toUpperCase())}</span></div><div class="attendance-history-transition">${badge(r.previous_status)} &rarr; ${badge(r.status)}</div><time>${esc(attendanceUpdateDate(r.verified_at))}</time><button class="btn small" data-history="${r.id}">View details</button></article>`).join(''):'<div class="cwts-note">No instructor corrections yet.</div>';
+    const count=$('#cwtsHistoryCount');if(count)count.textContent=log.filter(r=>cwtsMatchesHistorySession(r,cwtsManagementState.session)).length+' updates';
+    const page=cwtsPage(log.filter(r=>cwtsMatchesHistorySession(r,cwtsManagementState.session)&&[r.first_name,r.last_name,r.student_id].join(' ').toLowerCase().includes(cwtsManagementState.historySearch.trim().toLowerCase())),cwtsManagementState.historyPage);cwtsManagementState.historyPage=page.page;
+    $('#cwtsHistory').innerHTML=page.rows.length?page.rows.map(r=>`<article class="attendance-history-row"><div class="attendance-history-student"><strong>${esc(r.first_name+' '+r.last_name)}</strong><span>Company ${esc(r.company)} · CS ${r.mi_number} ${esc(r.mi_type.toUpperCase())}</span></div><div class="attendance-history-transition">${badge(r.previous_status)} &rarr; ${badge(r.status)}</div><time>${esc(attendanceUpdateDate(r.verified_at))}</time><button class="btn small" data-history="${r.id}">${icon('records')} View Details</button></article>`).join(''):'<div class="cwts-list-empty"><span aria-hidden="true">&#9672;</span><strong>No matching updates</strong><p>Select CWTS level, school year, CS number, and IN or OUT above.</p></div>';
     cwtsPager($('#cwtsHistoryPages'),page,p=>{cwtsManagementState.historyPage=p;drawHistory();});
     $('#cwtsHistory').querySelectorAll('[data-history]').forEach(b=>b.onclick=()=>{
       const row=log.find(r=>String(r.id)===b.dataset.history);const dialog=document.createElement('dialog');dialog.className='attendance-update-dialog';dialog.setAttribute('aria-label','CWTS attendance update');
@@ -122,12 +139,24 @@ async function renderCwtsInstructors(){
     catch(error){toast(error.message,true);}
     finally{await renderCwtsInstructors().catch(error=>toast(error.message,true));b.disabled=false;b.textContent='Create account & send invitation';}
   };
-  bindCwtsSessionFilters(data.sessions,enabled.length>0,data.assignments,enabled);
+  const restoreSelection={...cwtsManagementState.session};
+  bindCwtsSessionFilters(data.sessions,enabled.length>0,data.assignments,enabled,selection=>{
+    cwtsManagementState.session=selection;cwtsManagementState.historyPage=1;cwtsManagementState.assignmentPage=1;
+    const request=++historyRequest;log=[];drawHistory();drawAssignments();
+    if(!selection.ms_level||!selection.school_year||!selection.mi_number||!selection.mi_type)return;
+    API.get('/api/officer/cwts-verification-log?'+new URLSearchParams(selection)).then(rows=>{
+      if(request!==historyRequest||content.cwtsGeneration!==generation)return;
+      log=rows;drawHistory();
+    }).catch(error=>{if(request===historyRequest&&content.cwtsGeneration===generation)toast(error.message,true);});
+  },restoreSelection);
   $('#cwtsAssignForm').onsubmit=event=>{event.preventDefault();mutate(event.target.querySelector('button'),'/api/officer/cwts-instructor-assignments',Object.fromEntries(new FormData(event.target)),'post');};
   $('#cwtsRefresh').onclick=()=>renderCwtsInstructors().catch(error=>toast(error.message,true));
   $('#cwtsAccountSearch').oninput=e=>{cwtsManagementState.accountSearch=e.target.value;cwtsManagementState.accountPage=1;drawAccounts();};
   $('#cwtsAssignmentFilter').value=cwtsManagementState.access;
   $('#cwtsAssignmentFilter').onchange=e=>{cwtsManagementState.access=e.target.value;cwtsManagementState.assignmentPage=1;drawAssignments();};
+  $('#cwtsAssignmentSearch').oninput=e=>{cwtsManagementState.assignmentSearch=e.target.value;cwtsManagementState.assignmentPage=1;drawAssignments();};
+  $('#cwtsHistorySearch').oninput=e=>{cwtsManagementState.historySearch=e.target.value;cwtsManagementState.historyPage=1;drawHistory();};
+  $('#cwtsHistoryRefresh').onclick=()=>renderCwtsInstructors().catch(error=>toast(error.message,true));
   drawAccounts();drawAssignments();drawHistory();
   openAttendanceUpdateHistory();
 }
