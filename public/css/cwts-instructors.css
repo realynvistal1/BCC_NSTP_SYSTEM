@@ -143,3 +143,163 @@ body[data-page="cwts-instructor-attendance"] .sidebar > .sidebar-footer { margin
 #cwtsAssignForm .cwts-connected-picker .cwts-instructor-search input { border:0; border-radius:0; outline:0; box-shadow:none; }
 #cwtsAssignForm .cwts-connected-picker .cwts-picker-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 #cwtsAssignForm .cwts-connected-picker #cwtsInstructorPicker { display:block; height:140px; min-height:140px; border:0; border-radius:0; outline:0; box-shadow:none; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#a7b8cc #f5f8fc; }
+
+/* Compact Director forms with clear, quiet panel borders. */
+.cwts-two-column { gap: 20px; }
+.cwts-workspace .cwts-two-column > .panel {
+  padding: 22px; background: #fff; border: 2px solid #b5c4d5;
+  border-radius: 14px; box-shadow: 0 5px 16px rgba(35,55,80,.10);
+}
+.cwts-two-column .cwts-heading { margin-bottom: 16px; }
+.cwts-two-column .cwts-heading h2 { font-size: 18px; color: #273b50; }
+.cwts-two-column .cwts-step { background: #edf1f5; color: #526477; }
+.cwts-two-column .cwts-form { gap: 12px; }
+.cwts-two-column .cwts-help { margin: 0; line-height: 1.5; }
+#cwtsAssignForm .cwts-note { margin: 0; padding: 10px 12px; line-height: 1.5; }
+#cwtsAssignForm .cwts-connected-picker #cwtsInstructorPicker { height: 112px; min-height: 112px; }
+#cwtsAssignForm #cwtsInstructorMatches { margin-top: 0; font-weight: 400; }
+#cwtsAssignForm #cwtsInstructorMatches:empty { display: none; }
+.cwts-two-column .cwts-form .btn.primary { background: #345d85; border-radius: 8px; }
+.cwts-two-column > .panel > .cwts-form > button:last-child { margin-top: 2px; }
+
+/* Compact management lists matching the ROTC verifier page. */
+.cwts-management-lists {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start;
+}
+.cwts-workspace .cwts-management-lists > .panel,
+.cwts-workspace > .panel.cwts-blue {
+  min-width: 0; margin: 0; padding: 18px; background: #fff;
+  border: 2px solid #b5c4d5; border-radius: 14px;
+  box-shadow: 0 5px 16px rgba(35,55,80,.10);
+}
+.cwts-management-lists .cwts-heading { margin-bottom: 14px; }
+.cwts-management-lists .cwts-heading h2 { font-size: 17px; color: #273b50; }
+.cwts-management-lists .cwts-heading p { display: none; }
+.cwts-management-lists .cwts-toolbar { margin-bottom: 12px; }
+.cwts-management-lists .cwts-toolbar label { min-width: 0; }
+.cwts-management-lists .table-wrap { overflow-x: auto; }
+.cwts-management-lists .empty { padding: 24px 12px; }
+.cwts-management-lists .cwts-pagination { flex-wrap: wrap; gap: 8px; }
+@media (max-width: 1050px) {
+  .cwts-management-lists { grid-template-columns: minmax(0, 1fr); }
+}
+/* Organized CWTS Director workspace: consistent cards and section rhythm. */
+body[data-page="cwts-instructors"] .cwts-workspace { gap: 26px; }
+body[data-page="cwts-instructors"] .cwts-two-column,
+body[data-page="cwts-instructors"] .cwts-management-lists {
+  gap: 24px;
+  align-items: stretch;
+}
+body[data-page="cwts-instructors"] .cwts-workspace .panel {
+  background: #fff;
+  border: 1px solid #a9bdd4;
+  border-top: 3px solid #7895b5;
+  border-radius: 15px;
+  padding: 22px;
+  box-shadow: 0 3px 6px rgba(28,49,76,.05), 0 10px 24px rgba(28,49,76,.09);
+}
+body[data-page="cwts-instructors"] .cwts-workspace .cwts-heading {
+  padding: 0 0 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e3e9f0;
+  gap: 12px;
+}
+body[data-page="cwts-instructors"] .cwts-workspace .cwts-heading h2 { font-size: 18px; line-height: 1.4; color: #273b50; }
+body[data-page="cwts-instructors"] .cwts-workspace .cwts-heading p { color: #738195; line-height: 1.5; }
+body[data-page="cwts-instructors"] .cwts-two-column .cwts-form { flex: 1; gap: 15px; }
+body[data-page="cwts-instructors"] .cwts-two-column .cwts-form > button:last-child { margin-top: auto; }
+body[data-page="cwts-instructors"] .cwts-two-column .cwts-form > .cwts-help { margin-bottom: 4px; }
+body[data-page="cwts-instructors"] .cwts-session-fields { gap: 14px; }
+body[data-page="cwts-instructors"] .cwts-form .field { gap: 8px; color: #40566e; }
+body[data-page="cwts-instructors"] .cwts-form :is(input,select) { border-color: #d2dce7; border-radius: 8px; }
+body[data-page="cwts-instructors"] .cwts-form :is(input,select):focus-visible { outline: 2px solid #c6d8ec; outline-offset: 1px; }
+body[data-page="cwts-instructors"] .cwts-toolbar {
+  padding: 12px;
+  background: #f5f7fa;
+  border: 1px solid #e0e7ef;
+  border-radius: 10px;
+  gap: 12px;
+}
+body[data-page="cwts-instructors"] .cwts-workspace .table-wrap { border-color: #e0e7ef; border-radius: 10px; }
+body[data-page="cwts-instructors"] .cwts-workspace th { background: #f3f6fa; color: #52677f; }
+body[data-page="cwts-instructors"] .cwts-workspace .empty { padding: 28px 14px; }
+body[data-page="cwts-instructors"] .cwts-pagination { padding-top: 14px; border-top: 1px solid #e5ebf2; }
+body[data-page="cwts-instructors"] .cwts-management-lists > .panel > details { display: flex; flex-direction: column; height: 100%; }
+body[data-page="cwts-instructors"] .cwts-management-lists > .panel > details:not([open]) { display: block; height: auto; }
+body[data-page="cwts-instructors"] .cwts-management-lists > .panel > details > .cwts-pagination { margin-top: auto; }
+body[data-page="cwts-instructors"] #cwtsHistory > .cwts-note { padding: 28px 16px; text-align: center; background: #f8fafc; color: #738195; border: 1px dashed #d6e0eb; }
+@media (max-width: 1050px) {
+  body[data-page="cwts-instructors"] .cwts-two-column { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  body[data-page="cwts-instructors"] .cwts-workspace .panel { padding: 16px; }
+  body[data-page="cwts-instructors"] .cwts-workspace { gap: 18px; }
+}
+
+/* Shared visual rhythm with the ROTC assignment and history boxes. */
+body[data-page="cwts-instructors"] .cwts-management-lists { align-items: start; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-heading { align-items: center; }
+.cwts-list-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; background: #edf2f7; color: #59738f; border-radius: 12px; }
+.cwts-list-icon svg { width: 21px; height: 21px; }
+.cwts-list-eyebrow { display: block; margin-bottom: 5px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #657c95; }
+.cwts-management-lists .cwts-list-empty { display: grid; justify-items: center; padding: 28px 14px; border: 1px dashed #cbd8e5; border-radius: 12px; text-align: center; background: #f8fafc; }
+.cwts-list-empty > span { font-size: 28px; color: #819ab3; margin-bottom: 8px; }
+.cwts-list-empty strong { font-size: 14px; color: #405b75; }
+.cwts-list-empty p { font-size: 12px; line-height: 1.6; margin: 7px 0 0; color: #73859a; }
+.cwts-management-lists .cwts-toolbar label { flex: 1 1 140px; }
+.cwts-management-lists .table-wrap table { min-width: 0; table-layout: fixed; }
+.cwts-management-lists .table-wrap :is(th,td) { white-space: normal; overflow-wrap: anywhere; padding: 10px 8px; }
+.cwts-management-lists .cwts-actions .btn { white-space: normal; }
+/* Match the compact ROTC assignment and attendance-history panels. */
+body[data-page="cwts-instructors"] .cwts-management-lists { gap: 18px; align-items: start; }
+body[data-page="cwts-instructors"] .cwts-management-lists > .panel { padding: 0; overflow: hidden; border-radius: 14px; }
+body[data-page="cwts-instructors"] .cwts-management-lists > .panel > details { display: block; height: auto; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-heading {
+  padding: 13px 14px; margin: 0; gap: 8px; background: #fafbfd; border-bottom: 1px solid #e3e9f0;
+}
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-heading h2 { font-size: 15px; line-height: 1.4; color: #1f3d60; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-list-icon { width: 34px; height: 34px; flex-basis: 34px; border-radius: 10px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-list-icon svg { width: 18px; height: 18px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-list-eyebrow { font-size: 9px; margin-bottom: 4px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-toolbar { padding: 8px; gap: 8px; margin: 12px 12px 10px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-toolbar label { font-size: 11px; gap: 5px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-toolbar :is(input,select) { min-height: 34px; height: 34px; padding: 6px 8px; font-size: 12px; }
+body[data-page="cwts-instructors"] :is(#cwtsAssignments,#cwtsHistory) { margin: 0 12px; min-width: 0; }
+body[data-page="cwts-instructors"] .cwts-management-lists table { width: 100%; min-width: 0; table-layout: fixed; }
+body[data-page="cwts-instructors"] .cwts-management-lists table :is(th,td) { padding: 9px 6px; white-space: normal; overflow-wrap: anywhere; font-size: 11px; }
+body[data-page="cwts-instructors"] .cwts-management-lists table th:nth-child(1) { width: 25%; }
+body[data-page="cwts-instructors"] .cwts-management-lists table th:nth-child(2) { width: 34%; }
+body[data-page="cwts-instructors"] .cwts-management-lists table th:nth-child(3) { width: 16%; }
+body[data-page="cwts-instructors"] .cwts-management-lists table th:nth-child(4) { width: 25%; }
+body[data-page="cwts-instructors"] .cwts-management-lists table td small { font-size: 10px; margin-top: 4px; line-height: 1.45; }
+body[data-page="cwts-instructors"] .cwts-management-lists :is(.cwts-badge,[data-revoke-cwts]) { padding: 5px 6px; font-size: 10px; white-space: normal; }
+body[data-page="cwts-instructors"] #cwtsHistory { display: grid; gap: 8px; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-row { grid-template-columns: minmax(0,1fr) auto; gap: 6px 10px; padding: 10px 11px; min-width: 0; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-student { grid-column: 1; grid-row: 1; gap: 3px; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-student strong { font-size: 12px; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-student > span { font-size: 10px; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-transition { grid-column: 2; grid-row: 1; gap: 4px; justify-content: end; flex-wrap: wrap; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-transition :is(.badge,.update-status) { font-size: 10px; padding: 3px 5px; gap: 4px; }
+body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-row time { grid-column: 1; grid-row: 2; font-size: 10px; }
+body[data-page="cwts-instructors"] #cwtsHistory [data-history] { grid-column: 2; grid-row: 2; justify-self: end; padding: 4px 7px; min-height: 26px; font-size: 10px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-pagination { padding-top: 10px; margin: 10px 12px 12px; font-size: 10px; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-pagination > div { gap: 6px; flex-wrap: wrap; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-pagination .btn { min-height: 27px; padding: 4px 7px; font-size: 10px; }
+@media (max-width: 480px) {
+  body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-row { grid-template-columns: minmax(0,1fr); }
+  body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-transition { grid-column: 1; grid-row: 2; justify-content: start; }
+  body[data-page="cwts-instructors"] #cwtsHistory .attendance-history-row time { grid-row: 3; }
+  body[data-page="cwts-instructors"] #cwtsHistory [data-history] { grid-column: 1; grid-row: 4; justify-self: start; }
+}
+
+/* Match ROTC's session tags and clear assignment/history identities. */
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-mint .cwts-list-icon { background: #dcf4ef; color: #177a69; }
+body[data-page="cwts-instructors"] .cwts-management-lists .cwts-violet .cwts-list-icon { background: #eee9ff; color: #7451bc; }
+.cwts-list-count { flex: 0 0 auto; padding: 5px 9px; background: #f0f3f7; border: 1px solid #dbe3ed; border-radius: 18px; color: #536980; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.cwts-assigned-company { display: flex; align-items: center; gap: 5px; color: #3f6186; }
+.cwts-assigned-company svg { width: 14px; height: 14px; flex: 0 0 14px; }
+.cwts-session-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.cwts-session-tags span { padding: 3px 5px; background: #edf1f7; border-radius: 5px; font-size: 9px; color: #63738c; line-height: 1.4; }
+body[data-page="cwts-instructors"] .cwts-management-lists [data-revoke-cwts] { display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: #b54662; border-color: #efcdd6; background: #fff5f7; }
+.cwts-management-lists [data-revoke-cwts] svg,.cwts-management-lists [data-history] svg { width: 12px; height: 12px; flex-shrink: 0; }
+body[data-page="cwts-instructors"] #cwtsHistory [data-history] { display: inline-flex; align-items: center; gap: 4px; color: #705099; border-color: #ddceee; background: #f7f3fd; }
