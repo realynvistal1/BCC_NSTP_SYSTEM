@@ -1,0 +1,87 @@
+/* CWTS instructor: simple green accents and clear white surfaces. */
+body[data-page="cwts-instructor-attendance"] {
+  --accent: #23816b;
+  --accent-700: #17634f;
+  --accent-soft: #edf7f2;
+  --line: #d6e5dd;
+  --muted: #61766c;
+  background: #f5f8f6;
+  color: #243e32;
+}
+body[data-page="cwts-instructor-attendance"] .intro {
+  background: #e6f3ec;
+  border-color: #bddbcc;
+  box-shadow: none;
+}
+body[data-page="cwts-instructor-attendance"] .intro:after { display: none; }
+body[data-page="cwts-instructor-attendance"] :is(.intro h1, #content h2, .cwts-duty-title h3) { color: #185a44; }
+body[data-page="cwts-instructor-attendance"] .cwts-verifier-workspace > .panel {
+  background: #fff;
+  border: 1px solid #d0e1d7;
+  box-shadow: none;
+}
+body[data-page="cwts-instructor-attendance"] .cwts-verifier-workspace .cwts-duty-card {
+  background: #f3f9f5;
+  border: 1px solid #cde1d4;
+  border-left: 3px solid #398b69;
+  box-shadow: none;
+}
+body[data-page="cwts-instructor-attendance"] .cwts-duty-card .attendance-assignment-details > div {
+  background: #eaf5ee;
+  border-color: #d0e5d8;
+}
+body[data-page="cwts-instructor-attendance"] .cwts-duty-card .attendance-assignment-details dt { color: #527260; }
+body[data-page="cwts-instructor-attendance"] .cwts-duty-card .attendance-assignment-details dd { color: #245e43; }
+body[data-page="cwts-instructor-attendance"] .cwts-duty-type { background: #2b7958; }
+body[data-page="cwts-instructor-attendance"] .btn {
+  background: #fff;
+  border-color: #c8ddcf;
+  color: #286249;
+  box-shadow: none;
+}
+body[data-page="cwts-instructor-attendance"] .btn.primary {
+  background: #2b7958;
+  color: #fff;
+  border-color: #2b7958;
+}
+body[data-page="cwts-instructor-attendance"] .btn.primary:hover { background: #206044; }
+body[data-page="cwts-instructor-attendance"] .attendance-status-filter:not(.present):not(.late):not(.absent):not(.unmarked) {
+  --filter-color: #286249;
+  --filter-bg: #eaf5ee;
+  border-color: #cddfd4;
+}
+body[data-page="cwts-instructor-attendance"] :is(.attendance-status-filter:focus-visible, .btn:focus-visible) {
+  outline: 2px solid #40916b;
+  outline-offset: 2px;
+}
+body[data-page="cwts-instructor-attendance"] .badge.success {
+  background: #edf6f0;
+  border-color: #cde1d4;
+  color: #286249;
+}
+body[data-page="cwts-instructor-attendance"] th { background: #edf5ef; color: #466c55; }
+body[data-page="cwts-instructor-attendance"] tbody tr:nth-child(even) { background: #f8fbf9; }
+body[data-page="cwts-instructor-attendance"] tbody tr:hover { background: #eef6f1; }
+body[data-page="cwts-instructor-attendance"] :is(input, select, textarea):focus {
+  border-color: #40916b;
+  outline-color: #40916b;
+  box-shadow: 0 0 0 2px #40916b20;
+}
+body[data-page="cwts-instructor-attendance"] .attendance-update-meta {
+  background: #f3f8f5;
+  border-color: #d6e5dd;
+  color: #61766c;
+}
+body[data-page="cwts-instructor-attendance"] .attendance-update-meta strong { color: #286249; }
+body[data-page="cwts-instructor-attendance"] .verifier-heading-icon { background: #e5f2ea; color: #287253; }
+/* Attendance colors remain distinct within the green workspace. */
+body[data-page="cwts-instructor-attendance"] .badge.danger {
+  background: #fff0f0;
+  border-color: #f5caca;
+  color: #b72f36;
+}
+body[data-page="cwts-instructor-attendance"] .badge.warning {
+  background: #fff7e5;
+  border-color: #f0dcaa;
+  color: #92600e;
+}
