@@ -28,6 +28,7 @@ const excelUpload = multer({
 
 router.use(requireAuth, requireRole('admin'), requirePortal('cwts-admin'));
 
+router.get('/students/:studentId/files/:field', (req,res) => { req.params.program='cwts'; return require('../services/studentDetailService').serveUpload(req,res); });
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);
 router.get('/sample-enrollment-settings', (req, res) => res.json(require('../services/sampleEnrollmentService').settings()));
@@ -45,6 +46,7 @@ router.get('/roster', controller.roster);
 router.post('/auto-assign', controller.autoAssign);
 router.get('/companies', controller.cwtsCompanyList);
 router.post('/companies', controller.addCwtsCompany);
+router.patch('/companies/:name/capacity', controller.updateCwtsCompanyCapacity);
 router.delete('/companies/:name', controller.deleteCwtsCompany);
 router.get('/grades', controller.grades);
 router.post('/grades', controller.grades);
