@@ -120,3 +120,25 @@
     grid-column: auto
   }
 }
+
+/* Aligned re-enrollment document controls. */
+body[data-page="re-enrollment"] .re-requirements-section .re-enroll-section-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 16px;
+}
+body[data-page="re-enrollment"] .re-requirements-section .re-enroll-section-grid > .field {
+  grid-column: auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; margin: 0;
+}
+body[data-page="re-enrollment"] .re-requirements-section .field > label { margin: 0; }
+body[data-page="re-enrollment"] .re-requirements-section :is(select,input[type="file"]) {
+  box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; height: 42px; margin: 0;
+}
+body[data-page="re-enrollment"] .re-requirements-section input[type="file"] { padding: 8px; overflow: hidden; font-size: 12px; }
+body[data-page="re-enrollment"] .re-requirements-section .field small { margin: 0; line-height: 1.5; }
+body[data-page="re-enrollment"] #reEnrollForm .notice > label:has(input[type="checkbox"]) {
+  display: flex; align-items: center; justify-content: flex-start; gap: 9px;
+}
+body[data-page="re-enrollment"] #reEnrollForm input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; flex: 0 0 16px; margin: 0; }
+body[data-page="re-enrollment"] .re-requirements-section input[hidden] { display: none; }
+@media (max-width: 900px) {
+  body[data-page="re-enrollment"] .re-requirements-section .re-enroll-section-grid { grid-template-columns: minmax(0,1fr); }
+}
