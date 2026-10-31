@@ -22,7 +22,10 @@ async function check(db, scheduleId, body, excludeStudent = 0) {
   if(schedule.program==='CWTS') {
     const [members]=await db.execute(`SELECT id FROM student_ms_records
       WHERE program='CWTS' AND CAST(schedule_id AS UNSIGNED)=? AND status IN ('pending','approved') AND student_id<>? FOR UPDATE`,[scheduleId,excludeStudent]);
-    if(members.length>=360){const error=new Error('CWTS enrollment is full (360/360). No more applications can be accepted for this schedule.');error.status=409;throw error;}
+    const saved=require('./cwtsCompanyService').decode(schedule.cwts_company_setup);
+    const settings=saved?.length?saved:await require('./cwtsCompanyService').details(db);
+    const capacity=require('./cwtsCompanyService').total(settings);
+    if(members.length>=capacity){const error=new Error('CWTS enrollment is full ('+members.length+'/'+capacity+'). No more applications can be accepted for this schedule.');error.status=409;throw error;}
     return;
   }
   if (schedule.program !== 'ROTC') return;
