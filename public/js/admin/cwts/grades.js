@@ -298,7 +298,13 @@ async function renderAdminGrades(_program, content) {
           <option>3rd Year</option>
           <option>4th Year</option>
         </select>
-        <input id="gradeSearch" placeholder="Search by name, student ID, or course...">
+        <select id="gradeStatus" aria-label="Grade status">
+          <option value="">All Grade Statuses</option>
+          <option value="passed">Passed</option>
+          <option value="failed">Failed</option>
+          <option value="ungraded">Ungraded</option>
+        </select>
+        <input id="gradeSearch" placeholder="Search by name or student ID...">
         <button class="btn success" id="downloadGradeRecords">Download Excel</button>
         <button class="clear-filter-btn" id="clearGradeFilters" type="button">Clear Filters</button>
       </div>
@@ -349,10 +355,15 @@ async function renderAdminGrades(_program, content) {
     const level = $('#gradeLevel').value;
     const schoolYear = $('#gradeSY').value;
     const yearLevel = $('#gradeYear').value;
+    const status = $('#gradeStatus').value;
     const query = $('#gradeSearch').value.trim().toLowerCase();
 
     return students.filter((student) => {
       if (!matchingGradeLevels(student, grades, level, schoolYear).length) {
+        return false;
+      }
+
+      if (status && studentGradeState(student, level) !== status) {
         return false;
       }
 
@@ -362,7 +373,7 @@ async function renderAdminGrades(_program, content) {
 
       if (
         query
-        && !`${student.last_name} ${student.first_name} ${student.middle_name || ''} ${student.student_no} ${student.course}`
+        && !`${student.last_name} ${student.first_name} ${student.middle_name || ''} ${student.student_no}`
           .toLowerCase()
           .includes(query)
       ) {
@@ -615,7 +626,7 @@ async function renderAdminGrades(_program, content) {
     $(`#st${level}`).className = `badge ${status.cls}`;
   }
 
-  ['#gradeLevel', '#gradeSY', '#gradeYear'].forEach((selector) => {
+  ['#gradeLevel', '#gradeSY', '#gradeYear', '#gradeStatus'].forEach((selector) => {
     $(selector).onchange = renderRows;
   });
 
@@ -624,6 +635,7 @@ async function renderAdminGrades(_program, content) {
     $('#gradeLevel').value = '';
     $('#gradeSY').value = '';
     $('#gradeYear').value = '';
+    $('#gradeStatus').value = '';
     $('#gradeSearch').value = '';
     renderRows();
   };
