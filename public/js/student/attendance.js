@@ -114,7 +114,7 @@ function showStudentLocation(session, latitude, longitude, accuracyMeters) {
       || Math.abs(meters - Number(session.radius_meters || 100)) <= accuracyMeters;
     text.textContent = uncertain
       ? `Location uncertain: the red dot is an estimate, not confirmed outside or inside. Estimated distance: ${Math.round(meters)}m; device uncertainty: +/-${Math.round(accuracyMeters || 0)}m. On a laptop, try a phone with precise location enabled, then recapture.`
-      : `Your location: ${Math.round(meters)}m away ? accuracy ?${Math.round(accuracyMeters)}m`;
+      : `Your location: ${Math.round(meters)}m away; accuracy �${Math.round(accuracyMeters)}m`;
   } else {
     text.textContent = 'Your location is shown in red.';
   }
@@ -122,11 +122,28 @@ function showStudentLocation(session, latitude, longitude, accuracyMeters) {
 
 // Called from a student click; the browser owns the location permission prompt.
 function captureStudentPosition(success, failure) {
-  navigator.geolocation.getCurrentPosition(success, failure, {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 10000,
-  });
+  const options={enableHighAccuracy:true,maximumAge:0,timeout:8000};
+  if(typeof navigator.geolocation.watchPosition!=='function'){
+    navigator.geolocation.getCurrentPosition(success,failure,options);return;
+  }
+  let best=null,finished=false,watchId=null;
+  const finish=error=>{
+    if(finished)return;finished=true;clearTimeout(timer);
+    if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+    if(best)success(best);else failure(error||{code:3,message:'Location timed out.'});
+  };
+  const timer=setTimeout(()=>finish(),8000);
+  watchId=navigator.geolocation.watchPosition(position=>{
+    if(finished)return;
+    const {latitude,longitude,accuracy}=position.coords||{};
+    if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||!Number.isFinite(accuracy)||accuracy<=0)return;
+    if(!best||accuracy<best.coords.accuracy)best=position;
+    if(accuracy<=25)finish();
+  },error=>{
+    if(error.code===1)finish(error);
+    // Temporary unavailable/timeout readings may improve before our deadline.
+  },options);
+  if(finished&&watchId!==null)navigator.geolocation.clearWatch(watchId);
 }
 
 function updateStudentLocationPreview(session) {
@@ -146,7 +163,7 @@ function updateStudentLocationPreview(session) {
     return;
   }
 
-  if (text) text.textContent = 'Allow location access if your browser asks. Getting your device location...';
+  if (text) text.textContent = 'Allow location access if your browser asks. Finding your most accurate location (up to 8 seconds)...';
   if (button) {
     button.disabled = true;
     button.textContent = 'Capturing location...';
@@ -169,7 +186,7 @@ function updateStudentLocationPreview(session) {
         text.textContent = error.code === 1
           ? 'Location is blocked. Open this site?s browser permissions, allow Location, then tap Recapture location.'
           : error.code === 3
-            ? 'Your device did not return a location within 10 seconds. Tap Recapture location to try again.'
+            ? 'Your device did not return a location within 8 seconds. Tap Recapture location to try again.'
             : 'Device location is unavailable. Check that location services are on, then recapture.';
       }
       try { renderStudentMap('studentSessionMap', session); } finally { finish(); }
@@ -281,23 +298,30 @@ function renderStudentAttendanceHistory(history, studentProgram) {
   const historyNode = $('#studentAttendanceHistory');
   if (!historyNode) return;
   const opened = new Set([...(historyNode.querySelectorAll?.('details[open]') || [])].map(item => item.dataset.recordKey));
-  const rows = history.map((row) => {
+  const filters=historyNode.attendanceFilters ||= {year:'',level:'',type:''};
+  const years=[...new Set(history.map(row=>row.school_year).filter(Boolean))].sort().reverse();
+  const levels=[...new Set(history.map(row=>String(row.ms_level||'')).filter(Boolean))].sort();
+  const filtered=history.filter(row=>(!filters.year||row.school_year===filters.year)&&(!filters.level||String(row.ms_level)===filters.level)&&(!filters.type||row.mi_type===filters.type))
+    .sort((a,b)=>new Date(b.open_date||b.created_at)-new Date(a.open_date||a.created_at)||Number(b.id||0)-Number(a.id||0));
+  const toolbar=`<div class="student-history-filters"><select data-history-filter="year" aria-label="History school year"><option value="">All school years</option>${years.map(year=>`<option value="${esc(year)}" ${filters.year===year?'selected':''}>SY ${esc(year)}</option>`).join('')}</select><select data-history-filter="level" aria-label="History level"><option value="">All levels</option>${levels.map(level=>`<option value="${esc(level)}" ${filters.level===level?'selected':''}>${studentProgram==='CWTS'?'CWTS':'MS'} ${esc(level)}</option>`).join('')}</select><select data-history-filter="type" aria-label="History attendance type"><option value="">IN &amp; OUT</option><option value="in" ${filters.type==='in'?'selected':''}>IN</option><option value="out" ${filters.type==='out'?'selected':''}>OUT</option></select></div>`;
+  const rows = filtered.map((row) => {
     const rowProgram = String(row.program || studentProgram).toUpperCase();
     const isCwts = rowProgram === 'CWTS';
 
     const key = String(row.id || [rowProgram,row.ms_level,row.school_year,row.mi_number,row.mi_type,row.open_date,row.created_at].join('|'));
     const values = [
-            ['School year',row.school_year ? `SY ${esc(row.school_year)}` : '-'],
-      ['Marked at (PH time)',esc(fmtT(row.marked_at_epoch!=null?Number(row.marked_at_epoch):row.created_at))],
+      
+      ['Marked at',esc(fmtT(row.marked_at_epoch!=null?Number(row.marked_at_epoch):row.created_at))],
       ...(attendanceUpdateDetails(row)?[['Attendance update',attendanceUpdateDetails(row)]]:[]),
     ];
     return `<details class="student-record-disclosure" data-record-key="${esc(key)}" ${opened.has(key)?'open':''}>
-      <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))} &middot; ${isCwts?'CWTS':'MS'} ${esc(row.ms_level || '-')}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">View details</span><span class="when-open">Close details</span><span aria-hidden="true">&#9662;</span></span></summary>
+      <summary><div class="student-record-title"><strong>${isCwts?'CS':'MI'} ${esc(row.mi_number || '-')} &middot; ${esc(String(row.mi_type || '').toUpperCase())}</strong><small>${esc(fmtA(row.open_date))}</small></div>${badge(row.status)}<span class="student-record-toggle"><span class="when-closed">Details</span><span class="when-open">Hide</span><span aria-hidden="true">&#9662;</span></span></summary>
       <dl class="student-record-details">${values.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${value}</dd></div>`).join('')}</dl>
     </details>`;
   });
 
-  historyNode.innerHTML = rows.length ? `<div class="student-record-list">${rows.join('')}</div>` : '<div class="notice" role="status">No attendance records yet.</div>';
+  historyNode.innerHTML = toolbar + (rows.length ? `<div class="student-record-list">${rows.join('')}</div>` : '<div class="notice" role="status">No records found.</div>');
+  historyNode.querySelectorAll('[data-history-filter]').forEach(control=>{control.onchange=()=>{filters[control.dataset.historyFilter]=control.value;renderStudentAttendanceHistory(history,studentProgram);};});
 }
 
 function markStudentAttendance(session) {
