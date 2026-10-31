@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
+const source=fs.readFileSync('public/js/auth/enrollment.js','utf8');
+const fn=source.slice(source.indexOf('  function syncBirthdate(){'),source.indexOf('  [birthMonth,birthDay,birthYear].forEach'));
+let rebuilds=0;const day={value:'14',options:Array(32),add(o){this.options.push(o);rebuilds++},set length(n){this.options.length=n},get length(){return this.options.length}};
+const context={birthMonth:{value:'7'},birthDay:day,birthYear:{value:'2005',setCustomValidity(s){this.error=s}},f:{birthdate:{value:''}},today:new Date(2026,9,28),Option:function(text,value){return {text,value}},Date};vm.createContext(context);vm.runInContext(fn,context);
+context.syncBirthdate();assert.equal(context.f.birthdate.value,'2005-07-14');assert.equal(rebuilds,0,'Do not rebuild a selected day unnecessarily');
+context.f.birthdate.value='';context.syncBirthdate();assert.equal(context.f.birthdate.value,'2005-07-14','Recover missing hidden value from visible selections');
+context.birthMonth.value='2';context.birthYear.value='2004';day.value='29';context.syncBirthdate();assert.equal(context.f.birthdate.value,'2004-02-29');
+context.birthYear.value='2005';context.syncBirthdate();assert.equal(context.f.birthdate.value,'','Reject February 29 in a non-leap year');
+context.birthMonth.value='';context.syncBirthdate();assert.equal(context.f.birthdate.value,'');
+context.birthMonth.value='12';context.birthYear.value='2026';day.value='31';context.syncBirthdate();assert.equal(context.birthYear.error,'Date of birth cannot be in the future.');
+assert.match(source,/function customValidate\(\)\{\s*syncBirthdate\(\)/);
+assert.match(source,/syncBirthdate\(\);\s*if\(!f.birthdate.value\|\|!birthYear.checkValidity\(\)\)/);
+assert.match(source,/data.birthdate=f.birthdate.value/);
+console.log('PASS: birthdate resync, preserved day selection, leap years, missing fields, future dates and submission guards.');
