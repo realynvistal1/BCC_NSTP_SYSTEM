@@ -515,7 +515,7 @@ function makeAttendanceSummary(_programKey) {
 
     const filtered = allStudents.filter((student) => (
       (!status || student.attendance_status === status)
-      && (!query || `${student.last_name} ${student.first_name} ${student.student_id} ${student.course} ${assignment(student)}`.toLowerCase().includes(query))
+      && (!query || `${student.last_name} ${student.first_name} ${student.student_id}`.toLowerCase().includes(query))
     ));
 
     filtered.sort((a, b) => {
@@ -636,7 +636,7 @@ function makeAttendanceSummary(_programKey) {
         (group === 'overall' && overallSummaryPlatoonLabel(student) === platoon)
         || (group !== 'overall' && summaryStudentPlatoon(student) === platoon)
       ))
-      && (!query || `${student.last_name} ${student.first_name} ${student.student_id} ${student.course} ${assignment(student)} ${student.mi_number || ''} ${student.mi_type || ''}`.toLowerCase().includes(query))
+      && (!query || `${student.last_name} ${student.first_name} ${student.student_id}`.toLowerCase().includes(query))
     ));
 
     filtered.sort((a, b) => {
