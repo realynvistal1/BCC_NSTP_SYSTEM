@@ -157,13 +157,17 @@ async function renderOfficerRecords(content) {
 
   content.innerHTML = `
     <section class="records-tools officer-record-tools">
+      <div class="records-filter-heading">
+        <span class="records-filter-emblem" aria-hidden="true">${icon('records')}</span>
+        <div><h2>Filter Student Records</h2><p>Narrow the list, then download the records you need.</p></div>
+      </div>
       <select id="recordProgram">
         <option value="ROTC">ROTC</option>
         <option value="CWTS">CWTS</option>
       </select>
       <div class="record-search">
         <span>${icon('records')}</span>
-        <input id="recordSearch" placeholder="Search by name, student ID, or course...">
+        <input id="recordSearch" placeholder="Search by name or student ID...">
       </div>
       <select id="recordLevel">
         <option value="">All Levels</option>
@@ -310,7 +314,7 @@ async function renderOfficerRecords(content) {
 
     if (
       query
-      && !`${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id} ${row.course}`
+      && !`${row.first_name} ${row.middle_name || ''} ${row.last_name} ${row.student_id}`
         .toLowerCase()
         .includes(query)
     ) {
