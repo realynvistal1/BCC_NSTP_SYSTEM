@@ -1,3 +1,4 @@
+const studentDetails = require('../services/studentDetailService');
 const path = require('path');
 const db = require('../config/database');
 const { decorateAttendanceUpdates } = require('../services/attendanceUpdateService');
@@ -55,10 +56,9 @@ async function officerApprovedRecordRows(programCode, filters = {}) {
          OR s.first_name LIKE ? ESCAPE '!'
          OR s.middle_name LIKE ? ESCAPE '!'
          OR s.last_name LIKE ? ESCAPE '!'
-         OR s.course LIKE ? ESCAPE '!'
        )
      ORDER BY s.last_name,s.first_name,smr.ms_level`,
-    [programCode, msLevel, msLevel, schoolYear, schoolYear, search, query, query, query, query, query]
+    [programCode, msLevel, msLevel, schoolYear, schoolYear, search, query, query, query, query]
   );
 
   return rows.filter((row) => (
@@ -765,7 +765,7 @@ exports.roster = async (req, res) => {
 
     const [records] = await db.execute(
       `SELECT s.id,s.student_id,s.first_name,s.last_name,s.course,s.year_level,s.sex,s.nstp_component,
-              smr.id record_id,smr.ms_level,COALESCE(es.year,'') school_year,
+              smr.id record_id,CAST(smr.schedule_id AS UNSIGNED) schedule_id,smr.ms_level,COALESCE(es.year,'') school_year,
               smr.assignment_company company,smr.assignment_battalion battalion,
               smr.assignment_company rotc_company,smr.assignment_platoon rotc_platoon,
               smr.assignment_special_unit special_unit,
@@ -948,13 +948,16 @@ exports.recordDetail = async (req, res) => {
     }
 
     const [[student]] = await db.execute(
-      "SELECT * FROM students WHERE id=? AND nstp_component=? AND role='student' LIMIT 1",
+      `SELECT ${studentDetails.projection()} FROM students WHERE id=? AND nstp_component=? AND role='student' LIMIT 1`,
       [studentId, programCode]
     );
 
     if (!student) {
       return res.status(404).json({ message: 'Student record not found.' });
     }
+
+    studentDetails.linkUploads(student, `/api/officer/students/${studentId}/files`);
+    for (const key of ['photo','medical_certificate','xray_file','cor_file']) if(student[key]) student[key] += (student[key].includes('?')?'&':'?') + 'program=' + programCode;
 
     const [[cycle]] = await db.execute(
       `SELECT smr.*,COALESCE(es.year,'') school_year
