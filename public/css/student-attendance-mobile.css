@@ -57,3 +57,32 @@ body[data-page="attendance"] .student-record-disclosure > summary:focus-visible 
  body[data-page="attendance"] .student-record-disclosure > summary > .badge { font-size:10px; padding:6px 9px; white-space:nowrap; }
 }
 @media(prefers-reduced-motion:reduce) { body[data-page="attendance"] .student-record-toggle > [aria-hidden] { transition:none; } }
+
+.student-history-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-bottom: 14px; }
+.student-history-filters select { flex: 1 1 150px; min-width: 0; padding: 9px 11px; border: 1px solid #d4e1ef; border-radius: 8px; background: #fff; color: #345575; font: inherit; font-size: 12px; }
+.student-history-filters > span { font-size: 11px; color: #73849a; }
+@media(max-width: 520px) { .student-history-filters select { flex-basis: 100%; } }
+
+/* One compact filter bar, with fewer repeated labels. */
+body[data-page="attendance"] .student-history-filters {
+  display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);
+  gap: 7px; padding: 9px; margin-bottom: 12px; background: #f4f7fb;
+  border: 1px solid #dce5ef; border-radius: 10px;
+}
+body[data-page="attendance"] .student-history-filters select {
+  width: 100%; min-width: 0; min-height: 38px; padding: 7px 8px;
+  font-size: 12px; border-radius: 7px;
+}
+body[data-page="attendance"] .student-record-disclosure > summary {
+  grid-template-columns: minmax(0,1fr) auto auto; gap: 8px;
+}
+body[data-page="attendance"] .student-record-toggle {
+  grid-column: auto; width: auto; min-height: 30px; padding: 5px 7px;
+  gap: 8px; border: 0; background: transparent; font-size: 11px;
+}
+@media(max-width: 520px) {
+  body[data-page="attendance"] .student-history-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  body[data-page="attendance"] .student-history-filters select:first-child { grid-column: 1 / -1; }
+  body[data-page="attendance"] .student-record-toggle .when-closed,
+  body[data-page="attendance"] .student-record-toggle .when-open { display: none; }
+}
