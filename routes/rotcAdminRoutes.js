@@ -28,6 +28,7 @@ const excelUpload = multer({
 
 router.use(requireAuth, requireRole('admin'), requirePortal('rotc-admin'));
 
+router.get('/students/:studentId/files/:field', (req,res) => { req.params.program='rotc'; return require('../services/studentDetailService').serveUpload(req,res); });
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);
 router.get('/sample-enrollment-settings', (req, res) => res.json(require('../services/sampleEnrollmentService').settings()));
