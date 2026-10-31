@@ -192,7 +192,7 @@ function makeAttendanceSummary(_programKey) {
       (!status || student.attendance_status === status)
       && (!company || String(student.company || student.rotc_company || '') === company)
       && (!platoon || String(student.rotc_platoon || '') === platoon)
-      && (!query || `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''} ${student.course || ''} ${assignment(student)}`.toLowerCase().includes(query))
+      && (!query || `${student.last_name || ''} ${student.first_name || ''} ${student.student_id || ''}`.toLowerCase().includes(query))
     ));
 
     filtered.sort((a, b) => {
