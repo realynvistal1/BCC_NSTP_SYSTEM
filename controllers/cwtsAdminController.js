@@ -22,6 +22,7 @@ module.exports = {
   roster: withProgram(shared.roster),
   autoAssign: withProgram(shared.autoAssign),
   cwtsCompanyList: withProgram(shared.cwtsCompanyList),
+  updateCwtsCompanyCapacity: withProgram(shared.updateCwtsCompanyCapacity),
   addCwtsCompany: withProgram(shared.addCwtsCompany),
   deleteCwtsCompany: withProgram(shared.deleteCwtsCompany),
   grades: withProgram(shared.grades),
