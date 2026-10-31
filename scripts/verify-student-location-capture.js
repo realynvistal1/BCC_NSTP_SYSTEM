@@ -1,0 +1,7 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const source=fs.readFileSync('public/js/student/attendance.js','utf8');const fn=source.slice(source.indexOf('function captureStudentPosition('),source.indexOf('function updateStudentLocationPreview'));
+function setup(){let receive,error,timeout,cleared=0,result,failure;const ctx={navigator:{geolocation:{watchPosition(ok,fail,options){receive=ok;error=fail;assert(options.enableHighAccuracy);assert.equal(options.maximumAge,0);return 1},clearWatch(){cleared++}}},setTimeout(cb){timeout=cb;return 1},clearTimeout(){}};vm.createContext(ctx);vm.runInContext(fn,ctx);ctx.captureStudentPosition(p=>result=p,e=>failure=e);return {send(accuracy){receive({coords:{latitude:9,longitude:125,accuracy}})},deny(){error({code:1})},timeout(){timeout()},get result(){return result},get failure(){return failure},get cleared(){return cleared}}}
+let t=setup();t.send(5000);assert(!t.result);t.send(80);t.send(15);assert.equal(t.result.coords.accuracy,15);assert(t.cleared);t.send(1000);assert.equal(t.result.coords.accuracy,15);
+t=setup();t.send(5000);t.send(120);t.send(300);t.timeout();assert.equal(t.result.coords.accuracy,120);
+t=setup();t.deny();assert.equal(t.failure.code,1);assert(t.cleared);
+t=setup();t.timeout();assert.equal(t.failure.code,3);
+console.log('PASS: waits for improved location, keeps best accuracy, stops watch, handles denial and timeout.');
