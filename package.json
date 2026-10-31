@@ -32,9 +32,12 @@
     "db:migrate:cwts-companies": "node database/migrate-cwts-companies.js",
     "db:migrate:rotc-roster": "node database/migrate-rotc-roster.js",
     "verify:rotc-roster": "node --test scripts/verify-rotc-roster.test.js",
-    "verify:sample-enrollments": "node --test scripts/verify-sample-enrollments.test.js"
+    "verify:sample-enrollments": "node --test scripts/verify-sample-enrollments.test.js",
+    "db:migrate:cwts-capacity": "node database/migrate-cwts-capacity.js",
+    "verify:cwts-capacity": "node scripts/verify-cwts-capacity.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.13",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -44,6 +47,7 @@
     "multer": "^2.0.2",
     "mysql2": "^3.15.3",
     "nodemailer": "^7.0.10",
+    "pdfjs-dist": "^6.4.299",
     "pdfkit": "^0.15.0",
     "sharp": "^0.35.4",
     "xlsx": "^0.18.5"
