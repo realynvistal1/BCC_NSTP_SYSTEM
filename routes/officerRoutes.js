@@ -13,6 +13,7 @@ router.post('/cwts-instructor-assignments',cwtsInstructors.assign);
 router.patch('/cwts-instructor-assignments/:id/revoke',cwtsInstructors.revoke);
 router.get('/cwts-verification-log',cwtsInstructors.audit);
 
+router.get('/students/:studentId/files/:field', require('../services/studentDetailService').serveUpload);
 router.get("/dashboard", controller.dashboard);
 router.get("/cwts-companies", require("../controllers/sharedAdminController").cwtsCompanyList);
 router.get('/rotc-verifiers', verifiers.management);
