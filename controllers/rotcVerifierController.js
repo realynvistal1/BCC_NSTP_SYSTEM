@@ -7,7 +7,9 @@ const { parsePositiveInt } = require('../services/requestValidationService');
 const companyNames = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel'];
 const specialUnits = ['Medics','HQ','MP'];
 const eligible = `EXISTS (SELECT 1 FROM student_ms_records vr
+  JOIN enrollment_schedules ves ON ves.id=CAST(vr.schedule_id AS UNSIGNED)
   WHERE vr.student_id=a.verifier_id AND vr.program='ROTC' AND vr.status='approved'
+    AND vr.ms_level=a.ms_level AND ves.program='ROTC' AND ves.year=a.school_year
     AND vr.assignment_is_advance=1 AND vr.assignment_special_unit IS NULL
     )
   AND EXISTS (SELECT 1 FROM students vs WHERE vs.id=a.verifier_id
@@ -57,8 +59,9 @@ exports.management = endpoint(async (req,res) => {
   const [assignments]=await db.execute(`SELECT a.*,s.student_id,s.first_name,s.last_name,
     (${eligible}) eligible FROM rotc_verifier_assignments a JOIN students s ON s.id=a.verifier_id
     ORDER BY a.school_year DESC,a.battalion,a.company,a.platoon`);
-  const [candidates]=await db.execute(`SELECT DISTINCT s.id,s.student_id,s.first_name,s.last_name,s.sex,s.course,s.year_level
+  const [candidates]=await db.execute(`SELECT DISTINCT s.id,s.student_id,s.first_name,s.last_name,s.sex,s.course,s.year_level,smr.ms_level,es.year school_year
     FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
+    JOIN enrollment_schedules es ON es.id=CAST(smr.schedule_id AS UNSIGNED) AND es.program='ROTC'
     WHERE s.role='student' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1
       AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1
       AND smr.assignment_special_unit IS NULL ORDER BY s.last_name,s.first_name`);
@@ -79,10 +82,11 @@ exports.assign = endpoint(async (req,res) => {
   if(!values) return res.status(400).json({message:'Select a verifier, valid group and cycle, MI number, and IN/OUT type.'});
   const [id, , , ,level,year]=values;
   const [candidates]=await db.execute(`SELECT s.id,s.sex FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
+    JOIN enrollment_schedules es ON es.id=CAST(smr.schedule_id AS UNSIGNED) AND es.program='ROTC'
     WHERE s.id=? AND s.role='student' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1
       AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1
-      AND smr.assignment_special_unit IS NULL`,[id]);
-  if(!candidates.length) return res.status(400).json({message:'The verifier must be an approved Advance Course student.'});
+      AND smr.assignment_special_unit IS NULL AND smr.ms_level=? AND es.year=?`,[id,level,year]);
+  if(!candidates.length) return res.status(400).json({message:'The verifier must be approved and assigned to Advance Course in the selected MS level and school year.'});
   if(!values[6] && candidates[0].sex!==(values[1]===1?'Male':'Female'))
     return res.status(400).json({message:values[1]===1?'Battalion 1 requires a male Advance Course verifier.':'Battalion 2 requires a female Advance Course verifier.'});
   const [cycles]=await db.execute("SELECT id FROM enrollment_schedules WHERE program='ROTC' AND ms_level=? AND year=?",[level,year]);
@@ -102,19 +106,27 @@ exports.assign = endpoint(async (req,res) => {
     await connection.beginTransaction();
     // Lock the student across cycles so one verifier cannot receive concurrent active assignments.
     await connection.execute('SELECT id FROM students WHERE id=? FOR UPDATE',[id]);
-    const [activeAssignments]=await connection.execute('SELECT id FROM rotc_verifier_assignments WHERE verifier_id=? AND active=1 FOR UPDATE',[id]);
+    const [activeAssignments]=await connection.execute('SELECT id,ms_level,school_year,mi_number,mi_type FROM rotc_verifier_assignments WHERE verifier_id=? AND active=1 FOR UPDATE',[id]);
     if(activeAssignments.length) {
       await connection.rollback();
-      return res.status(409).json({message:'This student already has an active verifier assignment. Revoke all active assignments before assigning this student again.'});
+      const current=activeAssignments[0];
+      return res.status(409).json({message:`This student already has an active verifier assignment in MS ${current.ms_level} / SY ${current.school_year} / ${Number(current.mi_number)>0?'MI '+current.mi_number:'All MIs'} / ${current.mi_type?String(current.mi_type).toUpperCase():'All types'}. A student can have only one active assignment across all school years and MIs. Revoke the existing assignment before assigning this student again.`});
     }
     // Serialize assignments for this cycle so concurrent requests cannot replace active access.
     await connection.execute('SELECT id FROM enrollment_schedules WHERE id=? FOR UPDATE',[cycles[0].id]);
+    const [eligibleNow]=await connection.execute(`SELECT s.id FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
+      JOIN enrollment_schedules es ON es.id=CAST(smr.schedule_id AS UNSIGNED)
+      WHERE s.id=? AND s.role='student' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1
+        AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1 AND smr.assignment_special_unit IS NULL
+        AND smr.ms_level=? AND es.program='ROTC' AND es.year=? FOR UPDATE`,[id,level,year]);
+    if(!eligibleNow.length){await connection.rollback();return res.status(409).json({message:'Verifier enrollment is no longer eligible for this MS level and school year. Refresh the list.'});}
+
     const [existing]=await connection.execute(`SELECT id FROM rotc_verifier_assignments
       WHERE battalion=? AND company=? AND platoon=? AND ms_level=? AND school_year=?
         AND special_unit=? AND (mi_number=? OR mi_number=0) AND (mi_type=? OR mi_type='') AND active=1 FOR UPDATE`,values.slice(1));
     if(existing.length) {
       await connection.rollback();
-      return res.status(409).json({message:'This group already has a verifier for this attendance session. Choose another group or revoke the current assignment first.'});
+      return res.status(409).json({message:`This group already has a verifier for MS ${level} / SY ${year} / MI ${values[7]} / ${values[8].toUpperCase()}. Choose another group or attendance session, or revoke the current assignment first.`});
     }
     await connection.execute(`INSERT INTO rotc_verifier_assignments
     (verifier_id,battalion,company,platoon,ms_level,school_year,special_unit,mi_number,mi_type,assigned_by) VALUES(?,?,?,?,?,?,?,?,?,?)
@@ -199,6 +211,9 @@ exports.verify = endpoint(async (req,res) => {
         const error=new Error('This attendance record has changed or the form is outdated. Refresh and review it before saving.');error.status=409;throw error;
       }
     }
+    if (previous.status === status) {
+      const error = new Error('Attendance is already marked with this status. Choose a different status.'); error.status = 400; throw error;
+    }
     await connection.execute('UPDATE attendance_records SET status=?,verified_by=?,verified_at=NOW(),updated_at=NOW(),record_version=record_version+1 WHERE id=?',[status,req.user.email,targetRecordId]);
     await connection.execute(`INSERT INTO rotc_attendance_verification_log
       (record_id,assignment_id,verifier_id,previous_status,status,reason,verified_at)
@@ -223,13 +238,20 @@ exports.verify = endpoint(async (req,res) => {
   finally { connection.release(); }
 });
 exports.audit = endpoint(async(req,res) => {
+  const level=String(req.query?.ms_level||''),year=String(req.query?.school_year||'');
+  if((level||year)&&(!['1','2'].includes(level)||!/^\d{4}-\d{4}$/.test(year)))return res.status(400).json({message:'Select a valid MS level and school year.'});
+  const mi=String(req.query?.mi_number||''),type=String(req.query?.mi_type||'').toLowerCase();
+  if((mi||type)&&(!level||!/^([1-9]|1[0-5])$/.test(mi)||!['in','out'].includes(type)))return res.status(400).json({message:'Select a valid MI number and IN or OUT type.'});
+  const params=level?[level,year]:[];
+  let cycleFilter=level?'WHERE ses.ms_level=? AND ses.school_year=?':'';
+  if(mi){cycleFilter+=' AND ses.mi_number=? AND ses.mi_type=?';params.push(Number(mi),type);}
   const [rows]=await db.execute(`SELECT l.*,s.student_id,s.first_name,s.last_name,
     v.first_name verifier_first_name,v.last_name verifier_last_name,
     a.battalion,a.company,a.platoon,a.special_unit,ses.ms_level,ses.school_year,ses.mi_number,ses.mi_type
     FROM rotc_attendance_verification_log l JOIN attendance_records ar ON ar.id=l.record_id
     JOIN students s ON s.id=ar.student_id JOIN students v ON v.id=l.verifier_id
     JOIN attendance_sessions ses ON ses.id=ar.attendance_session_id
-    JOIN rotc_verifier_assignments a ON a.id=l.assignment_id ORDER BY l.id DESC LIMIT 200`);
+    JOIN rotc_verifier_assignments a ON a.id=l.assignment_id ${cycleFilter} ORDER BY l.id DESC ${level?'':'LIMIT 200'}`,params);
   res.json(rows);
 });
 exports.validAssignment=validAssignment;
