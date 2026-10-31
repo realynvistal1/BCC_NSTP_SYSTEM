@@ -425,3 +425,177 @@ body[data-page="rotc-verifiers"] #content > .verifier-history-panel { border-top
 .student-attendance-edit-dialog .attendance-save-note svg { width: 14px; height: 14px; flex: 0 0 14px; }
 .student-attendance-edit-dialog .attendance-dialog-footer { padding: 10px 14px; gap: 8px; }
 .student-attendance-edit-dialog .attendance-dialog-footer .btn { min-height: 40px; padding: 8px 14px; font-size: 12px; border-radius: 9px; }
+
+/* Simple two-panel Director assignment form. */
+body[data-page="rotc-verifiers"] #content > .panel {
+  background: #fff;
+  border: 1px solid #dce2e9;
+  border-radius: 14px;
+  box-shadow: none;
+}
+body[data-page="rotc-verifiers"] .verifier-management-panel > .verifier-section-heading {
+  background: transparent; border: 0; padding: 0 0 20px; border-radius: 0;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step {
+  grid-column: auto; padding: 20px; border: 1px solid #dce2e9;
+  border-radius: 12px; background: #fff; box-shadow: none;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm legend { color: #273b50; font-size: 15px; }
+body[data-page="rotc-verifiers"] .verifier-group-label {
+  font-size: 13px; color: #536171; margin: 22px 0 6px; padding-top: 18px; border-top: 1px solid #e7ebef;
+}
+body[data-page="rotc-verifiers"] .verifier-step-fields .field {
+  background: transparent; border: 0; box-shadow: none;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm :is(input,select) {
+  background: #fff; border-color: #d5dde6; border-radius: 7px; color: #334155;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm :is(input,select):disabled { background: #f5f6f8; color: #8a95a5; }
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step:focus-within { border-color: #a4b5c8; box-shadow: none; }
+body[data-page="rotc-verifiers"] .verifier-submit { margin-top: 18px; }
+body[data-page="rotc-verifiers"] .verifier-submit .btn { width: 100%; background: #345d85; border-color: #345d85; }
+body[data-page="rotc-verifiers"] :is(.verifier-heading-icon,.verifier-assignee-avatar,.verifier-assignment-count,.verifier-history-count,.verifier-assigned-tags > span) {
+  background: #f0f3f6; color: #526477; border-color: #dce2e9;
+}
+body[data-page="rotc-verifiers"] .verifier-disclosure-heading { background: #fff; }
+body[data-page="rotc-verifiers"] .intro { background: #f1f4f8; border-color: #dce2e9; }
+body[data-page="rotc-verifiers"] .intro::after { display: none; }
+@media (max-width: 900px) {
+  body[data-page="rotc-verifiers"] #verifierAssignmentForm { grid-template-columns: minmax(0, 1fr); }
+}
+/* Emphasize the two assignment boxes without adding more colors. */
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step {
+  border: 2px solid #b5c4d5;
+  box-shadow: 0 5px 16px rgba(35, 55, 80, .10);
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step:focus-within {
+  border-color: #6483a5;
+  box-shadow: 0 5px 18px rgba(35, 55, 80, .14);
+}
+
+/* Keep assignment and history lists beside each other on desktop. */
+body[data-page="rotc-verifiers"] .verifier-lists-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start;
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid > .panel {
+  min-width: 0; margin: 0; padding: 0; overflow: hidden;
+  background: #fff; border: 2px solid #b5c4d5; border-radius: 14px;
+  box-shadow: 0 5px 16px rgba(35,55,80,.10);
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading {
+  padding: 16px; gap: 10px; margin: 0; flex-wrap: wrap;
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading h2 { font-size: 17px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading p { display: none; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-section-body { padding: 14px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-list-toolbar {
+  padding: 10px; margin-bottom: 12px; background: #f5f7fa; border-color: #e0e5ec;
+  display: flex; flex-wrap: wrap; gap: 10px;
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-list-toolbar .field { flex: 1 1 140px; min-width: 0; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-pagination { flex-wrap: wrap; gap: 8px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .table-wrap { overflow-x: auto; }
+@media (max-width: 1050px) {
+  body[data-page="rotc-verifiers"] .verifier-lists-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* More breathing room and a consistent raised edge on verifier forms. */
+body[data-page="rotc-verifiers"] .verifier-lists-grid {
+  margin-top: 24px;
+  gap: 22px;
+  margin-bottom: 12px;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm { gap: 24px; }
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step,
+body[data-page="rotc-verifiers"] .verifier-lists-grid > .panel {
+  border: 1px solid #a9bdd4;
+  border-top: 3px solid #7895b5;
+  border-radius: 14px;
+  box-shadow: 0 3px 6px rgba(28, 49, 76, .05), 0 10px 24px rgba(28, 49, 76, .10);
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step { padding: 22px; }
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step:focus-within {
+  border-color: #6082a7;
+  box-shadow: 0 0 0 3px rgba(96,130,167,.10), 0 10px 24px rgba(28,49,76,.12);
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading {
+  padding: 19px 18px;
+  background: #fafbfd;
+  border-bottom: 1px solid #e3e9f0;
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-section-body { padding: 16px; }
+@media (max-width: 640px) {
+  body[data-page="rotc-verifiers"] .verifier-lists-grid { margin-top: 18px; gap: 18px; }
+  body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step { padding: 16px; }
+}
+/* Give the main assignment boxes the same balanced card treatment. */
+body[data-page="rotc-verifiers"] .verifier-management-panel > .verifier-section-heading {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e3e9f0;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm {
+  align-items: stretch;
+  padding: 20px;
+  border: 1px solid #d8e2ee;
+  border-radius: 16px;
+  background: #fafbfd;
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-form-step {
+  min-width: 0;
+  background: #fff;
+  border-color: #9fb5ce;
+  border-top-color: #6f8eaf;
+  box-shadow: 0 3px 6px rgba(28,49,76,.05), 0 10px 24px rgba(28,49,76,.11);
+}
+body[data-page="rotc-verifiers"] #verifierAssignmentForm .verifier-step-fields { gap: 16px; }
+body[data-page="rotc-verifiers"] #verifierAssignmentForm legend { padding: 0 10px; }
+@media (max-width: 640px) {
+  body[data-page="rotc-verifiers"] #verifierAssignmentForm { padding: 12px; gap: 18px; }
+}
+/* Fit verifier records to the two-column panels without horizontal scrolling. */
+body[data-page="rotc-verifiers"] .verifier-lists-grid { gap: 18px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading { padding: 13px 14px; gap: 8px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-disclosure-heading h2 { font-size: 15px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-heading-icon { width: 34px; height: 34px; flex-basis: 34px; border-radius: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-eyebrow { font-size: 9px; margin-bottom: 4px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-section-body { padding: 12px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-list-toolbar { padding: 8px; gap: 8px; margin-bottom: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-list-toolbar :is(input,select) { min-height: 34px; height: 34px; padding: 6px 8px; font-size: 12px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table { width: 100%; min-width: 0; table-layout: fixed; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table :is(th,td) { padding: 9px 6px; white-space: normal; overflow-wrap: anywhere; font-size: 11px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table th:nth-child(1) { width: 25%; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table th:nth-child(2) { width: 34%; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table th:nth-child(3) { width: 16%; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid table th:nth-child(4) { width: 25%; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid :is(.verifier-assignee,.verifier-assigned-group) { min-width: 0; gap: 5px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assignee-avatar { display: none; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assignee strong { font-size: 11px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assigned-group strong { font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assigned-group svg { display: none; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assigned-tags { gap: 3px; margin-top: 5px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-assigned-tags > span { white-space: normal; font-size: 9px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid :is(.verifier-revoke,.verifier-access) { white-space: normal; padding: 5px 6px; font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-list { gap: 8px; min-width: 0; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-row {
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 6px 10px; padding: 10px 11px; min-width: 0;
+}
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-student { grid-column: 1; grid-row: 1; gap: 3px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-student strong { font-size: 12px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-student > span { font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-transition { grid-column: 2; grid-row: 1; gap: 4px; justify-content: end; flex-wrap: wrap; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-transition .update-status { font-size: 10px; padding: 3px 5px; gap: 4px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-row time { grid-column: 1; grid-row: 2; font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-view { grid-column: 2; grid-row: 2; justify-self: end; padding: 4px 7px; min-height: 26px; font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-pagination { padding-top: 10px; margin-top: 10px; font-size: 10px; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-pagination > div { gap: 6px; flex-wrap: wrap; }
+body[data-page="rotc-verifiers"] .verifier-lists-grid .verifier-pagination .btn { min-height: 27px; padding: 4px 7px; font-size: 10px; }
+@media (max-width: 480px) {
+  body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-row { grid-template-columns: minmax(0,1fr); }
+  body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-transition { grid-column: 1; grid-row: 2; justify-content: start; }
+  body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-row time { grid-row: 3; }
+  body[data-page="rotc-verifiers"] .verifier-lists-grid .attendance-history-view { grid-column: 1; grid-row: 4; justify-self: start; }
+}
