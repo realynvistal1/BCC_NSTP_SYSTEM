@@ -39,3 +39,21 @@
 
 .cwts-company-menu button:disabled { color:#94a3b8; cursor:not-allowed; background:#f8fafc; }
 .cwts-company-menu small { display:block; padding:5px 10px 8px; font-size:11px; line-height:1.5; color:#718096; max-width:180px; }
+/* Keep each company total compact, including when only one company exists. */
+#content.cwts-company-roster .company-count-grid {
+  grid-template-columns: repeat(auto-fill, minmax(145px, 180px));
+  justify-content: start;
+  gap: 12px;
+}
+#content.cwts-company-roster .company-count-grid .roster-stat {
+  padding: 12px 14px;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  #content.cwts-company-roster .company-count-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cwts-capacity-summary { min-width: 0; }
+.cwts-capacity-summary .cwts-edit-capacity { margin-top: 7px; width: 100%; font-size: 11px; }
