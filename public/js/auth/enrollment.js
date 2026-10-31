@@ -11,14 +11,20 @@
   function syncBirthdate(){
     const year=Number(birthYear.value),month=Number(birthMonth.value),previousDay=birthDay.value;
     const days=month?new Date(year||2000,month,0).getDate():31;
-    birthDay.length=1;
-    for(let day=1;day<=days;day++)birthDay.add(new Option(String(day),String(day)));
-    birthDay.value=Number(previousDay)<=days?previousDay:'';
+    // Avoid rebuilding the selected day while a mobile picker is committing it.
+    if(birthDay.options.length!==days+1){
+      birthDay.length=1;
+      for(let day=1;day<=days;day++)birthDay.add(new Option(String(day),String(day)));
+      birthDay.value=Number(previousDay)<=days?previousDay:'';
+    }
     f.birthdate.value=year&&month&&birthDay.value?[year,String(month).padStart(2,'0'),birthDay.value.padStart(2,'0')].join('-'):'';
     const maxDate=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
     birthYear.setCustomValidity(f.birthdate.value&&f.birthdate.value>maxDate?'Date of birth cannot be in the future.':'');
   }
-  [birthMonth,birthDay,birthYear].forEach(select=>select.addEventListener('change',syncBirthdate));
+  [birthMonth,birthDay,birthYear].forEach(select=>{
+    select.addEventListener('change',syncBirthdate);
+    select.addEventListener('input',syncBirthdate);
+  });
   syncBirthdate();
   const MAX_FILE=5*1024*1024;
   // Read selected files immediately while the mobile picker still grants access.
@@ -167,6 +173,7 @@
     }else window.scrollTo({top:0,behavior:'smooth'});
   }
   function customValidate(){
+    syncBirthdate();
     if(step===0){
       if(!f.course.value)return 'Course is required.';
       if(!f.year_level.value)return 'Year level is required.';
@@ -174,6 +181,8 @@
       if(!f.ms_level.value)return 'MS level is required.';
     }
     if(step===1){
+      if(!f.birthdate.value)return 'Please select your complete date of birth (month, day, and year).';
+      if(!birthYear.checkValidity())return birthYear.validationMessage;
       const id=f.student_id.value.trim();
       if(!/^\d{6}-\d{4}$/.test(id))return 'Student ID must be in format 000000-0000 (e.g. 202020-0404).';
       if(!/^09\d{9}$/.test(f.contact_number.value))return 'Contact number must be 11 digits (e.g. 09XXXXXXXXX).';
@@ -329,7 +338,13 @@
         return
       }
       ['medical_certificate_file','xray_file_input','photo_file','cor_file_input'].forEach(n=>{const inp=f.elements[n];if(inp?.files?.[0]&&inp.files[0].size>MAX_FILE)throw new Error(`File "${inp.files[0].name}" is too large. Maximum size is 5MB.`)});
+      syncBirthdate();
+      if(!f.birthdate.value||!birthYear.checkValidity()){
+        step=1;show();birthMonth.focus();
+        throw new Error('Please check your date of birth. Select a valid month, day, and year.');
+      }
       const data=formToObject(f);
+      data.birthdate=f.birthdate.value;
       const w=f.querySelector('input[name="willingness_option"]:checked')?.value||'none';
       data.willing_to_take_advance_course=w==='advance'?1:0;
       data.willing_to_be_medics=w==='medics'?1:0;
