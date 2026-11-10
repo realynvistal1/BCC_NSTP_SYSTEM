@@ -1,5 +1,7 @@
 const path = require('path');
 
+// Allow only the declared upload types listed below and enforce size limits.
+// MIME types and filenames are supplied by the client; these checks are not a malware scan.
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -22,6 +24,7 @@ const EXCEL_MIME_TYPES = new Set([
 const EXCEL_EXTENSIONS = new Set(['.xls', '.xlsx']);
 const DATA_URL_PATTERN = /^data:([a-z0-9.+/-]+);base64,([a-z0-9+/=]+)$/i;
 
+// Reject malformed base64 uploads and calculate the decoded file size.
 function parseDataUrl(value) {
   const normalized = String(value || '').trim();
   const match = DATA_URL_PATTERN.exec(normalized);
@@ -50,6 +53,7 @@ function parseDataUrl(value) {
   }
 }
 
+// Reject missing required uploads, invalid encoding, disallowed types, and oversized files.
 function validateDataUrlUpload(value, options) {
   const {
     label,
@@ -103,6 +107,7 @@ function validateDocumentUpload(value, { label, required = false, maxBytes = 5 *
   });
 }
 
+// Check Excel uploads for a file buffer, size limit, and allowed extension and declared MIME type.
 function validateExcelFile(file, { label = 'Excel file', maxBytes = 8 * 1024 * 1024 } = {}) {
   if (!file || !file.buffer) {
     throw new Error(`${label} is required.`);
