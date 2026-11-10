@@ -4,6 +4,10 @@
 
   async function renderFromConfig(content, auth) {
     switch (data.pageType) {
+      case "rotc-verifiers":
+        return window.renderSemesterVerifierManagement(content);
+      case "instructor-assignments":
+        return renderInstructorAssignments(data.program,content);
       case "admin-shell":
         return adminPage(data.program, data.page, content, auth);
       case "student-shell":
