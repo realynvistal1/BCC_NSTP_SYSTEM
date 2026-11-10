@@ -3,6 +3,8 @@ const controller = require('../controllers/authController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
 
 router.post('/login', controller.login);
+router.post('/instructor/register',require('../controllers/instructorPortalController').register);
+router.get('/instructor/school-years',require('../controllers/instructorPortalController').registrationYears);
 router.post('/cwts-instructor/accept-invitation',require('../controllers/cwtsInstructorController').accept);
 router.post('/logout', controller.logout);
 router.post('/forgot-password/request-code-student', controller.requestStudentResetCode);
