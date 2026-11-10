@@ -331,6 +331,12 @@
       if(step===1){
         const chk=await API.get(`/api/student/check-student-id?student_id=${encodeURIComponent(f.student_id.value)}`);
         if(chk.exists)throw new Error(chk.message||'This Student ID is already registered. Please use Student Login or contact your administrator.');
+        if(program()==='CWTS'){
+          const exam=await API.post('/api/student/cwts-exam-eligibility',{
+            student_id:f.student_id.value,first_name:f.first_name.value,middle_name:f.middle_name.value,last_name:f.last_name.value,sex:f.sex.value,course:f.course.value
+          });
+          if(!exam.eligible)throw new Error(exam.message);
+        }
       }
       if(step<sections.length-1){
         step++;
