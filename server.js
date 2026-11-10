@@ -30,11 +30,14 @@ function requireEnv(name) {
   return value;
 }
 
+// Refuse to start without a signing secret or with the known placeholder secret.
 const jwtSecret = requireEnv("JWT_SECRET");
 if (jwtSecret === "replace-with-a-long-random-secret") {
   throw new Error("JWT_SECRET must be replaced before running the app.");
 }
 
+// Apply traffic limits before parsing request bodies to reduce work from excessive requests.
+// Authentication requests pass through both the general API and authentication limits.
 app.set("trust proxy", trustProxyHop());
 app.use("/api", generalApiConcurrencyLimit);
 app.use("/api", generalApiRateLimit);
@@ -61,6 +64,7 @@ app.use("/assets", express.static(path.join(__dirname, "public"), {
   },
 }));
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use('/api/instructor',require('./routes/instructorPortalRoutes'));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/admin/rotc", require("./routes/rotcAdminRoutes"));
 app.use('/api/admin/cwts/instructor',require('./routes/cwtsInstructorRoutes'));
@@ -82,6 +86,7 @@ function readToken(req) {
   return req.cookies?.nstp_token || bearer;
 }
 
+// Verify the session token before using its contents to decide page access.
 function readSession(req) {
   const token = readToken(req);
   if (!token) return null;
@@ -93,6 +98,7 @@ function readSession(req) {
   }
 }
 
+// Restrict protected pages to the expected portal and account role.
 function requirePagePortal(...portals) {
   return (req, res, next) => {
     const session = readSession(req);
@@ -113,6 +119,8 @@ const publicPages = {
   "/admin/rotc/login": "views/auth/rotc-login.html",
   "/admin/cwts/login": "views/auth/cwts-login.html",
   '/cwts/instructor/login': 'views/auth/cwts-instructor-login.html',
+  '/instructor/login': 'views/auth/cwts-instructor-login.html',
+  '/instructor/register': 'views/auth/instructor-register.html',
   '/admin/cwts/accept-invitation':'views/auth/cwts-instructor-invitation.html',
   "/officer/login": "views/auth/officer-login.html",
 }
@@ -140,6 +148,8 @@ mountPages("/student", [
 "settings",
 ], requirePagePortal("student"));
 mountPages("/admin/rotc", [
+"rotc-verifiers",
+"instructor-assignments",
 "dashboard",
 "enrollment-schedule",
 "enrollment-list",
@@ -157,6 +167,7 @@ for (const page of ["overall", "battalion-1", "battalion-2", "advance-course", "
   app.get(`/admin/rotc/attendance-summary/${page}`, requirePagePortal("rotc-admin"), (req, res) => res.redirect(`/admin/rotc/attendance-summary?group=${page}`));
 }
 mountPages("/admin/cwts", [
+"instructor-assignments",
 "dashboard",
 "enrollment-schedule",
 "enrollment-list",
@@ -169,8 +180,6 @@ mountPages("/admin/cwts", [
 "settings",
 ], requirePagePortal("cwts-admin"));
 mountPages("/officer", [
-"cwts-instructors",
-"rotc-verifiers",
 "dashboard",
 "create-attendance",
 "view-attendance",
@@ -178,10 +187,18 @@ mountPages("/officer", [
 "cwts",
 "settings",
 ], requirePagePortal("officer"));
+app.get('/officer/rotc-verifiers',requirePagePortal('officer'),(req,res)=>res.redirect('/officer/view-attendance?program=ROTC'));
+// CWTS instructor attendance follows company assignments; retire the old manual setup page.
+app.get('/officer/cwts-instructors',requirePagePortal('officer'),(req,res)=>res.redirect('/officer/view-attendance?program=CWTS'));
 const instructorAuth=require('./middleware/authMiddleware');
+app.get('/instructor/dashboard',
+  (req,res,next)=>readSession(req)?.role==='instructor'?next():res.redirect('/instructor/login'),
+  instructorAuth.requireAuth,instructorAuth.requireRole('instructor'),instructorAuth.requirePortal('instructor'),
+  (req,res)=>res.sendFile(path.join(__dirname,'views/instructor/dashboard.html')));
 app.get('/admin/cwts/my-attendance',
   (req,res,next)=>readSession(req)?.role==='instructor'?next():res.redirect('/cwts/instructor/login'),
-  instructorAuth.requireAuth,instructorAuth.requireRole('instructor'),instructorAuth.requirePortal('cwts-admin'),
+  instructorAuth.requireAuth,instructorAuth.requireRole('instructor'),instructorAuth.requirePortal('cwts-admin','instructor'),
+  (req,res,next)=>req.user.program==='CWTS'?next():res.status(403).send('Access denied.'),
   (req,res)=>res.sendFile(path.join(__dirname,'views/admin/cwts/my-attendance.html')));
 for (const page of ["rotc", "cwts", "advance-course", "special-platoon"]) {
   app.get(`/officer/attendance/${page}`, requirePagePortal("officer"), (req, res) => res.redirect(`/officer/view-attendance?program=${page}`));
@@ -230,6 +247,8 @@ async function startServer() {
 await require('./database/ensure-local-mysql').ensureLocalMysql();
 await require('./database/migrate-cwts-capacity').ensureCwtsCapacity(require('./config/database'));
 await require('./database/migrate-cwts-schedule-setup').ensureCwtsScheduleSetup(require('./config/database'));
+await require('./database/migrate-cwts-exam-results').ensureCwtsExamResults(require('./config/database'));
+await require('./database/migrate-instructor-portal').ensureInstructorPortal(require('./config/database'));
 await require('./database/migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(require('./config/database'));
 await require('./database/migrate-grade-attempts').ensureGradeAttempts(require('./config/database'));
 const server = app.listen(PORT, HOST, (error) => {
