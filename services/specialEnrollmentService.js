@@ -19,15 +19,8 @@ async function check(db, scheduleId, body, excludeStudent = 0) {
   if (!schedule || schedule.platoons_assigned_at || Date.now() < new Date(schedule.open_date).getTime() || Date.now() > new Date(schedule.deadline).getTime()) {
     const error = new Error('Enrollment is closed for this cycle.'); error.status = 409; throw error;
   }
-  if(schedule.program==='CWTS') {
-    const [members]=await db.execute(`SELECT id FROM student_ms_records
-      WHERE program='CWTS' AND CAST(schedule_id AS UNSIGNED)=? AND status IN ('pending','approved') AND student_id<>? FOR UPDATE`,[scheduleId,excludeStudent]);
-    const saved=require('./cwtsCompanyService').decode(schedule.cwts_company_setup);
-    const settings=saved?.length?saved:await require('./cwtsCompanyService').details(db);
-    const capacity=require('./cwtsCompanyService').total(settings);
-    if(members.length>=capacity){const error=new Error('CWTS enrollment is full ('+members.length+'/'+capacity+'). No more applications can be accepted for this schedule.');error.status=409;throw error;}
-    return;
-  }
+  // CWTS company capacity is checked only when assigning companies, not at enrollment.
+  if(schedule.program==='CWTS') return;
   if (schedule.program !== 'ROTC') return;
   const counts = await availability(db, scheduleId, true, excludeStudent);
   for (const [unit, flag] of [['Medics','willing_to_be_medics'],['MP','willing_to_be_military_police']]) {
