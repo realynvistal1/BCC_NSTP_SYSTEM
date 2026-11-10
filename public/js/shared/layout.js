@@ -30,6 +30,8 @@ const NAV = {
 };
 
 function navIconName(href, label) {
+  const instructorTab=/\/instructor\/dashboard#(dashboard|profile|grades|attendance|records)$/.exec(href)?.[1];
+  if(instructorTab)return {dashboard:'dashboard',profile:'users',grades:'grades',attendance:'attendance'}[instructorTab];
   const text = `${label} ${href}`.toLowerCase();
 
   if (text.includes('dashboard')) return 'dashboard';
@@ -39,6 +41,7 @@ function navIconName(href, label) {
   if (text.includes('attendance')) return 'attendance';
   if (text.includes('record')) return 'records';
   if (text.includes('grade')) return 'grades';
+  if (text.includes('instructor')) return 'platoon';
   if (text.includes('serial') || text.includes('certificate')) return 'serial';
   if (text.includes('offense')) return 'offense';
   if (text.includes('setting')) return 'settings';
@@ -72,24 +75,25 @@ function decorateSidebar(role) {
 
   const mobileMenuButton = document.getElementById('mobileMenuButton');
   if (mobileMenuButton && mobileMenuButton.dataset.enhanced !== 'true') {
-    const studentHeader = document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance';
+    const studentHeader = ['student','instructor'].includes(document.body.dataset.role) || document.body.dataset.page === 'cwts-instructor-attendance';
     const menuIcon = studentHeader
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
       : icon('dashboard');
     mobileMenuButton.innerHTML = `${menuIcon}<span>Menu</span>`;
     mobileMenuButton.dataset.enhanced = 'true';
   }
-  if (document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') {
+  if (['student','instructor'].includes(document.body.dataset.role) || document.body.dataset.page === 'cwts-instructor-attendance') {
     const mobileBrand = document.querySelector('.top-mobile > strong');
     if (mobileBrand && mobileBrand.dataset.enhanced !== 'true') {
       mobileBrand.classList.add('student-mobile-brand');
-      mobileBrand.innerHTML = `<img src="/assets/images/bcclogo-removebg-preview.png" alt=""><span>BCC NSTP<small>${document.body.dataset.page === 'cwts-instructor-attendance' ? 'CWTS Instructor' : 'Student Portal'}</small></span>`;
+      mobileBrand.innerHTML = `<img src="/assets/images/bcclogo-removebg-preview.png" alt=""><span>BCC NSTP<small>${document.body.dataset.role==='instructor'?'Instructor Portal':document.body.dataset.page === 'cwts-instructor-attendance' ? 'CWTS Instructor' : 'Student Portal'}</small></span>`;
       mobileBrand.dataset.enhanced = 'true';
     }
   }
 }
 
 function portalLabel(role) {
+  if (role === 'instructor') return 'Instructor Portal';
   if (role === 'student') return 'Student Portal';
   if (role === 'officer') return 'NSTP Director';
   if (role === 'rotc') return 'ROTC Administrator';
@@ -166,7 +170,7 @@ function shell(role, title, subtitle, auth) {
   document.getElementById('pageSubtitle').textContent = subtitle;
   preparePortalShell(role);
 
-  if (role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') setupStudentMobileMenu();
+  if (['student','instructor'].includes(role) || document.body.dataset.page === 'cwts-instructor-attendance') setupStudentMobileMenu();
   else document.getElementById('mobileMenuButton')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('open');
   });
@@ -261,6 +265,29 @@ function startAttendanceRefresh(user, refresh) {
 }
 
 function preparePortalShell(role) {
+  if(role==='rotc'){
+    const nav=document.querySelector('.sidebar .nav');
+    if(nav&&!nav.querySelector('a[href="/admin/rotc/rotc-verifiers"]')){
+      const link=document.createElement('a');link.className='nav-link';link.href='/admin/rotc/rotc-verifiers';link.textContent='Attendance Verifiers';
+      const summary=nav.querySelector('a[href="/admin/rotc/attendance-summary"]');if(summary)summary.after(link);else nav.append(link);
+
+    }
+  }
+
+  if (role === 'rotc' || role === 'cwts') {
+    const nav=document.querySelector('.sidebar .nav');
+    const path=`/admin/${role}/instructor-assignments`;
+    if(nav){
+      let link=nav.querySelector(`a[href="${path}"]`);
+      if(!link){
+        link=document.createElement('a');link.className='nav-link';link.href=path;link.textContent='Instructor Assignment';
+        const grades=nav.querySelector(`a[href="/admin/${role}/grades"]`);
+        if(grades)grades.before(link);else nav.append(link);
+      }
+      const roster=nav.querySelector(role==='cwts'?'a[href="/admin/cwts/company-roster"]':'a[href="/admin/rotc/platoon-roster"]');
+      if(roster)roster.after(link);
+    }
+  }
   if (role === 'officer') {
     const nav = document.querySelector('.sidebar .nav');
     const items = [
@@ -271,16 +298,14 @@ function preparePortalShell(role) {
       ['/officer/rotc/special-platoon', 'Special Platoon'],
       ['/officer/cwts', 'CWTS'],
       ['/officer/create-attendance', 'Create Attendance'],
-      ['/officer/view-attendance', 'View Attendance'],
-      ['/officer/cwts-instructors', 'CWTS Attendance Verifiers'],
-      ['/officer/rotc-verifiers', 'ROTC Attendance Verifiers'],
-      ['/officer/view-records', 'View Student Records'],
+      ['/officer/view-attendance', 'View Attendance'],      ['/officer/view-records', 'View Student Records'],
       ['/officer/settings', 'Settings'],
     ];
     if (nav) nav.innerHTML = items.map(([href, label]) =>
       '<a class="nav-link" href="' + href + '">' + esc(label) + '</a>'
     ).join('');
   }
+  if(role==='rotc')document.querySelectorAll('.nav-link').forEach(link=>link.classList.toggle('active',link.getAttribute('href')===window.location.pathname));
   decorateSidebar(role);
 
   const emblem = document.getElementById('portalEmblem');
@@ -295,7 +320,7 @@ function preparePortalShell(role) {
 }
 
 function portalLogin(expected) {
-  if (expected === 'cwts-instructor' || document.body.dataset.page === 'cwts-instructor-attendance') return '/cwts/instructor/login';
+  if (['cwts-instructor','instructor'].includes(expected) || document.body.dataset.page === 'cwts-instructor-attendance') return '/cwts/instructor/login';
   if (expected === 'rotc-admin') return '/admin/rotc/login';
   if (expected === 'cwts-admin') return '/admin/cwts/login';
   if (expected === 'officer') return '/officer/login';
@@ -591,7 +616,7 @@ function showForgotMessage() {
   if (portal !== 'student') {
     body.innerHTML = `
       <div class="forgot-header">
-        <h3>${portal === 'cwts-instructor' ? 'Reset Instructor Password' : portal === 'cwts-admin' ? 'Reset CWTS Password' : 'Reset Admin Password'}</h3>
+        <h3>${['cwts-instructor','instructor'].includes(portal) ? 'Reset Instructor Password' : portal === 'cwts-admin' ? 'Reset CWTS Password' : 'Reset Admin Password'}</h3>
         <p>Request a verification code through Gmail, then enter the code to create a new password.</p>
       </div>
       <div class="notice hidden" id="forgotPasswordMsg"></div>
@@ -605,7 +630,7 @@ function showForgotMessage() {
           </div>
         </label>
         <div class="forgot-action-row">
-          <button class="auth-submit ${['cwts-admin','cwts-instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="sendResetCodeBtn" type="button">Send Code</button>
+          <button class="auth-submit ${['cwts-admin','cwts-instructor','instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="sendResetCodeBtn" type="button">Send Code</button>
         </div>
         <label>
           Verification Code
@@ -628,7 +653,7 @@ function showForgotMessage() {
             <input name="confirmPassword" minlength="8" placeholder="Confirm new password" required type="password">
           </div>
         </label>
-        <button class="auth-submit ${['cwts-admin','cwts-instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="resetAdminPasswordBtn" type="submit">Reset Password</button>
+        <button class="auth-submit ${['cwts-admin','cwts-instructor','instructor'].includes(portal) ? 'cwts-submit' : portal === 'officer' ? 'officer-submit' : 'rotc-submit'}" id="resetAdminPasswordBtn" type="submit">Reset Password</button>
       </form>
     `;
     $('#sendResetCodeBtn')?.addEventListener('click', requestAdminResetCode);
@@ -788,7 +813,7 @@ async function logout() {
   if (!await confirmLogout()) return;
 
   const path = location.pathname;
-  const destination = document.body.dataset.page === 'cwts-instructor-attendance'
+  const destination = path.startsWith('/instructor/') ? '/instructor/login' : document.body.dataset.page === 'cwts-instructor-attendance'
     ? '/cwts/instructor/login'
     : path.startsWith('/admin/rotc')
     ? '/admin/rotc/login'
@@ -920,7 +945,7 @@ document.addEventListener('pointerover', (event) => {
   const href = link.getAttribute('href');
   if (!href) return;
 
-  const nextUrl = new URL(href, window.location.origin);
+  const nextUrl = new URL(href, window.location.href);
   if (nextUrl.origin !== window.location.origin || nextUrl.href === window.location.href) return;
 
   const prefetch = document.createElement('link');
@@ -935,7 +960,7 @@ document.addEventListener('click', (event) => {
   const link = event.target.closest('.nav-link');
   if (!link) return;
 
-  if (document.body.dataset.role === 'student' || document.body.dataset.page === 'cwts-instructor-attendance') setStudentMobileMenu(false);
+  if (['student','instructor'].includes(document.body.dataset.role) || document.body.dataset.page === 'cwts-instructor-attendance') setStudentMobileMenu(false);
   else document.getElementById('sidebar')?.classList.remove('open');
 
   const href = link.getAttribute('href');
@@ -946,8 +971,10 @@ document.addEventListener('click', (event) => {
   const target = link.getAttribute('target');
   if (target && target !== '_self') return;
 
-  const nextUrl = new URL(href, window.location.origin);
+  const nextUrl = new URL(href, window.location.href);
   if (nextUrl.origin !== window.location.origin) return;
+  // Tabs in the current portal use hash navigation, without leaving the page.
+  if (nextUrl.pathname === window.location.pathname && nextUrl.search === window.location.search) return;
   if (nextUrl.href === window.location.href) return;
   if (document.body.classList.contains('route-leaving')) return;
 
