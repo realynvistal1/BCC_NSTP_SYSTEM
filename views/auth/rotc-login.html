@@ -1,113 +1,25 @@
-<!DOCTYPE html>
-<html>
- <head>
-  <link rel="icon" type="image/png" href="/assets/images/bcclogo-removebg-preview.png">
-  <meta charset="utf-8"/>
-  <meta content="width=device-width,initial-scale=1" name="viewport"/>
-  <title>
-   ROTC Admin Portal | BCC NSTP
-  </title>
-  <link href="/assets/css/global.css" rel="stylesheet"/>
-  <link href="/assets/css/login.css" rel="stylesheet"/>
- </head>
- <body class="auth-page theme-rotc">
-  <div class="auth-shell">
-   <section class="auth-visual" style="--hero:url('/assets/images/rotc-login.png')">
-    <div class="auth-visual-overlay">
-    </div>
-    <div class="auth-visual-content">
-     <div class="auth-logo-wrap">
-      <img alt="Buenavista Community College Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
-     </div>
-     <h1>
-      ROTC Admin Portal
-     </h1>
-     <p>
-      Manage ROTC enrollment, platoon assignment, attendance records, grades, offenses, serial numbers, and student records.
-     </p>
-     <div class="partner-logos">
-      <img alt="Organization logo" src="/assets/images/bcclogo-removebg-preview.png"/>
-      <img alt="Organization logo" src="/assets/images/commision-rotc.png"/>
-      <img alt="Organization logo" src="/assets/images/republika-rotc.png"/>
-      <img alt="Organization logo" src="/assets/images/nstp-rotc.png"/>
-     </div>
-     <div class="visual-dots">
-      <i>
-      </i>
-      <i>
-      </i>
-      <i>
-      </i>
-     </div>
-    </div>
-   </section>
-   <section class="auth-form-side">
-    <div class="mobile-auth-hero" style="--hero:url('/assets/images/rotc-login.png')">
-    </div>
-    <div class="auth-card">
-     <div class="mobile-brand">
-      <img alt="BCC Logo" src="/assets/images/bcclogo-removebg-preview.png"/>
-      <strong>
-       ROTC Admin Portal
-      </strong>
-     </div>
-     <div class="auth-heading">
-      <div class="heading-icon">
-       ✦
-      </div>
-      <div>
-       <h2>
-        ROTC Administrator
-       </h2>
-       <p>
-        Log in to access the ROTC dashboard
-       </p>
-      </div>
-     </div>
-     <div class="notice hidden" id="msg">
-     </div>
-     <form class="auth-form" data-portal="rotc-admin" id="loginForm">
-      <label>
-       Email address
-       <div class="input-shell">
-        <span class="field-icon">
-         ✉
-        </span>
-        <input autocomplete="username" name="email" placeholder="Enter your email" required="" type="email"/>
-       </div>
-      </label>
-      <label>
-       Password
-       <div class="input-shell">
-        <span class="field-icon">
-         ●
-        </span>
-        <input autocomplete="current-password" name="password" placeholder="Enter your password" required="" type="password"/>
-        <button aria-label="Show password" class="password-toggle" type="button">
-         Show
-        </button>
-       </div>
-      </label>
-      <div class="auth-row">
-       <span>
-       </span>
-       <button class="link-button" onclick="showForgotMessage()" type="button">
-        Forgot password?
-       </button>
-      </div>
-      <button class="auth-submit rotc-submit" type="submit">
-       Log In
-      </button>
-     </form>
-    </div>
-    <p class="auth-copyright">
-     Buenavista Community College &copy; 2026
-    </p>
-   </section>
-  </div>
-  <script src="/assets/js/shared/api.js"></script>
-  <script src="/assets/js/shared/layout.js"></script>
-  <script src="/assets/js/auth/login.js">
-  </script>
- </body>
-</html>
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ROTC Admin Portal | BCC NSTP</title><link rel="icon" href="/assets/images/bcclogo-removebg-preview.png"><link rel="stylesheet" href="/assets/css/global.css"><link rel="stylesheet" href="/assets/css/login.css"><link rel="stylesheet" href="/assets/css/instructor-auth.css?v=20261109-circle-logos"></head>
+<body class="instructor-auth ia-login" style="--login-photo:url('/assets/images/rotc-login.png')">
+<main class="ia-login-shell">
+  <section class="ia-welcome" aria-label="ROTC Admin Portal">
+    <a class="ia-brand" href="/admin/rotc/login"><img src="/assets/images/bcclogo-removebg-preview.png" alt="BCC logo"><span><strong>BCC NSTP</strong><small>Buenavista Community College</small></span></a>
+    <h1>ROTC Admin Portal</h1><p>Manage ROTC enrollment, platoon assignment, attendance records, grades, offenses, serial numbers, and student records.</p>
+    <div class="ia-partner-logos"><img src="/assets/images/bcclogo-removebg-preview.png" alt="Organization logo"><img src="/assets/images/commision-rotc.png" alt="Organization logo"><img src="/assets/images/republika-rotc.png" alt="Organization logo"><img src="/assets/images/nstp-rotc.png" alt="Organization logo"></div>
+  </section>
+  <section class="ia-login-card" aria-labelledby="loginTitle">
+    <div class="ia-card-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 8 9-5 9 5-9 5-9-5Z"/><path d="M6 10v6c4 3 8 3 12 0v-6M21 8v8"/></svg></div>
+    <h2 id="loginTitle">ROTC Administrator</h2><p>Log in to access the ROTC dashboard</p>
+    <div class="notice hidden" id="msg" role="alert"></div>
+    <form class="auth-form" data-portal="rotc-admin" id="loginForm">
+      <label>Email Address<input name="email" type="email" placeholder="Enter your email" autocomplete="username" required></label>
+      <label>Password<div class="input-shell ia-password"><input name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required><button class="password-toggle" type="button" aria-label="Show password">Show</button></div></label>
+      <div class="ia-forgot"><button class="link-button" onclick="showForgotMessage()" type="button">Forgot password?</button></div>
+      <button class="ia-primary" type="submit">Log In <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>
+    </form>
+    
+  </section>
+</main>
+<script src="/assets/js/shared/api.js"></script><script src="/assets/js/shared/layout.js"></script><script src="/assets/js/auth/login.js"></script>
+</body></html>
