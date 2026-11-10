@@ -49,9 +49,7 @@ document.addEventListener('DOMContentLoaded', () => bootstrapPortalPage({
         <dl class="student-record-details">
           
           <div><dt>Midterm</dt><dd>${grade?.midterm != null ? Number(grade.midterm).toFixed(2) : '-'}</dd></div>
-          <div><dt>Final term</dt><dd>${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</dd></div>
-
-          <div><dt>Average</dt><dd>${grade?.grade != null ? Number(grade.grade).toFixed(2) : '-'}</dd></div>
+          <div><dt>Final</dt><dd>${grade?.final_term != null ? Number(grade.final_term).toFixed(2) : '-'}</dd></div>
         </dl>
       </details>`;
 
