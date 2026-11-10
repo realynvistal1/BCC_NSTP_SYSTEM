@@ -1,0 +1,18 @@
+const router=require('express').Router();
+const {requireAuth,requireRole,requirePortal}=require('../middleware/authMiddleware');
+const c=require('../controllers/instructorPortalController');
+router.use(requireAuth,requireRole('instructor'),requirePortal('instructor'));
+router.get('/profile',c.profile);
+router.get('/dashboard',c.dashboard);
+router.get('/profile/photo',c.photo);
+router.get('/students/:studentId/photo',c.studentPhoto);
+router.get('/assignments',c.assignments);
+router.get('/assignments/:id/records',c.records);
+router.post('/assignments/:id/records/:recordId',c.save);
+router.get('/student-records',c.studentRecords);
+router.get('/student-records/download',c.downloadStudentRecords);
+router.get('/student-records/:recordId',c.studentRecordDetail);
+router.get('/student-records/:recordId/certificate',c.downloadStudentCertificate);
+router.get('/attendance/:id/download',c.downloadAttendance);
+router.get('/rotc-attendance',c.rotcAttendanceOverview);
+module.exports=router;
