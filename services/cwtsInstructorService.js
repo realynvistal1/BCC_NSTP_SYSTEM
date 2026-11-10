@@ -51,9 +51,9 @@ async function acceptInvitation(token,password){
     await connection.beginTransaction();
     const [[account]]=await connection.execute('SELECT id FROM cwts_instructors WHERE id=? AND invitation_hash=? AND invitation_expires>? AND status<>\'disabled\' FOR UPDATE',[candidate.id,hash,Date.now()]);
     if(!account)fail(400,'This invitation is expired, already used, or unavailable. Ask the Director for a new invitation.');
-    await connection.execute("UPDATE cwts_instructors SET password=?,status='active',session_version=session_version+1,invitation_hash=NULL,invitation_expires=0,delivery_status='accepted' WHERE id=?",[passwordHash,account.id]);
+    await connection.execute("UPDATE cwts_instructors SET password=?,status=IF(review_status='approved','active','pending'),session_version=session_version+1,invitation_hash=NULL,invitation_expires=0,delivery_status='accepted' WHERE id=?",[passwordHash,account.id]);
     await connection.commit();
-    return {message:'Your password is set. Sign in through the CWTS Instructor login with your email and new password.',redirect:'/cwts/instructor/login'};
+    return {message:'Your password is set. Your account needs admin approval before you can sign in.',redirect:'/instructor/login'};
   }catch(error){await connection.rollback();throw error;}finally{connection.release();}
 }
 async function findLogin(emailAddress){
