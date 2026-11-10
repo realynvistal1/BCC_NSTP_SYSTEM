@@ -8,6 +8,12 @@
     "node": ">=20 <25"
   },
   "scripts": {
+    "db:migrate:instructor-portal": "node database/migrate-instructor-portal.js",
+    "verify:instructor-portal": "node --test scripts/verify-instructor-portal.test.js",
+    "db:migrate:grade-instructors": "node database/migrate-grade-instructors.js",
+    "verify:grade-instructors": "node --test scripts/verify-grade-instructors.test.js",
+    "db:migrate:cwts-exams": "node database/migrate-cwts-exam-results.js",
+    "verify:cwts-exams": "node --test scripts/verify-cwts-exams.test.js",
     "db:migrate:grade-attempts": "node database/migrate-grade-attempts.js",
     "db:migrate:enrollment-lifecycle": "node database/migrate-enrollment-lifecycle.js",
     "verify:retakes": "node scripts/verify-retake-flow.js && node scripts/verify-retake-ui.js",
