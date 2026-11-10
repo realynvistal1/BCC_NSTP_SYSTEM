@@ -29,8 +29,9 @@ async function submit(program, level, year, existing = [], dates = {}) {
     if (sql.includes('WHERE program=? AND ms_level=? AND year=?')) return [[]];
     if (sql.startsWith('INSERT INTO enrollment_schedules')) {
       writes.push(params);
-      return [{ affectedRows: 1 }];
+      return [{ affectedRows: 1, insertId: 9 }];
     }
+    if (sql.startsWith('INSERT INTO cwts_exam_')) return [{ affectedRows: 1 }];
     throw new Error(`Unexpected SQL: ${sql}`);
   };
   db.getConnection = async () => ({
@@ -45,6 +46,13 @@ async function submit(program, level, year, existing = [], dates = {}) {
   await schedules({
     method: 'POST',
     params: { program: program.toLowerCase() },
+    user: { email: 'schedule-test@example.invalid' },
+    file: program === 'CWTS' && String(level) === '1' ? (() => {
+      const XLSX = require('xlsx'), workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Student ID','First Name','Middle Name','Last Name','Sex','Course','Result'],['123456-2026','Juan','','Cruz','Male','BSIT','Passed']]), 'Results');
+      const buffer = XLSX.write(workbook,{type:'buffer',bookType:'xlsx'});
+      return {buffer,size:buffer.length,originalname:'results.xlsx',mimetype:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+    })() : undefined,
     body: {
       ms_level: level,
       year,
