@@ -1,23 +1,17 @@
 function enrollmentApprovalSummary(result) {
-  const text = [result.message, ...(result.capacityWarnings || [])].join(' ');
-  // Older running servers return the capacity figures in their warning text.
-  const legacyPending = text.match(/(\d+) selected enrollment\(s\).*?(?:remain pending|could not be approved)/i);
-  const legacyCapacity = text.match(/CWTS[^.]*?(\d+)-student/i);
-  const capacity = Number(result.capacity || legacyCapacity?.[1] || 0);
-  const pending = Number(result.remainingPending ?? result.capacitySkipped ?? legacyPending?.[1] ?? 0);
+  const pending = Number(result.remainingPending || 0);
   const approved = Number(result.approved || 0);
-  return { capacity, pending, approved };
+  return { pending, approved };
 }
 function showEnrollmentApprovalResult(result, error = false) {
   return new Promise(resolve => {
     const dialog = document.createElement('dialog');
     dialog.className = 'enrollment-result-dialog';
-    const {capacity, pending, approved} = enrollmentApprovalSummary(result);
-    const capacityFull = Boolean(result.capacitySkipped || result.capacityReached || (capacity && result.capacityWarnings?.length));
+    const {pending, approved} = enrollmentApprovalSummary(result);
     const counted = typeof result.approved === 'number';
     dialog.setAttribute('aria-labelledby', 'enrollmentResultTitle');
-    dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error || capacityFull ? 'warning' : ''}" aria-hidden="true">${error || capacityFull ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : capacityFull ? 'CWTS capacity reached' : 'Students approved'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved now</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Pending in this schedule</span></div></div>` : ''}
-      ${counted && capacityFull && capacity ? `<p class="enrollment-result-explanation">CWTS has <strong>${esc(capacity)} slots</strong> using the configured company limits. ${pending ? `The remaining <strong>${esc(pending)} students were not approved</strong> and stay pending.` : 'All available slots are now filled.'}</p><div class="enrollment-result-next"><strong>What to do next</strong><p>Add a company or increase its capacity, or review and reject pending enrollments with a reason.</p></div>` : `<p class="enrollment-result-explanation">${esc(result.message)}</p>`}
+    dialog.innerHTML = `<div class="enrollment-result-content"><button type="button" class="enrollment-result-close" aria-label="Close">&times;</button><span class="enrollment-result-icon ${error ? 'warning' : ''}" aria-hidden="true">${error ? '!' : '&#10003;'}</span><h2 id="enrollmentResultTitle">${error ? 'Unable to approve' : 'Enrollment Review'}</h2>${counted ? `<div class="enrollment-result-totals"><div><strong>${esc(approved)}</strong><span>Approved now</span></div><div class="pending"><strong>${esc(pending)}</strong><span>Pending in this schedule</span></div></div>` : ''}
+      <p class="enrollment-result-explanation">${esc(result.message)}</p>
       <button type="button" class="btn primary enrollment-result-done">Close</button></div>`;
     dialog.querySelectorAll('button').forEach(button => button.onclick = () => dialog.close());
     dialog.addEventListener('close', () => {dialog.remove();resolve();}, {once:true});
@@ -149,7 +143,44 @@ function scheduleFootText(statusKey, deadline) {
   return 'Schedule unavailable';
 }
 
-function scheduleCard(x, p) {
+function openEnrollmentExtension(cycle, program, trigger) {
+  const closed = scheduleStatus(cycle.open_date, cycle.deadline).key === 'closed';
+  const title = closed ? 'Reopen Enrollment' : 'Extend Enrollment';
+  const label = program === 'cwts' ? 'CWTS' : 'MS';
+  const dialog = document.createElement('dialog');
+  dialog.className = 'schedule-extension-dialog';
+  dialog.setAttribute('aria-labelledby','extensionTitle');
+  const two = number => String(number).padStart(2,'0');
+  const dateValue = date => `${date.getFullYear()}-${two(date.getMonth()+1)}-${two(date.getDate())}`;
+  const suggested = new Date(Math.max(Date.now()+3600000,new Date(cycle.deadline).getTime()+86400000));
+  dialog.innerHTML = `<div class="app-dialog-head"><div><span class="modal-eyebrow">${program.toUpperCase()} Enrollment</span><h3 id="extensionTitle">${title}</h3><p>${label} ${esc(cycle.ms_level)} &middot; SY ${esc(cycle.year)}</p></div><button type="button" class="modal-close" data-close aria-label="Close">&times;</button></div>
+    <form class="schedule-extension-form"><div class="extension-current"><span>Current deadline</span><strong>${oldDateTime(cycle.deadline)}</strong></div>
+    <div class="field"><label for="extensionDate">New Deadline Date</label><input id="extensionDate" name="day" type="date" min="${dateValue(new Date())}" value="${dateValue(suggested)}" required></div>
+    <div class="field"><label for="extensionTime">New Deadline Time</label><input id="extensionTime" name="time" type="time" value="${two(suggested.getHours())}:${two(suggested.getMinutes())}" required></div>
+    <div class="extension-error hidden" data-error role="alert"></div>
+    <div class="app-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn primary">${title}</button></div></form>`;
+  document.body.append(dialog);dialog.showModal();
+  dialog.addEventListener('close',()=>{dialog.remove();trigger?.focus();});
+  dialog.querySelectorAll('[data-close]').forEach(button=>{button.onclick=()=>dialog.close();});
+  const form=dialog.querySelector('form');
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const errorBox=dialog.querySelector('[data-error]');
+    errorBox.classList.add('hidden');
+    const deadline=`${form.elements.day.value}T${form.elements.time.value}:00`;
+    const value=new Date(deadline).getTime();
+    if(!Number.isFinite(value)||value<=Math.max(Date.now(),new Date(cycle.deadline).getTime(),new Date(cycle.open_date).getTime())){
+      errorBox.textContent='Choose a future deadline later than the current deadline.';errorBox.classList.remove('hidden');return;
+    }
+    const buttons=[...dialog.querySelectorAll('button')];buttons.forEach(button=>{button.disabled=true;});
+    try {
+      const result=await API.patch(`/api/admin/${program}/enrollment-schedule/${Number(cycle.id)}/extend`,{deadline,expected_deadline:cycle.deadline});
+      toast(result.message);dialog.close();location.reload();
+    }catch(error){errorBox.textContent=error.message;errorBox.classList.remove('hidden');buttons.forEach(button=>{button.disabled=false;});}
+  };
+}
+
+function scheduleCard(x, p, latestId = null) {
   const st = scheduleStatus(x.open_date, x.deadline);
   const level = p === 'cwts' ? `CWTS ${x.ms_level}` : `MS ${x.ms_level}`;
 
@@ -180,6 +211,8 @@ function scheduleCard(x, p) {
       </div>
       <div class="schedule-foot">
         <span>${scheduleFootText(st.key, x.deadline)}</span>
+        ${Number(x.id) === Number(latestId) && !x.platoons_assigned_at && !Number(x.has_assignments || 0) ? `<button type="button" class="btn schedule-extend-btn" data-extend-schedule="${Number(x.id)}">Extend Enrollment</button>` : ''}
+        ${p === 'cwts' && String(x.ms_level) === '1' && st.key === 'open' ? `<button type="button" class="btn" data-exam-schedule="${Number(x.id)}" data-exam-deadline="${esc(x.deadline)}">Exam Results</button>` : ''}
       </div>
     </article>`;
 }
@@ -221,7 +254,7 @@ async function renderEnrollmentSchedule(p,c){
       </div>`
     : '';
   const activeMarkup = active.length
-    ? `<div class="schedule-card-grid">${active.map(x => scheduleCard(x, p)).join('')}</div>`
+    ? `<div class="schedule-card-grid">${active.map(x => scheduleCard(x, p, sorted[0]?.id)).join('')}</div>`
     : `
       <div class="empty-state-card">
         ${icon('schedule')}
@@ -237,6 +270,7 @@ async function renderEnrollmentSchedule(p,c){
           <td>${oldDateTime(x.open_date)}</td>
           <td>${oldDateTime(x.deadline)}</td>
           <td><span class="schedule-status closed"><i></i>Closed</span></td>
+          <td>${Number(x.id) === Number(sorted[0]?.id) ? x.platoons_assigned_at || Number(x.has_assignments || 0) ? '<span class="field-help">Students already assigned</span>' : `<button type="button" class="btn schedule-extend-btn" data-extend-schedule="${Number(x.id)}">Reopen Enrollment</button>` : '&mdash;'}</td>
         </tr>`
     )
     .join('');
@@ -245,7 +279,7 @@ async function renderEnrollmentSchedule(p,c){
       <div class="history-table-wrap">
         <table class="data-table">
           <thead>
-            <tr><th>Level</th><th>School Year</th><th>Opening</th><th>Deadline</th><th>Status</th></tr>
+            <tr><th>Level</th><th>School Year</th><th>Opening</th><th>Deadline</th><th>Status</th><th>Action</th></tr>
           </thead>
           <tbody>${historyRows}</tbody>
         </table>
@@ -259,7 +293,7 @@ async function renderEnrollmentSchedule(p,c){
           <div>
             <span class="modal-eyebrow">${program} Enrollment</span>
             <h3>Create Enrollment Schedule</h3>
-            <p>Set the level, school year, opening date and enrollment deadline.${sampleMode.enabled ? ' This will also create 100 sample students as pending enrollments.' : ''}</p>
+            <p>${p === 'cwts' ? 'Enter the dates. For CWTS 1, upload the exam results before saving.' : 'Set the school year and enrollment dates.'}</p>
           </div>
           <button type="button" class="modal-close" id="closeScheduleModal">x</button>
         </div>
@@ -292,9 +326,16 @@ async function renderEnrollmentSchedule(p,c){
             </div>
             <small class="field-help" id="scheduleDateHelp">The deadline must be later than the opening date and time.</small>
           </div>
+          ${p === 'cwts' && String(nextLevel) === '1' ? `<section class="schedule-exam-upload">
+            <div class="schedule-exam-title"><strong>Exam Results</strong><a class="btn" href="/api/admin/cwts/enrollment-schedule/exam-template">Download Template</a></div>
+            <label for="scheduleExamFile">Upload the completed Excel file</label>
+            <input id="scheduleExamFile" name="file" type="file" accept=".xlsx,.xls" required>
+            <p id="scheduleExamStatus" role="status" aria-live="polite">Student ID, First Name, Middle Name, Last Name, Sex, Course, Result.</p>
+            <div id="scheduleExamPreview"></div>
+          </section>` : ''}
           <div class="app-dialog-actions">
             <button type="button" class="btn" id="cancelSchedule">Cancel</button>
-            <button class="btn primary">Save Schedule</button>
+            <button class="btn primary" type="submit">Save Schedule</button>
           </div>
         </form>
       </div>
@@ -337,6 +378,22 @@ async function renderEnrollmentSchedule(p,c){
     </details>
     ${modalMarkup}`;
 
+  c.querySelectorAll('[data-extend-schedule]').forEach(button => {
+    const cycle = rows.find(row => Number(row.id) === Number(button.dataset.extendSchedule));
+    button.onclick = () => openEnrollmentExtension(cycle, p, button);
+  });
+  if (p === 'cwts') {
+    c.querySelectorAll('[data-exam-schedule]').forEach(button => {
+      button.onclick = () => openCwtsExamResults(Number(button.dataset.examSchedule), button);
+    });
+    // Hide the current cycle's action when enrollment closes, even on an idle page.
+    const expiryTimer = setInterval(() => {
+      c.querySelectorAll('[data-exam-deadline]').forEach(button => {
+        if (Date.now() > new Date(button.dataset.examDeadline).getTime()) button.remove();
+      });
+      if (!c.isConnected || !c.querySelector('[data-exam-deadline]')) clearInterval(expiryTimer);
+    }, 1000);
+  }
   const modal = $('#scheduleModal');
   function toggle(show) {
     modal.classList.toggle('hidden', !show);
@@ -350,6 +407,35 @@ async function renderEnrollmentSchedule(p,c){
   $('#cancelSchedule').onclick = () => toggle(false);
   modal.querySelector('.app-dialog-backdrop').onclick = () => toggle(false);
   const scheduleForm = $('#scheduleForm');
+  let checkedExamFile = null;
+  const examInput = scheduleForm.querySelector('#scheduleExamFile');
+  const saveScheduleButton = scheduleForm.querySelector('button[type="submit"]');
+  if (examInput) {
+    saveScheduleButton.disabled = true;
+    examInput.onchange = async () => {
+      const file = examInput.files[0];
+      checkedExamFile = null; saveScheduleButton.disabled = true;
+      const status = $('#scheduleExamStatus'), preview = $('#scheduleExamPreview');
+      preview.innerHTML = '';
+      if (!file) { status.textContent = 'Choose the completed Excel file.'; return; }
+      if (file.size > 8 * 1024 * 1024) { status.textContent = 'Choose a file smaller than 8 MB.'; return; }
+      status.textContent = 'Reading your file...';
+      try {
+        const upload = new FormData(); upload.append('file', file);
+        const result = await API.post('/api/admin/cwts/enrollment-schedule/exam-preview', upload);
+        if (examInput.files[0] !== file) return;
+        if (result.errors.length) {
+          status.textContent = 'Please correct these rows and upload the file again.';
+          preview.innerHTML = `<ul class="error-text">${result.errors.slice(0,20).map(error => `<li>${esc(error)}</li>`).join('')}</ul>`;
+          return;
+        }
+        checkedExamFile = file; saveScheduleButton.disabled = false;
+        const passed = result.rows.filter(row => row.result === 'passed').length;
+        status.textContent = `${result.rows.length} students read: ${passed} passed, ${result.rows.length - passed} failed. Ready to save.`;
+        preview.innerHTML = `<details><summary>View students (${result.rows.length})</summary><div class="exam-table-wrap"><table class="data-table"><thead><tr><th>Student ID</th><th>Name</th><th>Sex</th><th>Course</th><th>Result</th></tr></thead><tbody>${result.rows.map(row => `<tr><td>${esc(row.student_id)}</td><td>${esc(row.first_name)} ${esc(row.middle_name)} ${esc(row.last_name)}</td><td>${esc(row.sex)}</td><td>${esc(row.course)}</td><td>${esc(row.result)}</td></tr>`).join('')}</tbody></table></div></details>`;
+      } catch (error) { if (examInput.files[0] === file) status.textContent = error.message; }
+    };
+  }
   const levelSelect = scheduleForm.elements.ms_level;
   const yearInput = scheduleForm.elements.year;
   const levelOneOption = levelSelect.querySelector('option[value="1"]');
@@ -454,7 +540,17 @@ async function renderEnrollmentSchedule(p,c){
     const btn = f.querySelector('button[type="submit"],button.btn.primary');
     btn.disabled = true;
     try {
-      const x = await API.post(`/api/admin/${p}/enrollment-schedule`, obj);
+      let body = obj;
+      if (examInput) {
+        if (!checkedExamFile || checkedExamFile !== examInput.files[0]) {
+          btn.disabled = false;
+          return toast('Choose a valid exam results file first.', true);
+        }
+        body = new FormData();
+        Object.entries(obj).forEach(([key,value]) => body.append(key,value));
+        body.append('file', checkedExamFile);
+      }
+      const x = await API.post(`/api/admin/${p}/enrollment-schedule`, body);
       toast(x.message);
       setTimeout(() => location.reload(), 500);
     } catch (err) {
@@ -609,6 +705,21 @@ function documentPreviewCard(label, url) {
   </div>`;
 }
 
+function cwtsExamReview(x) {
+  const check = x.exam_eligibility;
+  if (!check) return '';
+  const imported = check.record;
+  if (!imported) return detailSection('CWTS 1 Exam Record', [['Exam Result', 'No record']]);
+  const fields = [
+    ['Student ID', imported.student_id],
+    ['Name', [imported.first_name, imported.middle_name, imported.last_name].filter(Boolean).join(' ')],
+    ['Sex', imported.sex],
+    ['Course', imported.course],
+    ['Exam Result', imported.result === 'passed' ? 'Passed' : imported.result === 'failed' ? 'Failed' : 'Pending'],
+  ];
+  if (imported.result === 'passed' && !check.eligible) fields.push(['Verification', 'Details do not match']);
+  return detailSection('CWTS 1 Exam Record', fields);
+}
 function enrollmentDetailModal(x, p) {
   const medical = Number(x.has_medical_condition || 0) === 1;
   const assignment = enrollmentAssignment(x, p);
@@ -697,6 +808,7 @@ function enrollmentDetailModal(x, p) {
       ${x.rejection_reason?`<div class="warning-banner reject-note"><div><strong>Administrator Remark</strong><span>${esc(x.rejection_reason)}</span></div></div>`:''}
 
       <div class="student-record-scroll">
+        ${p === 'cwts' && String(x.ms_level) === '1' ? cwtsExamReview(x) : ''}
         ${detailSection('Personal Information', personal)}
         ${detailSection('Academic Information', academic)}
         ${detailSection('Physical & Health Information', health)}
@@ -1162,7 +1274,7 @@ function rosterName(x){
   `:''}`
 }
 function rosterRows(list, action = null){
-  return list.length?`<div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Course</th><th>Year Level</th>${action ? '<th>Action</th>' : ''}</tr></thead><tbody>${list.map((x,i)=>`<tr><td>${
+  return list.length?`<div class="roster-table-wrap"><table class="roster-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Sex</th><th>Course</th><th>Year Level</th>${action ? '<th>Action</th>' : ''}</tr></thead><tbody>${list.map((x,i)=>`<tr><td>${
     i+1
   }
   </td><td><strong>${
