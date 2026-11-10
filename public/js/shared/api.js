@@ -49,7 +49,12 @@ const API = {
     }
 
     if (!response.ok) {
-      const error = new Error(data.message || 'Request failed');
+      const fallback = response.status === 404
+        ? 'This feature is not available on the running server. Restart the project server, refresh the page, and try again.'
+        : response.status === 413 ? 'This file is too large. Choose a smaller file.'
+          : response.status >= 500 ? 'The server could not complete this request. Please try again.'
+            : `Request failed (${response.status}). Please refresh the page and try again.`;
+      const error = new Error(data.message || fallback);
       error.status = response.status;
       throw error;
     }
