@@ -324,3 +324,59 @@
 @media (max-width: 800px) {
   .grade-tools input { grid-column: 1 / -1; }
 }
+
+/* Admin submissions follow the existing grade cards and table spacing. */
+.admin-submission-review{margin-top:22px}
+.admin-submission-review .instructor-header h2{font-size:18px}
+.grade-panel .grade-tools{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grade-panel .grade-tools .btn{padding:0 12px}
+@media(max-width:700px){.grade-panel .grade-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* One highlighted filter group for admin Grades. */
+body[data-page="grades"] .grade-panel>.grade-tools{background:linear-gradient(110deg,#c8ebd7,#ddf3e5);border:1px solid #70bb91;border-radius:13px;padding:14px;margin-bottom:16px;gap:10px;box-shadow:0 4px 12px #23784718}
+body[data-page="grades"] .grade-tools select,body[data-page="grades"] .grade-tools input{background:#fafffc;border-color:#91c9a9;color:#245c3f;height:40px}
+body[data-page="grades"] .grade-tools select:focus,body[data-page="grades"] .grade-tools input:focus{border-color:#379674;box-shadow:0 0 0 3px #37967418}
+body[data-page="grades"] .grade-tools .clear-filter-btn{color:#1f6b43;border:1px solid #83c49f;background:#e9f7ee;border-radius:9px;height:39px;padding:0 12px}
+body[data-page="grades"] .grade-tools .clear-filter-btn:hover{background:#dcefe4}
+
+/* Compact admin grade filters, search and actions on one desktop row. */
+body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(4,minmax(100px,.85fr)) minmax(170px,1.4fr) auto auto;background:linear-gradient(110deg,#acd8bc,#c5e6cf);border-color:#4b9d6d;gap:8px;padding:14px}
+body[data-page="grades"] .grade-tools :is(select,input){background:#f5fcf7;border-color:#71b58d;color:#214e37}
+body[data-page="grades"] .grade-tools .clear-filter-btn{background:#deefe3;border-color:#71b58d;color:#215238}
+@media(max-width:1150px){body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Keep all grade controls together, with a light text-only reset action. */
+body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(4,minmax(0,.85fr)) minmax(140px,1.45fr) auto auto;gap:8px;align-items:center}
+body[data-page="grades"] .grade-tools :is(input,select){min-width:0;padding:0 8px;font-size:10px;height:36px}
+body[data-page="grades"] .grade-tools .btn{height:36px;padding:0 11px;font-size:11px}
+body[data-page="grades"] .grade-tools .clear-filter-btn{border:0;background:transparent;box-shadow:none;height:auto;min-height:0;padding:6px 3px;font-size:10px;font-weight:700;color:#205b39;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+body[data-page="grades"] .grade-tools .clear-filter-btn:hover{background:transparent;color:#103e26}
+@media(max-width:850px){body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:550px){body[data-page="grades"] .grade-panel>.grade-tools{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Compact controls keep the reset link on the same desktop row. */
+body[data-page="grades"] .grade-panel>.grade-tools{display:flex;flex-wrap:nowrap;gap:7px;padding:11px 12px;align-items:center}
+body[data-page="grades"] .grade-tools select{flex:1 1 105px;width:0;min-width:0;height:33px;padding:0 7px;font-size:10px}
+body[data-page="grades"] .grade-tools input{flex:1.5 1 150px;width:0;min-width:100px;height:33px;font-size:10px}
+body[data-page="grades"] .grade-tools .btn{flex:0 0 auto;height:33px;padding:0 10px;font-size:10px}
+body[data-page="grades"] .grade-tools .clear-filter-btn{flex:0 0 auto;align-self:center;padding:5px 2px;font-size:10px;line-height:1.3;white-space:nowrap;width:auto}
+@media(max-width:750px){body[data-page="grades"] .grade-panel>.grade-tools{flex-wrap:wrap}body[data-page="grades"] .grade-tools select{flex:1 1 40%;width:auto}body[data-page="grades"] .grade-tools input{flex:1 1 45%;width:auto}}
+
+.company-grade-group{margin-top:18px;border:1px solid #cce1d4;border-radius:12px;overflow:hidden}.company-grade-group>header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 17px;background:linear-gradient(110deg,#e0f2e7,#f3faf6);border-bottom:1px solid #cce1d4}.company-grade-group h2{font-size:16px;color:#205b3c;margin:0 0 5px}.company-grade-group header small{font-size:11px;color:#5d7b68}.company-grade-actions{display:flex;gap:6px;white-space:nowrap}.company-grade-group .grade-table{min-width:850px}.company-grade-group button:disabled{opacity:.5;cursor:not-allowed}.company-grade-group .badge{white-space:nowrap}@media(max-width:650px){.company-grade-group>header{flex-wrap:wrap}}
+
+.company-grade-avatar{position:relative;display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#dcece2;color:#286045;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px #28553e17}.company-grade-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.company-grade-student,.company-grade-instructor{display:flex;align-items:center;gap:10px}.company-grade-student strong{white-space:nowrap}.company-grade-instructor{margin-top:10px}.company-grade-instructor>div{display:grid;gap:3px}.company-grade-instructor strong{font-size:12px;color:#255c40}.company-grade-instructor small,.company-grade-instructor-empty{font-size:10px;color:#577762}.company-grade-instructor .company-grade-avatar{width:34px;height:34px}
+
+.company-grade-student>div{display:grid;gap:4px}.company-grade-student-id{display:block;font-size:10px;color:#668071;line-height:1.4}
+
+/* CWTS admin Grades uses the same filter-panel treatment as instructor records. */
+.admin-grade-filter-panel{border:1px solid #9bc9af;border-radius:15px;overflow:hidden;background:#f6fbf8;margin-bottom:16px;box-shadow:0 4px 14px #235a3a0b}
+.admin-grade-filter-panel>header{display:flex;align-items:center;gap:12px;padding:15px 17px;background:linear-gradient(110deg,#d5eddf,#e8f6ee);border-bottom:1px solid #b8d8c4}
+.admin-grade-filter-panel>header>span{display:grid;place-items:center;width:32px;height:32px;background:#fff;border:1px solid #b3d9c1;border-radius:9px;color:#32845b}
+.admin-grade-filter-panel h2{margin:0 0 5px;font-size:14px;color:#20583d}.admin-grade-filter-panel header p{margin:0;font-size:11px;color:#5c7d69}
+body[data-page="grades"] .admin-grade-filter-panel>.grade-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:transparent;border:0;box-shadow:none;border-radius:0;padding:15px 17px;margin:0;gap:10px}
+body[data-page="grades"] .admin-grade-filter-panel .grade-tools :is(select,input){width:100%;min-width:0;height:38px;box-sizing:border-box;background:#fff;border-color:#b2d3bf;font-size:11px}
+.admin-grade-filter-panel [data-filter="search"]{grid-column:1/3;grid-row:2}
+body[data-page="grades"] .admin-grade-filter-panel .grade-tools .btn{grid-column:3;height:38px;background:#15964c;border-color:#15964c;color:#fff}
+body[data-page="grades"] .admin-grade-filter-panel .clear-filter-btn{grid-column:4;justify-self:end;color:#286b47}
+@media(max-width:650px){body[data-page="grades"] .admin-grade-filter-panel>.grade-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-grade-filter-panel [data-filter="search"]{grid-column:1/-1;grid-row:auto}body[data-page="grades"] .admin-grade-filter-panel .grade-tools .btn{grid-column:1}body[data-page="grades"] .admin-grade-filter-panel .clear-filter-btn{grid-column:2}}
