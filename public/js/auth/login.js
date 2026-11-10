@@ -11,7 +11,7 @@ async function initLogin() {
     if (!config.loginCheckbox.siteKey) throw new Error('Security check is not configured correctly. Please contact the administrator.');
     const container = document.createElement('div');
     container.className = 'login-captcha';
-    const compactLogin = ['student', 'cwts-instructor'].includes(form.dataset.portal);
+    const compactLogin = ['student', 'cwts-instructor', 'instructor'].includes(form.dataset.portal);
     const widget = compactLogin ? document.createElement('div') : container;
     if (compactLogin) {
       widget.className = 'student-login-captcha-widget';
