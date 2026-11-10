@@ -43,7 +43,7 @@ exports.accept=endpoint(async(req,res)=>{
 exports.setStatus=endpoint(async(req,res)=>{
   const id=parsePositiveInt(req.params.id),status=String(req.body.status||'');
   if(!id||!['active','disabled'].includes(status))fail(400,'Select a valid account action.');
-  const [result]=await db.execute(`UPDATE cwts_instructors SET status=IF(?='disabled','disabled',IF(password IS NULL,'pending','active')),
+  const [result]=await db.execute(`UPDATE cwts_instructors SET status=IF(?='disabled','disabled',IF(password IS NULL OR review_status<>'approved','pending','active')),
     session_version=session_version+1,invitation_hash=NULL,invitation_expires=0 WHERE id=?`,[status,id]);
   if(!result.affectedRows)fail(404,'Instructor not found.');
   res.json({message:status==='disabled'?'Instructor access disabled immediately.':'Account enabled. If the instructor has not set a password, send a new invitation.'});
@@ -54,7 +54,7 @@ exports.assign=endpoint(async(req,res)=>{
   const connection=await db.getConnection();
   try{
     await connection.beginTransaction();
-    const [[instructor]]=await connection.execute("SELECT id FROM cwts_instructors WHERE id=? AND status<>'disabled' FOR UPDATE",[instructorId]);
+    const [[instructor]]=await connection.execute("SELECT id FROM cwts_instructors WHERE id=? AND status='active' AND review_status='approved' FOR UPDATE",[instructorId]);
     const [[session]]=await connection.execute("SELECT id FROM attendance_sessions WHERE id=? AND program='CWTS' FOR UPDATE",[sessionId]);
     if(!instructor||!session)fail(400,'Select an enabled instructor and an existing CWTS attendance session.');
     const [activeAssignments]=await connection.execute('SELECT id FROM cwts_instructor_assignments WHERE instructor_id=? AND active=1 FOR UPDATE',[instructorId]);
@@ -71,63 +71,10 @@ exports.revoke=endpoint(async(req,res)=>{
   await db.execute('UPDATE cwts_instructor_assignments SET active=0,assigned_by=? WHERE id=?',[req.user.email,id]);
   res.json({message:'Assignment revoked. The instructor can no longer access this company and session.'});
 });
-exports.mine=endpoint(async(req,res)=>{
-  const [rows]=await db.execute(`SELECT a.id,a.company,ses.id session_id,ses.mi_number,ses.mi_type,ses.ms_level,ses.school_year,ses.open_date,ses.close_date
-    FROM cwts_instructor_assignments a JOIN attendance_sessions ses ON ses.id=a.attendance_session_id AND ses.program='CWTS'
-    WHERE a.instructor_id=? AND a.active=1 ORDER BY ses.open_date DESC,a.company`,[req.user.id]);
-  res.json(rows);
-});
-exports.records=endpoint(async(req,res)=>{
-  const id=parsePositiveInt(req.params.id);if(!id)fail(400,'Invalid assignment.');
-  const [[assignment]]=await db.execute('SELECT id FROM cwts_instructor_assignments WHERE id=? AND instructor_id=? AND active=1',[id,req.user.id]);
-  if(!assignment)fail(403,'This assignment is no longer available to your account. Refresh your assignments.');
-  const [rows]=await db.execute(`SELECT s.id student_internal_id,s.student_id,s.first_name,s.last_name,
-    ar.id,COALESCE(ar.status,'unmarked') status,ar.record_version,ar.claimed_present,ar.false_present,ar.verified_by,ar.verified_at,
-    ses.id session_id,ses.mi_number,ses.mi_type,ses.open_date FROM cwts_instructor_assignments a
-    JOIN attendance_sessions ses ON ses.id=a.attendance_session_id AND ses.program='CWTS'
-    JOIN students s ON ${rosterScope}
-    LEFT JOIN attendance_records ar ON ar.student_id=s.id AND ar.attendance_session_id=ses.id
-    WHERE a.id=? AND a.instructor_id=? AND a.active=1 ORDER BY s.last_name,s.first_name`,[id,req.user.id]);
-  res.json(await decorateAttendanceUpdates(rows));
-});
-exports.verify=endpoint(async(req,res)=>{
-  const id=parsePositiveInt(req.params.id),studentId=parsePositiveInt(req.params.studentId);
-  const status=String(req.body.status||''),reason=String(req.body.reason||'').trim();
-  if(!id||!studentId||!['present','late','absent'].includes(status)||!reason||reason.length>500)fail(400,'Choose Present, Late or Absent and give a reason of up to 500 characters.');
-  const connection=await db.getConnection();
-  try{
-    await connection.beginTransaction();
-    const [[instructor]]=await connection.execute("SELECT id,email FROM cwts_instructors WHERE id=? AND status='active' AND session_version=? FOR UPDATE",[req.user.id,req.user.session_version]);
-    if(!instructor)fail(403,'Your instructor access has changed. Please sign in again.');
-    const [[allowed]]=await connection.execute(`SELECT ses.* FROM cwts_instructor_assignments a
-      JOIN attendance_sessions ses ON ses.id=a.attendance_session_id AND ses.program='CWTS'
-      JOIN students s ON s.id=? AND ${rosterScope}
-      WHERE a.id=? AND a.instructor_id=? AND a.active=1 FOR UPDATE`,[studentId,id,req.user.id]);
-    if(!allowed)fail(403,'You may update only students in your assigned company and session. Refresh your assignments.');
-    if(attendance.getEffectiveStatus(allowed)==='scheduled')fail(400,'This attendance session has not opened yet.');
-    const [[before]]=await connection.execute('SELECT * FROM attendance_records WHERE student_id=? AND attendance_session_id=? FOR UPDATE',[studentId,allowed.id]);
-    if(before ? (!Number.isSafeInteger(req.body.expected_version)||req.body.expected_version!==Number(before.record_version)) : req.body.expected_version!==null)
-      fail(409,'This record has changed. Refresh and review it before saving.');
-    if(before?.status===status)fail(400,'Attendance is already marked with this status. Choose a different status.');
-    const falseClaim=status==='absent'&&(offenses.isAttendanceClaim(before)||Number(before?.false_present)===1);
-    const newFalseClaim=falseClaim&&!Number(before?.false_present);
-    let recordId=before?.id;
-    if(before){
-      await connection.execute('UPDATE attendance_records SET status=?,false_present=?,verified_by=?,verified_at=NOW(),record_version=record_version+1,updated_at=NOW() WHERE id=?',[status,Number(falseClaim),instructor.email,recordId]);
-    }else{
-      const [insert]=await connection.execute(`INSERT INTO attendance_records(student_id,attendance_session_id,status,mi_number,mi_type,verified_by,verified_at,record_version)
-        VALUES(?,?,?,?,?,?,NOW(),1)`,[studentId,allowed.id,status,allowed.mi_number,allowed.mi_type,instructor.email]);recordId=insert.insertId;
-    }
-    await connection.execute(`INSERT INTO cwts_attendance_verification_log(record_id,assignment_id,instructor_id,previous_status,status,reason,record_version,verified_at)
-      SELECT ?,?,?,?,?,?,record_version,verified_at FROM attendance_records WHERE id=?`,[recordId,id,instructor.id,before?.status||'unmarked',status,reason,recordId]);
-    const offense=offenses.isAttendanceClaim(before)||before?.false_present ? await offenses.reconcile(studentId,connection,newFalseClaim):null;
-    await connection.commit();
-    res.json({message:newFalseClaim?`Attendance updated. False-attendance offense recorded.${Number(offense?.offend)>=2?' Settlement is required.':' First-offense warning recorded.'}`
-      :falseClaim?'Attendance updated. The offense was already recorded; no duplicate added.'
-        :Number(before?.false_present)?'Attendance corrected. The false-attendance offense was removed.'
-          :'Attendance saved. No punishment offense recorded.',offense_recorded:newFalseClaim});
-  }catch(error){await connection.rollback();throw error;}finally{connection.release();}
-});
+// Company assignment is the single source of instructor attendance access.
+exports.mine=endpoint(async(req,res)=>res.json(await require('../services/instructorAttendanceService').list(db,req.user)));
+exports.records=endpoint(async(req,res)=>res.json(await decorateAttendanceUpdates(await require('../services/instructorAttendanceService').records(db,req.user,req.params.id))));
+exports.verify=endpoint(async(req,res)=>res.json(await require('../services/instructorAttendanceService').verify(db,req.user,req.params.id,req.params.studentId,req.body)));
 exports.audit=endpoint(async(req,res)=>{
   const level=String(req.query?.ms_level||''),year=String(req.query?.school_year||''),mi=String(req.query?.mi_number||''),type=String(req.query?.mi_type||'').toLowerCase();
   const scoped=Boolean(level||year||mi||type);
