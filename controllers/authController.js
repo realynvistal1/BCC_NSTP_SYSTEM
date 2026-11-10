@@ -42,7 +42,7 @@ async function ensureCaptcha(req, res, token, action) {
 }
 
 function adminPortal(program, storedRole) {
-  if(storedRole==='instructor'&&program==='CWTS')return 'cwts-admin';
+  if(storedRole==='instructor'&&['ROTC','CWTS'].includes(program))return 'instructor';
   if (storedRole === 'director' || storedRole === 'officer') return 'officer';
   if (storedRole === 'admin' && program === 'CWTS') return 'cwts-admin';
   if (storedRole === 'admin' && program === 'ROTC') return 'rotc-admin';
@@ -185,6 +185,7 @@ async function getLoginAttempt(loginKey) {
   return rows[0] || null;
 }
 
+// Tell the user how long to wait after too many failed login attempts.
 function lockoutMessage(lockedUntil) {
   const unlockTime = new Date(lockedUntil);
   const diffMs = unlockTime.getTime() - Date.now();
@@ -261,6 +262,7 @@ function securityLockMessage(lockedUntil) {
   return `Too many reset attempts. Try again in ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}.`;
 }
 
+// Save failed reset-related attempts and temporarily lock the event after its limit is reached.
 async function recordSecurityEvent(eventKey, limit, lockMinutes) {
   await ensureSecurityEventTable();
   const current = await getSecurityEvent(eventKey);
@@ -306,13 +308,18 @@ async function clearSecurityEvent(eventKey) {
 }
 
 async function findAdmin(identifier, portal) {
-  if (portal === 'cwts-instructor') return require('../services/cwtsInstructorService').findLogin(identifier);
+  if (['instructor','cwts-instructor'].includes(portal)) return require('../services/instructorPortalService').findLogin(db,identifier);
+  // Only these fixed SQL conditions may be inserted into the query as scope.
+  // The portal selects a condition; its raw value is never inserted into SQL.
   const scope = {
     'rotc-admin': "role='admin' AND program='ROTC'",
     'cwts-admin': "role='admin' AND program='CWTS'",
     officer: "role IN ('director','officer')",
   }[portal];
   if (!scope) return null;
+  // SQL injection protection: each ? is a placeholder for a value supplied separately.
+  // [identifier, identifier] binds the login input to the email and username checks.
+  // Input such as "' OR 1=1 --" is treated as data, so it cannot change the SQL condition.
   const [rows] = await db.execute(
     `SELECT id, email, username, password, role, program
      FROM admins
@@ -325,6 +332,8 @@ async function findAdmin(identifier, portal) {
 }
 
 async function findStudent(identifier) {
+  // SQL injection protection: bind identifier to ? through the separate [identifier] array.
+  // Never concatenate or interpolate login input into the SQL string.
   const [rows] = await db.execute(
     `SELECT id, email, password, role, nstp_component
      FROM students
@@ -350,7 +359,7 @@ exports.login = async (req, res) => {
     const plainPassword = String(password || '');
 
     if (typeof requestedPortal !== 'string'
-      || !['student', 'rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(requestedPortal)) {
+      || !['student', 'rotc-admin', 'cwts-admin', 'cwts-instructor', 'instructor', 'officer'].includes(requestedPortal)) {
       return res.status(400).json({ message: 'Select a valid login portal and try again.' });
     }
 
@@ -408,10 +417,16 @@ exports.login = async (req, res) => {
       });
     }
 
+    if(user.role==='instructor'&&(user.status!=='active'||user.review_status!=='approved')){
+      await clearFailedLogins(loginKey);
+      return res.status(403).json({message:user.review_status==='rejected'
+        ? `Your registration was rejected. ${user.review_note||'Contact your NSTP admin.'}`
+        : user.review_status==='pending'?'Your account is pending approval. Please wait for your NSTP admin to review your registration.':'Your account is disabled. Contact your NSTP admin.'});
+    }
     const accountPortal = source === 'student' ? 'student' : adminPortal(user.program, user.role);
     // Instructors retain their existing attendance session scope, but must use
     // their own login entry point. Admin login never searches instructor accounts.
-    const expectedPortal = requestedPortal === 'cwts-instructor' ? 'cwts-admin' : requestedPortal;
+    const expectedPortal = requestedPortal === 'cwts-instructor' ? 'instructor' : requestedPortal;
     if (accountPortal !== expectedPortal
       || (requestedPortal === 'cwts-instructor' && user.role !== 'instructor')
       || (requestedPortal === 'cwts-admin' && user.role !== 'admin')) {
@@ -454,8 +469,10 @@ exports.login = async (req, res) => {
     clearAuthCookies(res);
 
     res.cookie('nstp_token', token, {
+      // Keep browser JavaScript from reading this session cookie.
       httpOnly: true,
       path: '/',
+      // Restrict when the browser sends this cookie with requests from other sites.
       sameSite: 'lax',
       secure: shouldUseSecureCookies(req),
       maxAge: 12 * 60 * 60 * 1000,
@@ -464,7 +481,7 @@ exports.login = async (req, res) => {
     return res.json({
       message: 'Login successful.',
       portal,
-      redirect: user.role==='instructor'?'/admin/cwts/my-attendance':redirectForPortal(portal),
+      redirect: user.role==='instructor'?'/instructor/dashboard':redirectForPortal(portal),
       user: payload,
     });
   } catch (error) {
@@ -756,7 +773,7 @@ exports.requestAdminResetCode = async (req, res) => {
       return;
     }
 
-    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(portal)) {
+    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'instructor', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });
     }
 
@@ -784,16 +801,16 @@ exports.requestAdminResetCode = async (req, res) => {
     }
 
     const lookup = adminResetLookup(portal);
-    const [rows] = portal === 'cwts-instructor' ? [[]] : await db.execute(lookup.selectByEmail, [email]);
+    const [rows] = ['instructor','cwts-instructor'].includes(portal) ? [[]] : await db.execute(lookup.selectByEmail, [email]);
 
-    if (portal === 'cwts-instructor') {
-      const result = await require('../services/cwtsInstructorResetService').handle(email);
+    if (['instructor','cwts-instructor'].includes(portal)) {
+      const result = await require('../services/instructorResetService').handle(email);
       if (result) return res.status(result.status).json({message:result.message});
     }
     if (!rows[0]) {
       const failed = await recordSecurityEvent(requestKey, RESET_REQUEST_LIMIT, RESET_REQUEST_LOCK_MINUTES);
       return res.status(404).json({
-        message: portal === 'cwts-instructor' ? 'No active instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
+        message: ['instructor','cwts-instructor'].includes(portal) ? 'No approved instructor account matched that email.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
@@ -842,7 +859,7 @@ exports.resetAdminPassword = async (req, res) => {
       return;
     }
 
-    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'officer'].includes(portal)) {
+    if (!['rotc-admin', 'cwts-admin', 'cwts-instructor', 'instructor', 'officer'].includes(portal)) {
       return res.status(400).json({ message: 'Select a valid admin portal.' });
     }
 
@@ -881,11 +898,11 @@ exports.resetAdminPassword = async (req, res) => {
     await ensureAdminResetTable();
 
     const lookup = adminResetLookup(portal);
-    const [admins] = portal === 'cwts-instructor' ? [[]] : await db.execute(lookup.selectAccount, [email]);
+    const [admins] = ['instructor','cwts-instructor'].includes(portal) ? [[]] : await db.execute(lookup.selectAccount, [email]);
 
     const admin = admins[0];
-    if (portal === 'cwts-instructor') {
-      const result = await require('../services/cwtsInstructorResetService').handle(email,newPassword,code);
+    if (['instructor','cwts-instructor'].includes(portal)) {
+      const result = await require('../services/instructorResetService').handle(email,newPassword,code);
       if (result) {
         if (result.status !== 200) await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
         else await clearSecurityEvent(resetKey);
@@ -895,7 +912,7 @@ exports.resetAdminPassword = async (req, res) => {
     if (!admin) {
       const failed = await recordSecurityEvent(resetKey, RESET_VERIFY_LIMIT, RESET_VERIFY_LOCK_MINUTES);
       return res.status(404).json({
-        message: portal === 'cwts-instructor' ? 'No active instructor account matched that email. Pending instructors must use their invitation first.' : 'No admin account matched that email for the selected portal.',
+        message: ['instructor','cwts-instructor'].includes(portal) ? 'No approved instructor account matched that email.' : 'No admin account matched that email for the selected portal.',
         locked_until: failed.locked_until || null,
       });
     }
