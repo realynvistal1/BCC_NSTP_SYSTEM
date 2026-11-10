@@ -554,7 +554,10 @@ exports.schedules = async (req, res) => {
 
     if (req.method === 'GET') {
       const [rows] = await db.execute(
-        'SELECT * FROM enrollment_schedules WHERE program=? ORDER BY year DESC, ms_level DESC, id DESC',
+        `SELECT e.*,EXISTS(SELECT 1 FROM student_ms_records
+          WHERE program=e.program AND CAST(schedule_id AS UNSIGNED)=e.id
+          AND ${require('../services/enrollmentScheduleService').assignmentCondition}) has_assignments
+         FROM enrollment_schedules e WHERE e.program=? ORDER BY e.year DESC,e.ms_level DESC,e.id DESC`,
         [programCode]
       );
       return res.json(rows);
@@ -669,19 +672,36 @@ exports.schedules = async (req, res) => {
       });
     }
 
+    let examResults = null;
+    if (programCode === 'CWTS' && normalizedLevel === '1') {
+      const exam = require('../services/cwtsExamService');
+      if (!req.file) return res.status(400).json({message:'Upload the CWTS 1 exam results before saving.'});
+      examResults = exam.parseFile(req.file);
+      if (examResults.errors.length) return res.status(400).json({message:examResults.errors[0]});
+    } else if (req.file) {
+      return res.status(400).json({message:'Exam results are only needed for CWTS 1.'});
+    }
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
+      // Recheck after locking so a concurrent extension cannot overlap this new cycle.
+      const [currentCycles] = await connection.execute('SELECT id,ms_level,year,open_date,deadline FROM enrollment_schedules WHERE program=? ORDER BY id DESC FOR UPDATE', [programCode]);
+      if (Number(currentCycles[0]?.id || 0) !== Number(existing[0]?.id || 0)
+          || currentCycles.some(cycle => Date.now() <= new Date(cycle.deadline).getTime())) {
+        const error = new Error('The enrollment schedule has changed. Refresh the page and try again.');
+        error.status = 409; throw error;
+      }
       const [created] = await connection.execute(
         'INSERT INTO enrollment_schedules(program,ms_level,year,open_date,deadline) VALUES(?,?,?,?,?)',
         [programCode, normalizedLevel, normalizedYear, openDate, deadline]
       );
+      if (examResults) await require('../services/cwtsExamService').saveResults(connection, created.insertId, examResults.rows, req.user.email, req.file.originalname);
       const samples = await require('../services/sampleEnrollmentService').create(connection, {
         id: created.insertId, program: programCode, ms_level: normalizedLevel, year: normalizedYear,
       });
       await connection.commit();
       return res.json({
-        message: programCode + ' enrollment schedule created successfully.' + (samples.count ? ` ${samples.count} sample students added as pending enrollments.` : ''),
+        message: examResults ? `Schedule saved with ${examResults.rows.length} exam results.` : programCode + ' enrollment schedule created successfully.' + (samples.count ? ` ${samples.count} sample students added as pending enrollments.` : ''),
         sample_students: samples.count,
         sample_groups: samples.groups,
       });
@@ -692,7 +712,19 @@ exports.schedules = async (req, res) => {
       connection.release();
     }
   } catch (error) {
-    return res.status(500).json({ message: 'Unable to complete this request. Please try again later.' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to complete this request. Please try again later.' });
+  }
+};
+
+exports.extendSchedule = async (req, res) => {
+  try {
+    const cycle = await require('../services/enrollmentScheduleService').extend(db, {
+      program: program(req), id: req.params.id, deadline: req.body?.deadline,
+      expectedDeadline: req.body?.expected_deadline,
+    });
+    return res.json({ message: 'Enrollment deadline updated.', schedule: cycle });
+  } catch (error) {
+    return res.status(error.status || 500).json({message:error.status ? error.message : 'Unable to extend enrollment. Please try again.'});
   }
 };
 
@@ -908,6 +940,9 @@ exports.enrollmentDetail = async (req, res) => {
       return res.status(404).json({ message: 'Enrollment record not found.' });
     }
 
+    if (programCode === 'CWTS' && String(row.ms_level) === '1') {
+      row.exam_eligibility = await require('../services/cwtsExamService').eligibility(db, row.schedule_id, row);
+    }
     studentDetails.linkUploads(row, `/api/admin/${programCode.toLowerCase()}/students/${row.id}/files`);
     return res.json(row);
   } catch (error) {
@@ -928,25 +963,22 @@ async function specialCapacityWarnings(scheduleId, level) {
     .map(([unit, count]) => unit + ' has ' + count + ' approved candidates. Configure sufficient platoon capacity before assignment. The 37-student limit applies only to new enrollment selections.');
 }
 
-async function approveCwtsWithinCapacity(recordId, scheduleId) {
+async function approveCwtsEnrollment(recordId, scheduleId) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
-    // Serialize approvals for this schedule so simultaneous requests cannot take the last slot twice.
-    const [[schedule]] = await connection.execute("SELECT id FROM enrollment_schedules WHERE id=? AND program='CWTS' FOR UPDATE", [scheduleId]);
+    // Keep the enrollment and its exam verification consistent during approval.
+    const [[schedule]] = await connection.execute("SELECT id,program,ms_level FROM enrollment_schedules WHERE id=? AND program='CWTS' FOR UPDATE", [scheduleId]);
     if (!schedule) throw new Error('Enrollment schedule not found.');
     const [[record]] = await connection.execute("SELECT status FROM student_ms_records WHERE id=? AND schedule_id=? AND program='CWTS' FOR UPDATE", [recordId, String(scheduleId)]);
     if (!record || ['withdrawn', 'dropped'].includes(record.status)) throw new Error('Enrollment is not available for approval.');
-    const settings = await cwtsCompanies.details(connection, scheduleId);
-    const capacity = cwtsCompanies.total(settings);
-    const [[count]] = await connection.execute("SELECT COUNT(*) total FROM student_ms_records WHERE schedule_id=? AND program='CWTS' AND status='approved'", [String(scheduleId)]);
-    if (settings.length && record.status !== 'approved' && Number(count.total) >= capacity) {
-      await connection.rollback();
-      return { approved: false, full: true, capacity };
+    if (String(schedule.ms_level) === '1') {
+      const [[student]] = await connection.execute('SELECT s.student_id,s.first_name,s.middle_name,s.last_name,s.sex,s.course FROM students s JOIN student_ms_records r ON r.student_id=s.id WHERE r.id=? FOR UPDATE', [recordId]);
+      await require('../services/cwtsExamService').requireEligible(connection, schedule, student, true);
     }
     await connection.execute("UPDATE student_ms_records SET status='approved',rejection_reason=NULL WHERE id=?", [recordId]);
     await connection.commit();
-    return { approved: true, full: settings.length > 0 && Number(count.total) + (record.status === 'approved' ? 0 : 1) >= capacity, capacity };
+    return { approved: true };
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -1004,13 +1036,8 @@ exports.updateEnrollment = async (req, res) => {
       return res.json({ message: status === 'approved' ? 'Enrollment approved. Assignment will be published when the roster is finalized.' : 'Enrollment ' + status + '.' });
     }
 
-    let cwtsCapacityReached = false;
-    let cwtsCapacity = 0;
     if (programCode === 'CWTS' && status === 'approved') {
-      const result = await approveCwtsWithinCapacity(recordId, record.schedule_id);
-      if (!result.approved) return res.status(409).json({ message: `CWTS enrollment is full. This schedule allows ${result.capacity} approved students with the configured company limits. This enrollment was not approved. Add capacity, or review and reject remaining enrollments with a reason.`, capacityReached: true });
-      cwtsCapacityReached = result.full;
-      cwtsCapacity = result.capacity;
+      await approveCwtsEnrollment(recordId, record.schedule_id);
     } else {
     await db.execute(
       'UPDATE student_ms_records SET status=?,rejection_reason=? WHERE id=?',
@@ -1023,7 +1050,7 @@ exports.updateEnrollment = async (req, res) => {
     }
 
     if (record.platoons_assigned_at) {
-      return res.json({ message: 'Enrollment approved. Existing assignment retained.' + (cwtsCapacityReached ? ' CWTS has reached its ' + cwtsCapacity + '-student limit. Further approvals are blocked.' : ''), capacityReached: cwtsCapacityReached });
+      return res.json({ message: 'Enrollment approved. Existing assignment retained.' });
     }
 
     if (programCode === 'CWTS') {
@@ -1032,8 +1059,7 @@ exports.updateEnrollment = async (req, res) => {
         [record.student_id]
       );
       return res.json({
-        message: 'Enrollment approved. The student will appear in the Company List after enrollment closes and company assignment is completed.' + (cwtsCapacityReached ? ' CWTS has reached its ' + cwtsCapacity + '-student limit. Further approvals are blocked. Review or reject the remaining pending enrollments.' : ''),
-        capacityReached: cwtsCapacityReached,
+        message: 'Enrollment approved. The student will appear in the Company List after enrollment closes and company assignment is completed.',
       });
     }
 
@@ -1062,9 +1088,6 @@ exports.bulkApprove = async (req, res) => {
     }
 
     const reviewedCycles = new Map();
-    let cwtsCapacityReached = false;
-    let capacitySkipped = 0;
-    let cwtsCapacity = 0;
     let approved = 0;
     let skipped = 0;
     let failed = 0;
@@ -1097,10 +1120,7 @@ exports.bulkApprove = async (req, res) => {
         }
 
         if (programCode === 'CWTS') {
-          const result = await approveCwtsWithinCapacity(id, record.schedule_id);
-          cwtsCapacityReached ||= result.full;
-          cwtsCapacity = result.capacity;
-          if (!result.approved) { skipped += 1; capacitySkipped += 1; continue; }
+          await approveCwtsEnrollment(id, record.schedule_id);
           if (!record.platoons_assigned_at) {
             await db.execute(
               'UPDATE students SET company=NULL,battalion=NULL,rotc_company=NULL,rotc_platoon=NULL,special_unit=NULL,platoon=NULL WHERE id=?',
@@ -1132,23 +1152,11 @@ exports.bulkApprove = async (req, res) => {
     );
     const remainingPending = Number(pendingSummary.total);
     const capacityWarnings = [];
-    if (cwtsCapacityReached) capacityWarnings.push('CWTS has reached the ' + cwtsCapacity + '-student approval limit. ' + capacitySkipped + ' selected enrollment(s) could not be approved and remain pending. Review or reject remaining pending enrollments with a reason.');
     for (const [scheduleId, level] of reviewedCycles) capacityWarnings.push(...await specialCapacityWarnings(scheduleId, level));
     return res.json({
       capacityWarnings,
-      capacity: programCode === 'CWTS' ? cwtsCapacity : null,
-      capacitySkipped,
       remainingPending,
-      message: programCode === 'CWTS'
-        ? [
-          approved + ' student' + (approved === 1 ? '' : 's') + ' approved.',
-          capacitySkipped ? capacitySkipped + ' selected enrollment' + (capacitySkipped === 1 ? '' : 's') + ' remain pending because CWTS has reached its ' + cwtsCapacity + '-student capacity.' : '',
-          cwtsCapacityReached && !capacitySkipped ? 'CWTS has reached its ' + cwtsCapacity + '-student capacity. Further approvals require additional company slots.' : '',
-          capacitySkipped ? 'Review remaining pending applications or increase the company capacity.' : '',
-          skipped - capacitySkipped ? (skipped - capacitySkipped) + ' enrollment(s) were not eligible or already reviewed.' : '',
-          failed ? failed + ' enrollment(s) could not be processed. Please try again.' : '',
-        ].filter(Boolean).join(' ')
-        : approved + ' student' + (approved === 1 ? '' : 's') + ' approved.' +
+      message: approved + ' student' + (approved === 1 ? '' : 's') + ' approved.' +
           (skipped ? ' ' + skipped + ' enrollment(s) were not eligible or already reviewed.' : '') +
           (failed ? ' ' + failed + ' enrollment(s) could not be processed. Please try again.' : '') +
           (capacityWarnings.length ? ' ' + capacityWarnings.join(' ') : ''),
