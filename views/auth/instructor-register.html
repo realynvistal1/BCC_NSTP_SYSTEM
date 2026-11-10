@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Instructor Registration | BCC NSTP</title><link rel="icon" href="/assets/images/bcclogo-removebg-preview.png"><link rel="stylesheet" href="/assets/css/instructor-portal.css"><link rel="stylesheet" href="/assets/css/instructor-auth.css?v=20261109-design"></head>
+<body class="instructor-public instructor-auth ia-register">
+<header class="ia-register-top"><div><a class="ia-brand" href="/instructor/login"><img src="/assets/images/bcclogo-removebg-preview.png" alt="BCC logo"><span><strong>BCC NSTP</strong><small>Instructor Portal</small></span></a><a class="ia-top-link" href="/instructor/login">Back to Sign In &rarr;</a></div></header>
+<main class="ia-registration-layout">
+  <aside class="ia-register-intro"><span class="ia-eyebrow">Join the faculty</span><h1>Your instructor<br>account starts here.</h1><p>Register once. Keep the same account for every school year.</p><ol class="ia-steps"><li><b>1</b><span><strong>Create account</strong><small>Complete your details</small></span></li><li><b>2</b><span><strong>Admin approval</strong><small>Your component admin reviews it</small></span></li><li><b>3</b><span><strong>Get assigned</strong><small>View your students and enter grades</small></span></li></ol><p class="ia-help">For both ROTC and CWTS instructors.</p></aside>
+  <section class="registration-card" aria-labelledby="registrationTitle">
+    <header class="ia-form-heading"><h2 id="registrationTitle">Create Instructor Account</h2><span>* Required fields</span></header>
+    <form id="instructorRegistration" class="registration-grid">
+      <label class="portrait-field full"><span class="ia-portrait-frame"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg><img id="portraitPreview" alt="Your profile photo" hidden></span><span class="ia-portrait-copy"><span>Profile Photo *</span><input type="file" name="portrait" accept="image/jpeg,image/png,image/webp" required><small>Choose a clear portrait. JPG, PNG, WEBP &middot; Up to 3 MB</small></span></label>
+      <div class="ia-section-label">Personal Information</div>
+      <label>First Name *<input name="first_name" maxlength="100" autocomplete="given-name" placeholder="First name" required></label>
+      <label><span class="ia-label-line">Middle Name <small>(optional)</small></span><input name="middle_name" maxlength="100" autocomplete="additional-name" placeholder="Middle name"></label>
+      <label>Last Name *<input name="last_name" maxlength="100" autocomplete="family-name" placeholder="Last name" required></label>
+      <label>Email Address *<input name="email" type="email" maxlength="255" autocomplete="email" placeholder="you@example.com" required></label>
+      <div class="ia-section-label">Teaching Details</div>
+      <label>NSTP Component *<select name="program" required><option value="">Select component</option><option>ROTC</option><option>CWTS</option></select></label>
+      <label>NSTP Level *<select name="level" required><option value="">Select NSTP level</option><option value="1">NSTP 1</option><option value="2">NSTP 2</option></select></label>
+      <label class="full">School Year *<select name="school_year" required disabled aria-describedby="schoolYearHint"><option value="">Select component and NSTP level first</option></select><small id="schoolYearHint" aria-live="polite">School years follow the enrollment schedules.</small></label>
+      <div class="ia-section-label">Account Security</div>
+      <label>Password *<input name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="Create a password" required><small>8+ characters, one number and one symbol.</small></label>
+      <label>Confirm Password *<input name="confirm_password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="Repeat your password" required></label>
+      <div id="registrationMessage" class="portal-message full" role="alert" hidden></div>
+      <footer class="full portal-actions"><a href="/instructor/login">Already have an account? Sign in</a><button type="submit" class="ia-primary">Submit Registration &rarr;</button></footer>
+    </form>
+  </section>
+</main><p class="ia-footer">Buenavista Community College &middot; National Service Training Program</p>
+<script src="/assets/js/shared/api.js"></script><script src="/assets/js/instructor/register.js"></script></body></html>
