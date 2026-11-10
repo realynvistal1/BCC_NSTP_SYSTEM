@@ -7,12 +7,14 @@ const { requireAuth, requireRole, requirePortal } = require('../middleware/authM
 router.get('/enrollment-schedule', controller.checkSchedule);
 router.get('/check-student-id', controller.checkStudentId);
 router.post('/register', controller.register);
+router.post('/cwts-exam-eligibility', require('../middleware/rateLimitMiddleware').authRateLimit, require('../controllers/cwtsExamController').check);
 
 router.use(requireAuth, requireRole('student'), requirePortal('student'));
 
 router.get('/dashboard', controller.dashboard);
 router.get('/rotc-verifier/assignments', requireApprovedAdvanceStudent, verifiers.mine);
 router.get('/rotc-verifier/assignments/:id/records', requireApprovedAdvanceStudent, verifiers.records);
+router.get('/rotc-verifier/assignments/:id/students/:studentId/photo',requireApprovedAdvanceStudent,verifiers.studentPhoto);
 router.patch('/rotc-verifier/records/:id', requireApprovedAdvanceStudent, verifiers.verify);
 router.get('/profile', controller.profile);
 router.get('/grades', controller.grades);
