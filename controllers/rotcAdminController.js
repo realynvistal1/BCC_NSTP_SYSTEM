@@ -10,6 +10,7 @@ function withProgram(handler) {
 module.exports = {
   dashboard: withProgram(shared.dashboard),
   schedules: withProgram(shared.schedules),
+  extendSchedule: withProgram(shared.extendSchedule),
   enrollments: withProgram(shared.enrollments),
   enrollmentPhoto: withProgram(shared.enrollmentPhoto),
   studentPhoto: withProgram(shared.studentPhoto),
