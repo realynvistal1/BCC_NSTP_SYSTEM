@@ -1,0 +1,385 @@
+/* Instructor workspace: shared colors and components across all four views. */
+body[data-page="instructor-portal"]{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:radial-gradient(ellipse at 100% 0,#e4f0ef,transparent 46%),#f3f6f8;color:#243e49;--ip-green:#16836b;--ip-blue:#4b86cf;--ip-purple:#8b72c9;--ip-amber:#c79135;--ip-line:#e1e9ed}
+body[data-page="instructor-portal"] .main{max-width:1800px}
+body[data-page="instructor-portal"] .intro{background:linear-gradient(110deg,#fff,#e9f5ef);border:1px solid #d5e8df;box-shadow:0 5px 22px #294e3d05;border-radius:17px;padding:23px 26px;margin-bottom:22px}
+body[data-page="instructor-portal"] .intro h1{font-size:25px;letter-spacing:-.5px;color:#235247}
+body[data-page="instructor-portal"] .intro-kicker{color:#388774;font-size:10px;letter-spacing:1.8px}
+body[data-page="instructor-portal"] .intro p{font-size:12px;color:#7b9192}
+body[data-page="instructor-portal"] .nav-icon svg{width:19px;height:19px}
+body[data-page="instructor-portal"] .portal-card{border:1px solid var(--ip-line);border-radius:16px;box-shadow:0 5px 24px #1b454808;padding:24px}
+.ip-section-kicker{display:block;font-size:9px;letter-spacing:1.6px;font-weight:700;color:#73958b;margin-bottom:7px}
+.ip-card-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:8px}
+.ip-card-heading h2{margin:0 0 7px;font-size:17px;color:#31574e;letter-spacing:-.25px}
+.ip-card-heading>a{font-size:11px;color:#25836c;white-space:nowrap;font-weight:600}
+body[data-page="instructor-portal"] .instructor-dashboard-welcome{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:31px 34px;border-radius:18px;background:linear-gradient(115deg,#154e43,#267e6a 74%,#3a9a7e);position:relative;overflow:hidden;border:0;box-shadow:0 10px 30px #255e4918}
+.instructor-dashboard-welcome:before,.instructor-dashboard-welcome:after{content:"";position:absolute;border:1px solid #ffffff12;border-radius:50%;width:330px;height:330px;right:45px;top:-180px;pointer-events:none}
+.instructor-dashboard-welcome:after{width:245px;height:245px;right:-90px;top:80px;background:#ffffff07}
+.ip-welcome-copy,.ip-welcome-portrait{position:relative;z-index:1}
+.ip-welcome-copy .ip-section-kicker{color:#a9dec9;font-size:10px;letter-spacing:2px}
+body[data-page="instructor-portal"] .instructor-dashboard-welcome h2{font-size:28px;color:#fff;letter-spacing:-.6px;margin:9px 0 10px}
+body[data-page="instructor-portal"] .instructor-dashboard-welcome p{color:#c8e2d8;font-size:13px;max-width:380px;line-height:1.7}
+.ip-welcome-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.ip-welcome-actions a{padding:9px 15px;border:1px solid #ffffff40;border-radius:8px;font-size:11px;font-weight:600;color:#fff;background:#ffffff09}
+.ip-welcome-actions a:first-child{background:#fff;color:#256c56;border-color:#fff}
+.ip-welcome-portrait{text-align:center;flex-shrink:0;min-width:130px}
+.ip-welcome-portrait img{display:block;width:90px;height:104px;object-fit:cover;border-radius:18px;border:4px solid #ffffff45;margin:0 auto 10px;box-shadow:0 8px 20px #123c3b20}
+.ip-welcome-portrait>span{font-size:10px;color:#bfe3d0;font-style:italic}
+.instructor-dashboard-stats{gap:15px;margin:21px 0}
+.instructor-stat{--stat:#397eac;--stat-bg:#eef5fc;position:relative;padding:20px;border:1px solid #e1e8ef;border-radius:14px;background:#fff;box-shadow:0 5px 15px #2b465407;overflow:hidden}
+.instructor-stat:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--stat)}
+.instructor-stat.students{--stat:#407fc5;--stat-bg:#edf4ff}.instructor-stat.companies{--stat:#328f76;--stat-bg:#ebf8f1}.instructor-stat.review{--stat:#8d70c7;--stat-bg:#f3eefe}.instructor-stat.corrections{--stat:#cb9340;--stat-bg:#fff6e8}
+.ip-stat-top{display:flex;align-items:center;gap:10px}
+.instructor-stat .ip-stat-icon{display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--stat-bg);color:var(--stat)}
+.ip-stat-icon svg{width:19px;height:19px}
+.instructor-stat .ip-stat-top>span:last-child{font-size:11px;line-height:1.5;color:#75899a}
+.instructor-stat strong{font-size:31px;line-height:1.3;letter-spacing:-1px;color:var(--stat);margin:14px 0 5px}
+.instructor-stat>small{font-size:10px;color:#98a6b2}
+.ip-dashboard-columns{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:start}
+.instructor-dashboard-assignment{justify-content:flex-start;gap:13px;padding:20px 0;border-top:1px solid #edf1f3}
+.ip-company-icon{display:grid;place-items:center;width:45px;height:45px;background:#edf7f1;border:1px solid #dfede4;color:#32805f;border-radius:12px;flex-shrink:0}
+.ip-company-icon svg{width:23px;height:23px}
+.instructor-dashboard-assignment>div{flex:1;min-width:0}
+.instructor-dashboard-assignment strong{font-size:14px;color:#325f50}
+.instructor-dashboard-assignment small{font-size:11px;color:#91a199}
+.ip-company-count{display:inline-block;margin-top:8px;font-size:10px;color:#5a8a70;background:#f0f6f1;border-radius:5px;padding:3px 7px}
+.instructor-dashboard-assignment>.btn{display:flex;gap:6px;align-items:center;font-size:10px;padding:8px 10px;white-space:nowrap;border-color:#dce9e3;background:#fff;color:#448e72;box-shadow:none}
+.instructor-dashboard-assignment>.btn svg{width:14px;height:14px}
+.ip-grade-progress{background:#f7f9fc;border:1px solid #e9edf4;border-radius:10px;padding:14px;margin-top:5px}
+.ip-grade-progress>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#8898a7}
+.ip-grade-progress strong{font-weight:600;color:#60768c}
+.ip-progress-track{height:6px;background:#e5ebf1;border-radius:10px;overflow:hidden;margin-top:10px}
+.ip-progress-track>span{height:100%;display:block;background:linear-gradient(90deg,#64a3b2,#3b997b);border-radius:10px}
+.ip-student-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.ip-student-avatar{width:44px;height:44px;flex-shrink:0;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#ebf0f9;border:2px solid #fff;box-shadow:0 0 0 1px #e1e8ee;color:#7590ae;font-size:12px;font-weight:700}
+.ip-student-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ip-student-identity>div{min-width:0}
+.ip-student-identity strong{display:block;font-size:13px;font-weight:650;color:#385b6b;line-height:1.5}
+.ip-student-identity small{display:block;font-size:10px;color:#97a7b0;line-height:1.6}
+.ip-dashboard-student{padding:15px 0;border-bottom:1px solid #edf1f4}
+.ip-dashboard-student:last-child{border-bottom:0}
+body[data-page="instructor-portal"] .instructor-open-attendance{background:#f8fbfd;border-color:#e0e9f0;margin-bottom:21px;padding:20px 23px;gap:15px}
+.ip-attendance-icon{width:43px;height:43px;display:grid;place-items:center;flex-shrink:0;background:#eaf3fa;color:#6591b3;border-radius:12px}
+.ip-attendance-icon svg{width:23px;height:23px}
+.instructor-open-attendance>div{flex:1}
+.instructor-open-attendance strong{font-size:14px;color:#557084}
+.instructor-open-attendance p{font-size:11px;color:#94a5af;line-height:1.6}
+.instructor-open-attendance>a.btn{font-size:11px;white-space:nowrap;box-shadow:none}
+body[data-page="instructor-portal"] .instructor-open-attendance.has-open-attendance{background:#f0fbf4;border-color:#cae9d6}
+.has-open-attendance .ip-attendance-icon{background:#dcf2e5;color:#3a9868}.has-open-attendance strong{color:#367654}.has-open-attendance p{color:#79a68b}
+.ip-empty-art{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 15px;border-radius:16px;background:#eff5f5;color:#8caaa5}
+.ip-empty-art svg{width:27px;height:27px}
+body[data-page="instructor-portal"] .portal-empty h3{font-size:16px;margin:0 0 8px;color:#5c7e7b}body[data-page="instructor-portal"] .portal-empty p{font-size:12px;color:#99aca9}
+body[data-page="instructor-portal"] .profile-banner{border:1px solid #cfdfeb;background:linear-gradient(110deg,#edf4fa,#fff);border-radius:17px;padding:26px;gap:22px}
+body[data-page="instructor-portal"] .profile-portrait{width:88px;height:105px;object-fit:cover;border-radius:14px;border:4px solid #fff;box-shadow:0 4px 14px #2c536715}
+body[data-page="instructor-portal"] .profile-banner h1{color:#365f79;font-size:25px;letter-spacing:-.6px}
+body[data-page="instructor-portal"] .profile-banner>div>small{color:#658ca8;font-size:10px}
+body[data-page="instructor-portal"] .profile-banner p{color:#8ba0ae;font-size:12px}
+.instructor-account-details>div{padding:15px 17px;border:1px solid #e8eef0;border-radius:10px;background:#fbfcfd}
+.instructor-account-details{gap:13px}.instructor-account-details dt{font-size:9px;color:#94a6b0}.instructor-account-details dd{font-size:13px;color:#557383}
+body[data-page="instructor-portal"] .ip-grades-card{padding:0;overflow:hidden}
+.ip-grades-card>.portal-section-heading{margin:0;padding:23px 25px;background:linear-gradient(110deg,#f1effa,#fbfaff);border-bottom:1px solid #e8e4f3}
+.ip-grades-card .portal-section-heading h2{font-size:20px;color:#615582;margin:0 0 7px}.ip-grades-card .portal-section-heading p{font-size:11px;color:#9c95b1}.ip-grades-card .ip-section-kicker{color:#a196bb}
+.ip-grades-card .portal-section-heading label{font-size:10px;color:#9a90ac;gap:7px}.ip-grades-card .portal-section-heading select{font-size:12px;min-height:39px;border-color:#e0dbea;color:#756586;border-radius:9px;background:#fff}
+.ip-grade-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;padding:22px 25px 0}
+.ip-grade-count{padding:14px 16px;border:1px solid #e4ebf4;border-radius:10px;background:#f6f9fe;display:flex;align-items:center;justify-content:space-between;gap:9px;color:#6492bf}
+.ip-grade-count span{font-size:11px}.ip-grade-count strong{font-size:21px;font-weight:700}.ip-grade-count.draft{background:#f8f8fa;border-color:#e9e9ef;color:#9293a5}.ip-grade-count.review{background:#f6f2fc;border-color:#eae1f7;color:#9d7bc3}.ip-grade-count.approved{background:#eff9f2;border-color:#dcf0e2;color:#64a37d}
+.ip-grade-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:20px 25px}
+.ip-grade-toolbar>label{display:flex;align-items:center;gap:9px;background:#f9fbfc;border:1px solid #e2e9ef;border-radius:9px;padding:0 11px;width:min(340px,75%)}
+.ip-grade-toolbar>label>span:not(.sr-only){display:flex;color:#a1b5c3}.ip-grade-toolbar svg{width:17px;height:17px}
+.ip-grade-toolbar input{border:0;background:none;min-width:0;width:100%;padding:11px 0;font:inherit;font-size:12px;color:#627c8f;outline:0}.ip-grade-toolbar>span{font-size:10px;color:#9eafbb;white-space:nowrap}
+.ip-grades-card .portal-message{margin:15px 25px 0}
+body[data-page="instructor-portal"] .ip-grade-table{padding:0 25px 18px}
+body[data-page="instructor-portal"] .portal-table th{font-family:inherit;font-size:10px;letter-spacing:.7px;background:#f3f6fa;color:#8b9dad;padding:13px}
+body[data-page="instructor-portal"] .portal-table td{padding:18px 13px;border-bottom:1px solid #ecf0f5;font-size:12px}
+body[data-page="instructor-portal"] .portal-table tbody tr:hover{background:#fcfdfd}
+body[data-page="instructor-portal"] .portal-table th:first-child{width:35%}
+body[data-page="instructor-portal"] .portal-table input{width:78px;min-height:37px;text-align:center;background:#fbfdff;border:1px solid #d8e5ef;border-radius:8px;font-weight:600;color:#4b728e;padding:8px}
+body[data-page="instructor-portal"] .portal-table input:focus{outline:3px solid #e1f0fa;border-color:#7baacb}
+body[data-page="instructor-portal"] .portal-table input:disabled{color:#91a596;background:#f4f8f4;border-color:#e0e9e1}
+body[data-page="instructor-portal"] .portal-table .portal-actions{gap:8px}
+body[data-page="instructor-portal"] .portal-table button{font-size:10px;border-radius:8px;padding:9px 12px;white-space:nowrap;background:#23846d;box-shadow:0 4px 9px #23846d10}
+body[data-page="instructor-portal"] .portal-table button.portal-secondary{background:#fff;border:1px solid #d9e6ed;color:#7392a7;box-shadow:none}
+.ip-grade-locked{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#86a797}.ip-grade-locked svg{width:14px;height:14px}
+body[data-page="instructor-portal"] .portal-badge{font-size:10px;padding:5px 9px;border:1px solid #e4ebf0;background:#f2f6f8;color:#94a7b0}
+body[data-page="instructor-portal"] .portal-badge.submitted{background:#f3effb;color:#a185c2;border-color:#e8e0f4}body[data-page="instructor-portal"] .portal-badge.approved{background:#eaf7ee;color:#65a67b;border-color:#d9eddf}body[data-page="instructor-portal"] .portal-badge.returned{background:#fff4e8;color:#c69b60;border-color:#f1e3cd}body[data-page="instructor-portal"] .portal-badge.draft{background:#f2f5f9;color:#98a4b6;border-color:#e4eaf1}
+body[data-page="instructor-portal"] .grade-note{background:#fff8ec;border-radius:6px;padding:7px 10px;color:#b69661;font-size:10px;margin-top:10px}
+/* Attendance keeps the existing correction form and history behavior. */
+body[data-page="instructor-portal"] .cwts-workspace{gap:20px}
+body[data-page="instructor-portal"] .cwts-workspace>.panel{background:#fff;border:1px solid var(--ip-line);border-radius:16px;box-shadow:0 5px 24px #1b454808;padding:23px}
+body[data-page="instructor-portal"] .verifier-section-heading{border-bottom:1px solid #edf1f4;padding-bottom:17px;margin-bottom:20px;gap:12px}
+body[data-page="instructor-portal"] .verifier-section-heading h2{font-family:inherit;font-size:18px;color:#406c65;letter-spacing:-.25px}
+body[data-page="instructor-portal"] .verifier-heading-icon{background:#eaf7f2;color:#67a48c;border-radius:12px;width:42px;height:42px}
+body[data-page="instructor-portal"] .cwts-duty-card{background:linear-gradient(115deg,#f1f8f4,#fcfefd);border:1px solid #d3e8db;border-radius:13px;box-shadow:none;border-left:4px solid #62a58b;padding:21px}
+body[data-page="instructor-portal"] .cwts-duty-title h3{font-size:21px;color:#3b725c;margin:3px 0 9px}
+.ip-session-status{display:inline-block;font-size:9px;font-weight:600;padding:4px 9px;border-radius:20px;background:#eff2f5;color:#9daab3}
+.ip-session-status.open{background:#ddf2e7;color:#5b9a77}.ip-session-status.late{background:#fff0d7;color:#bc9354}
+body[data-page="instructor-portal"] .attendance-assignment-details>div{background:#fff;border:1px solid #e3ede7;border-radius:9px;padding:13px}
+body[data-page="instructor-portal"] .attendance-assignment-details dt{font-size:9px;color:#9caf9f}.attendance-assignment-details dd{font-family:inherit}
+body[data-page="instructor-portal"] .attendance-assignment-details dd{font-size:12px;color:#6f8c79}
+body[data-page="instructor-portal"] .cwts-duty-type{background:#72a58e;color:#fff;font-size:10px;padding:3px 7px;border-radius:5px}
+body[data-page="instructor-portal"] .cwts-toolbar{background:#f7fafb;border:1px solid #e7eef0;border-radius:11px;padding:14px 17px;margin-bottom:17px}
+body[data-page="instructor-portal"] .cwts-toolbar label{font-size:10px;color:#8ca39c}
+body[data-page="instructor-portal"] .cwts-toolbar input{border:1px solid #dae6e3;border-radius:8px;background:#fff;padding:10px 12px;font-size:12px}
+body[data-page="instructor-portal"] .attendance-status-filter{border-radius:10px;font-size:11px;padding:10px 13px;background:#f7f9fb;color:#91a3af;border-color:#e4eaef;box-shadow:none}
+body[data-page="instructor-portal"] .attendance-status-filter[aria-pressed="true"]{background:#edf7f3;color:#69a18a;border-color:#9ec7b4}
+body[data-page="instructor-portal"] .attendance-status-filter.present{background:#eef8f2;color:#74a58a;border-color:#d9ebdf}body[data-page="instructor-portal"] .attendance-status-filter.late{background:#fff7e9;color:#c3a26e;border-color:#efe3cb}body[data-page="instructor-portal"] .attendance-status-filter.absent{background:#fff0ee;color:#cc9390;border-color:#f1dcd8}
+body[data-page="instructor-portal"] #cwtsStudentRows th{background:#f3f7fa;font-size:10px;color:#91a5b4;letter-spacing:.6px;padding:13px}
+body[data-page="instructor-portal"] #cwtsStudentRows td{font-size:12px;padding:18px 13px;vertical-align:middle}
+body[data-page="instructor-portal"] .verifier-record-student .ip-student-identity strong{font-family:inherit;font-size:13px}
+body[data-page="instructor-portal"] #cwtsStudentRows .btn.primary{background:#478da6;border-color:#478da6;font-size:11px;padding:8px 13px;border-radius:8px;box-shadow:none}
+.ip-no-update{color:#afbdc6;font-size:11px}
+/* Keep secondary text and colored status labels readable on light surfaces. */
+body[data-page="instructor-portal"] :is(.ip-student-identity small,.instructor-stat>small,.ip-grade-toolbar>span,.instructor-dashboard-assignment small,.instructor-open-attendance p,.instructor-account-details dt,.ip-list-summary){color:#748997}
+body[data-page="instructor-portal"] .portal-badge.submitted{color:#80619f}body[data-page="instructor-portal"] .portal-badge.approved{color:#388055}body[data-page="instructor-portal"] .portal-badge.returned{color:#a57837}body[data-page="instructor-portal"] .portal-badge.draft{color:#73839b}.ip-grade-count.students{color:#4c83b8}.ip-grade-count.draft{color:#7c8095}.ip-grade-count.review{color:#8964ae}.ip-grade-count.approved{color:#3e8b5e}
+body[data-page="instructor-portal"] .cwts-pagination{font-size:11px;color:#99acb4;margin-top:18px;padding-top:16px;border-top:1px solid #edf1f3}
+body[data-page="instructor-portal"] .attendance-dialog-header{background:#f0f7f5;border-bottom:1px solid #dceae2}
+body[data-page="instructor-portal"] .attendance-dialog-header h2{font-family:inherit;color:#417461;font-size:21px}
+body[data-page="instructor-portal"] .attendance-edit-student{background:#f1f6fa;border:1px solid #e0e9f0;border-radius:10px;padding:16px}
+body[data-page="instructor-portal"] .attendance-dialog-body select,body[data-page="instructor-portal"] .attendance-dialog-body textarea{border:1px solid #d4e4dc;border-radius:8px;font-size:13px}
+@media(max-width:1100px){.instructor-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.ip-dashboard-columns{grid-template-columns:1fr}.instructor-stat .ip-stat-top>span:last-child{font-size:12px}}
+@media(max-width:650px){body[data-page="instructor-portal"] .intro{padding:19px}body[data-page="instructor-portal"] .intro h1{font-size:22px}body[data-page="instructor-portal"] .instructor-dashboard-welcome{padding:25px 21px;gap:15px}.ip-welcome-portrait{min-width:74px}.ip-welcome-portrait img{width:65px;height:79px;border-radius:13px}.ip-welcome-portrait>span{display:none}body[data-page="instructor-portal"] .instructor-dashboard-welcome h2{font-size:23px}.ip-welcome-copy p{font-size:12px!important}.ip-welcome-actions a{font-size:10px;padding:8px 10px}.instructor-stat{padding:16px}.instructor-stat strong{font-size:28px}.instructor-stat .ip-stat-top{gap:8px}.instructor-stat .ip-stat-top>span:last-child{font-size:10px}.ip-stat-icon{width:30px!important;height:30px!important}.instructor-open-attendance{flex-wrap:wrap}.instructor-open-attendance>a{margin-left:58px}.ip-grade-summary{grid-template-columns:repeat(2,minmax(0,1fr));padding:17px 18px 0;gap:10px}.ip-grade-count{padding:12px}.ip-grade-toolbar{padding:17px 18px}.ip-grades-card>.portal-section-heading{padding:20px}.ip-grade-table{padding:0 15px 15px!important}.ip-dashboard-columns>.portal-card{padding:20px!important}.instructor-dashboard-assignment{flex-wrap:wrap}.instructor-dashboard-assignment>.btn{margin-left:58px}body[data-page="instructor-portal"] .cwts-workspace>.panel{padding:18px}body[data-page="instructor-portal"] .profile-banner{padding:21px;gap:15px}body[data-page="instructor-portal"] .profile-banner h1{font-size:21px}.ip-student-avatar{width:39px;height:39px}}
+
+/* Brighter portal headers, clear filters, and compact status labels. */
+body[data-page="instructor-portal"]{background:linear-gradient(135deg,#eaf1fb,#eff8f8);color:#24475b}
+body[data-page="instructor-portal"] .sidebar{display:flex;flex-direction:column;height:100dvh;overflow:hidden;background:linear-gradient(170deg,#50ab96,#2b8a76 52%,#1d6657);box-shadow:5px 0 22px #164f6c1c}
+body[data-page="instructor-portal"] .sidebar>.brand{flex-shrink:0}
+body[data-page="instructor-portal"] .sidebar>.nav-wrap{flex:1;min-height:0;overflow:auto;margin-bottom:12px}
+body[data-page="instructor-portal"] .sidebar-footer{margin-top:auto;flex-shrink:0;border-top:1px solid #ffffff30;padding:15px 6px 5px}
+body[data-page="instructor-portal"] .logout-btn{background:#ffffff16;border:1px solid #ffffff25;border-radius:11px;min-height:43px}
+body[data-page="instructor-portal"] .logout-btn:hover{background:#ffffff28}
+body[data-page="instructor-portal"] .nav-link.active{box-shadow:0 5px 14px #064c6126;color:#156e8f}
+body[data-page="instructor-portal"] .intro{background:linear-gradient(110deg,#d4eee3,#edf8f3);border-color:#a4d5c3;box-shadow:0 6px 20px #236a5012;border-radius:16px}
+body[data-page="instructor-portal"] .intro h1{color:#164f40;font-size:25px}
+body[data-page="instructor-portal"] .intro-kicker{color:#327e68}
+body[data-page="instructor-portal"] .intro p{color:#52776a}
+body[data-page="instructor-portal"] .intro:after{background:#ffffff0c}
+body[data-page="instructor-portal"] .intro-brand-row>img{background:#fff;border-radius:10px;padding:5px;box-shadow:0 3px 10px #134b7626}
+body[data-page="instructor-portal"] .portal-card{border-color:#d8e4ed;box-shadow:0 6px 21px #315a7912}
+.ip-dashboard-greeting{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:3px 3px 14px}
+.ip-dashboard-greeting .ip-section-kicker{color:#47858c;margin-bottom:5px}
+.ip-dashboard-greeting h2{font-size:22px;margin:0;color:#294f66;letter-spacing:-.4px}
+.ip-dashboard-greeting img{width:49px;height:57px;object-fit:cover;border-radius:10px;border:3px solid #fff;box-shadow:0 4px 12px #235d7a19}
+.instructor-stat{border:0;box-shadow:0 7px 19px #30578324;padding:20px 22px;border-radius:14px}
+.instructor-stat:before{display:none}
+.instructor-stat.students{background:linear-gradient(120deg,#377ad2,#4e9de4)}.instructor-stat.companies{background:linear-gradient(120deg,#1c9d8f,#44b5a5)}.instructor-stat.review{background:linear-gradient(120deg,#8261c9,#a47ddd)}.instructor-stat.corrections{background:linear-gradient(120deg,#dc9132,#ecb04f)}
+.instructor-stat .ip-stat-top>span:last-child{color:#fff;font-weight:600;font-size:12px}
+.instructor-stat .ip-stat-icon{background:#ffffff26;color:#fff}
+.instructor-stat strong{color:#fff;margin-top:14px;font-size:32px}
+.instructor-stat .ip-stat-top{align-items:center}
+.ip-dashboard-columns>.portal-card:first-child{border-top:4px solid #2995b7}.ip-dashboard-columns>.portal-card:last-child{border-top:4px solid #35a18f}
+.ip-dashboard-columns .ip-section-kicker{display:none}
+.ip-card-heading h2{color:#295c75;font-size:17px}
+.ip-company-icon{background:#e1f3fb;border-color:#c6e7f4;color:#2783ac}
+.ip-company-count{background:#e2f5ec;color:#25815f}
+.ip-grade-progress{background:#edf3ff;border-color:#d8e4f7}
+.ip-progress-track>span{background:linear-gradient(90deg,#3e91dc,#29a8a1)}
+body[data-page="instructor-portal"] .ip-grades-card>.portal-section-heading{padding:20px 24px;background:linear-gradient(110deg,#e1f3ea,#f3faf6);border:0;border-bottom:1px solid #c9e4d7;border-left:4px solid #36977a}
+body[data-page="instructor-portal"] .ip-grades-card .portal-section-heading h2{color:#205d49;margin:0 0 5px;font-size:21px}
+body[data-page="instructor-portal"] .ip-grades-card .portal-section-heading p{color:#5c7b6c;font-size:12px}
+.ip-assignment-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:18px 24px;background:#f0f6fc;border-bottom:1px solid #dbe8f3}
+.ip-assignment-filters>label{display:flex;flex-direction:column;gap:7px;min-width:0;font-size:11px;font-weight:650;color:#446d91}
+.ip-assignment-filters select{width:100%;min-width:0;min-height:40px;font:inherit;font-size:12px;font-weight:400;color:#325b7e;border:1px solid #bed3e6;background:#fff;border-radius:8px;padding:9px 11px;box-shadow:0 2px 5px #51789c07}
+.ip-assignment-filters select:focus{outline:3px solid #cde8fb;border-color:#5d9bcd}
+.ip-grade-toolbar{padding:18px 24px;flex-wrap:wrap;background:#fff}
+.ip-grade-toolbar>label{border-color:#cddfe9;background:#f8fbff}
+.ip-grade-toolbar input{color:#395f7c;font-size:12px}
+.ip-grade-toolbar>label.ip-grade-status-filter{width:215px;gap:10px;padding:0 12px;color:#4c7593;font-size:11px;font-weight:600;min-height:40px}
+.ip-grade-status-filter select{border:0;flex:1;min-width:0;min-height:37px;padding:7px 2px;font:inherit;font-size:12px;color:#375f7f;background:transparent;outline:0}
+.ip-grade-toolbar>span{margin-left:auto}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table{border:1px solid #d9e6ef;border-radius:10px;overflow:hidden;border-collapse:separate;border-spacing:0}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table th{background:#dcecf9;color:#37688d;font-size:10px;border-bottom:1px solid #c8deee;padding:14px}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table td{padding:17px 14px;background:#fff}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table tr:nth-child(even)>td{background:#f7fbff}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table tr:hover>td{background:#edf7fe}
+body[data-page="instructor-portal"] .portal-table input{border-color:#a8cbe4;background:#f4faff;box-shadow:inset 0 1px 3px #316b9907}
+body[data-page="instructor-portal"] .portal-badge{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;width:auto;height:auto;min-width:0;min-height:0;margin:0;padding:5px 10px;border-radius:20px;font-size:10px;line-height:1.4;white-space:nowrap;box-shadow:none}
+body[data-page="instructor-portal"] .portal-badge.not-entered{background:#e6eef7;border-color:#cddceb;color:#5a789b}
+body[data-page="instructor-portal"] .portal-badge.draft{background:#e2edff;border-color:#bfd3f2;color:#3c70b3}
+body[data-page="instructor-portal"] .portal-badge.submitted{background:#ede3ff;border-color:#d6bef6;color:#8052b6}
+body[data-page="instructor-portal"] .portal-badge.approved{background:#d9f5e5;border-color:#b5e4c9;color:#257b4e}
+body[data-page="instructor-portal"] .portal-badge.returned{background:#fff0cd;border-color:#f1d69e;color:#a47421}
+body[data-page="instructor-portal"] .portal-table button{background:#138d7a;box-shadow:0 3px 8px #138d7a20;padding:9px 13px;font-size:11px}
+body[data-page="instructor-portal"] .portal-table button.portal-secondary{background:#eaf3fe;color:#386fa6;border-color:#c3d9ed}
+body[data-page="instructor-portal"] .ip-student-identity strong{color:#315b7b;font-size:13px}
+body[data-page="instructor-portal"] .ip-student-avatar{box-shadow:0 0 0 2px #d6e8f5}
+body[data-page="instructor-portal"] .cwts-workspace>.panel{box-shadow:0 6px 21px #315a7912;border-color:#d2e1ec}
+body[data-page="instructor-portal"] .cwts-duty-card{background:linear-gradient(110deg,#e6f5f5,#f2faff);border-color:#b6dce0;border-left-color:#15959c}
+body[data-page="instructor-portal"] .cwts-duty-title h3{color:#227e89}
+@media(max-width:650px){.ip-assignment-filters{grid-template-columns:1fr 1fr;gap:12px;padding:16px}.ip-assignment-filters>label:last-of-type{grid-column:1/-1}.ip-grade-toolbar{padding:16px;gap:10px}.ip-grade-toolbar>label{width:100%;max-width:none}.ip-grade-toolbar>label.ip-grade-status-filter{width:calc(100% - 100px)}.ip-grade-toolbar>span{font-size:10px}.instructor-stat{padding:16px}.instructor-stat .ip-stat-top>span:last-child{font-size:11px}.instructor-stat strong{font-size:28px}.ip-dashboard-greeting h2{font-size:20px}body[data-page="instructor-portal"] .intro h1{font-size:23px}}
+
+/* Compact instructor greeting and calm attendance status. */
+body[data-page="instructor-portal"] .ip-dashboard-greeting{justify-content:flex-start;padding:20px 24px;margin-bottom:20px;gap:16px;background:linear-gradient(110deg,#e1f4ed,#f5fbff);border:1px solid #c6e5d9;border-radius:16px;box-shadow:0 5px 16px #165c4810}
+body[data-page="instructor-portal"] .ip-dashboard-greeting img{width:64px;height:64px;flex-shrink:0;object-fit:cover;object-position:center 20%;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px #174b4020}
+body[data-page="instructor-portal"] .ip-dashboard-greeting h2{margin:0;line-height:1.3;color:#174e43;font-size:23px}
+body[data-page="instructor-portal"] .instructor-open-attendance{display:flex;align-items:center;padding:18px 20px;border:1px solid #d6e4ee;border-left:4px solid #6b99bc;background:#f2f7fc;border-radius:12px;box-shadow:0 4px 14px #2757790a}
+body[data-page="instructor-portal"] .instructor-open-attendance strong{display:block;color:#34536b;font-size:14px}
+body[data-page="instructor-portal"] .instructor-open-attendance p{margin:5px 0 0;color:#627b8d;font-size:12px}
+body[data-page="instructor-portal"] .instructor-open-attendance.has-open-attendance{border-left-color:#11956b;background:#ecfaf3}
+@media(max-width:650px){body[data-page="instructor-portal"] .ip-dashboard-greeting{padding:16px}body[data-page="instructor-portal"] .ip-dashboard-greeting h2{font-size:20px}body[data-page="instructor-portal"] .instructor-open-attendance>a{margin-left:58px}}
+
+/* Grade overview cards and a connected green filter group. */
+.ip-record-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.ip-record-count{padding:18px;border:1px solid #dce8e1;border-radius:15px;background:#fff;box-shadow:0 5px 16px #274e3d08;display:grid;gap:10px}
+.ip-record-count small{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#607b6e}.ip-record-count strong{font-size:25px;color:#254f40}
+.ip-record-count.draft{background:#edf4ff;border-color:#bed6f8}.ip-record-count.draft strong{color:#3665a1}.ip-record-count.ungraded{background:#fff9e8;border-color:#edd58b}.ip-record-count.ungraded strong{color:#aa7109}.ip-record-count.review{background:#f3edfc;border-color:#d9c8f0}.ip-record-count.review strong{color:#8055aa}.ip-record-count.approved{background:#e8f8ef;border-color:#b9e7cf}.ip-record-count.approved strong{color:#187950}
+body[data-page="instructor-portal"] .ip-grades-card>.portal-section-heading{display:none}
+body[data-page="instructor-portal"] .ip-assignment-filters{margin:20px 20px 0;padding:16px 16px 10px;background:#d3efdf;border:1px solid #7dc59b;border-bottom:0;border-radius:12px 12px 0 0;gap:12px}
+body[data-page="instructor-portal"] .ip-assignment-filters>label{color:#31684c}
+body[data-page="instructor-portal"] .ip-assignment-filters select{border-color:#93cdae;color:#285c43;background:#fafffc}
+body[data-page="instructor-portal"] .ip-grade-toolbar{margin:0 20px 18px;padding:4px 16px 16px;background:#d3efdf;border:1px solid #7dc59b;border-top:0;border-radius:0 0 12px 12px;gap:12px}
+body[data-page="instructor-portal"] .ip-grade-toolbar>label{background:#fafffc;border-color:#93cdae}.ip-grade-toolbar>label.ip-grade-status-filter{color:#31684c}
+@media(max-width:700px){.ip-record-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.ip-record-count{padding:14px}body[data-page="instructor-portal"] .ip-assignment-filters{margin:14px 14px 0}body[data-page="instructor-portal"] .ip-grade-toolbar{margin:0 14px 14px}}
+
+/* Single-row grade filters in a deeper green frame. */
+body[data-page="instructor-portal"] .ip-assignment-filters{display:grid;grid-template-columns:minmax(110px,.9fr) minmax(95px,.7fr) minmax(140px,1fr) minmax(180px,1.4fr) minmax(140px,.9fr);gap:10px;align-items:end;background:#acd8bc;border:1px solid #4b9d6d;border-radius:12px;padding:15px;margin:20px 20px 18px;box-shadow:0 4px 12px #28643e12}
+body[data-page="instructor-portal"] .ip-assignment-filters>.ip-grade-toolbar{display:contents}
+body[data-page="instructor-portal"] .ip-grade-toolbar>label{width:auto;max-width:none;min-height:40px;margin:0;background:#f5fcf7;border-color:#71b58d}
+body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-status-filter{width:auto;min-width:0;padding:0 9px;gap:5px}
+body[data-page="instructor-portal"] .ip-assignment-filters>label{color:#215238}
+body[data-page="instructor-portal"] .ip-assignment-filters select{background:#f5fcf7;border-color:#71b58d;color:#214e37}
+body[data-page="instructor-portal"] #instructorGradeCount{grid-column:1/-1;text-align:right;color:#366346;margin:0;font-size:10px}
+@media(max-width:1000px){body[data-page="instructor-portal"] .ip-assignment-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body[data-page="instructor-portal"] .ip-assignment-filters{grid-template-columns:repeat(2,minmax(0,1fr));margin:14px;padding:12px}body[data-page="instructor-portal"] .ip-assignment-filters>label:last-of-type{grid-column:auto}}
+
+/* Course and status filters first, search last. */
+body[data-page="instructor-portal"] .ip-assignment-filters{grid-template-columns:minmax(110px,.9fr) minmax(95px,.7fr) minmax(150px,1.15fr) minmax(130px,.85fr) minmax(180px,1.4fr);background:linear-gradient(110deg,#83c49d,#a9d8bb);border-color:#3a945e;box-shadow:0 4px 14px #25643f1a}
+body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-status-filter{grid-column:4;grid-row:1;align-self:end}
+body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-search-last{grid-column:5;grid-row:1;align-self:end}
+body[data-page="instructor-portal"] .ip-teaching-scope{display:flex;justify-content:flex-end;padding:0 24px 14px}.ip-teaching-scope label{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:600;color:#356149}.ip-teaching-scope select{padding:7px 10px;border:1px solid #b4d6c1;border-radius:8px;background:#f6fbf8;color:#29513a;font:inherit}
+@media(max-width:1000px){body[data-page="instructor-portal"] .ip-assignment-filters{grid-template-columns:repeat(3,minmax(0,1fr))}body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-status-filter{grid-column:1;grid-row:2}body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-search-last{grid-column:2/4;grid-row:2}}
+@media(max-width:600px){body[data-page="instructor-portal"] .ip-assignment-filters{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-status-filter{grid-column:2;grid-row:2}body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-search-last{grid-column:1/-1;grid-row:3}}
+
+.instructor-record-filters{display:flex;flex-wrap:wrap;gap:9px;padding:16px;background:#a8d6b9;border:1px solid #4c9b6c;border-radius:11px;margin-bottom:18px}.instructor-record-filters :is(select,input){font:inherit;font-size:11px;min-width:110px;flex:1;padding:9px;border:1px solid #82b99a;border-radius:8px;background:#fafffc;color:#285c40}.instructor-record-filters input{flex:2}.instructor-record-card{padding:20px}.instructor-record-count{color:#628170;font-size:11px;margin:14px 0 0}.instructor-record-dialog{width:min(800px,94vw);max-height:88vh;overflow:auto;border:1px solid #bbd7c8;border-radius:16px;padding:0;color:#28513d}.instructor-record-dialog::backdrop{background:#183e3780;backdrop-filter:blur(3px)}.instructor-record-dialog header{display:flex;align-items:center;justify-content:space-between;padding:20px;background:#e2f3e9}.instructor-record-dialog h2{font-size:18px}.instructor-record-dialog dl{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:22px;margin:0}.instructor-record-dialog dt{font-size:10px;text-transform:uppercase;color:#708d7c;margin-bottom:5px}.instructor-record-dialog dd{margin:0;font-size:12px;overflow-wrap:anywhere}.instructor-record-dialog footer{padding:16px 22px;border-top:1px solid #d9e9df;text-align:right}@media(max-width:550px){.instructor-record-dialog dl{grid-template-columns:1fr}}
+
+body[data-page="instructor-portal"] .ip-teaching-scope[hidden]{display:none}
+body[data-page="instructor-portal"] .ip-grade-table .portal-table{min-width:1050px}
+body[data-page="instructor-portal"] .ip-grade-table td{vertical-align:middle}
+body[data-page="instructor-portal"] .ip-grade-table .portal-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+body[data-page="instructor-portal"] .ip-grade-table .portal-actions button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:36px;height:36px;margin:0;padding:0 12px;line-height:1;font-size:11px;white-space:nowrap;border-radius:8px}
+body[data-page="instructor-portal"] [data-average]{font-weight:700;color:#205d42}
+
+/* Instructor records follow the admin record filter and detail layout. */
+body[data-page="instructor-portal"] .instructor-record-card{padding:0;background:transparent;border:0;box-shadow:none}
+.instructor-record-filter-panel{border:1px solid #cfe0f3;border-radius:17px;background:#f7faff;padding:18px;margin-bottom:18px;box-shadow:0 5px 18px #32588408}
+.instructor-record-filter-panel>header{display:flex;align-items:center;gap:12px;padding-bottom:15px;border-bottom:1px solid #e0e9f5;margin-bottom:13px}
+.instructor-record-filter-icon{display:grid;place-items:center;width:36px;height:36px;background:#e5efff;border-radius:10px;color:#437eb4}
+.instructor-record-filter-panel h2{font-size:14px;color:#254b6b;margin:0 0 5px}.instructor-record-filter-panel p{font-size:11px;color:#7891ac;margin:0}
+.instructor-record-filter-panel .instructor-record-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+.instructor-record-filter-panel [data-record-filter="search"]{grid-column:1;grid-row:1}.instructor-record-filter-panel [data-record-filter="level"]{grid-column:2;grid-row:1}.instructor-record-filter-panel [data-record-filter="year"]{grid-column:3;grid-row:1}.instructor-record-filter-panel [data-record-filter="course"]{grid-column:4;grid-row:1}
+.instructor-record-filter-panel .instructor-record-filters :is(select,input){min-width:0;height:40px;box-sizing:border-box;background:#fff;border:1px solid #cedff2;color:#315572;border-radius:11px;padding:9px 12px;font-size:11px}
+.instructor-record-filter-panel button{height:39px;font-size:11px;border-radius:9px}
+.instructor-record-filter-panel [data-record-excel]{background:#149f4f;border:1px solid #149f4f;color:#fff;grid-column:2;grid-row:2}.instructor-record-filter-panel [data-record-pdf]{background:#4c96d0;border:1px solid #4c96d0;color:#fff;grid-column:3;grid-row:2}.instructor-record-filter-panel [data-record-clear]{grid-column:4;grid-row:2;justify-self:end;color:#447151}
+.instructor-record-card>.portal-table-wrap{background:#fff;border:1px solid #e0e8f1;border-radius:13px}.instructor-record-card .portal-table th{background:#f5f8fc}.instructor-record-card .portal-table td{vertical-align:middle}.instructor-record-count{padding:12px;background:#f8fbff;margin:0;border-radius:0 0 12px 12px}
+.instructor-record-dialog{width:min(940px,95vw);height:min(820px,90vh);max-height:90vh;overflow:hidden;padding:0;border-radius:18px}
+.instructor-record-dialog[open]{display:flex;flex-direction:column}
+.instructor-record-dialog>header{flex-shrink:0;padding:20px 23px;background:linear-gradient(105deg,#eaf2ff,#f2efff,#eef9f6);border-bottom:1px solid #e1eaf4;gap:12px}
+.instructor-record-dialog header .ip-student-avatar{width:58px;height:65px;border-radius:10px;border:2px solid #fff}.instructor-record-dialog h2{font-size:20px;margin:5px 0;color:#284e74}.instructor-record-kicker{font-size:10px;letter-spacing:.7px;font-weight:750;color:#4e84b2}.instructor-record-dialog header p{margin:0;font-size:11px;color:#6f849b}.instructor-record-x{border:0;background:#edf3fa;border-radius:8px;width:30px;height:30px;color:#6b819c;font-size:20px;cursor:pointer}
+.instructor-record-body{overflow-y:auto;min-height:0;flex:1;padding:20px 23px;background:#fff}
+.instructor-record-section{margin-bottom:22px}.instructor-record-section h3{position:relative;margin:0 0 12px;padding-left:12px;font-size:14px;color:#345777}.instructor-record-section h3:before{content:'';position:absolute;left:0;top:1px;bottom:1px;width:4px;border-radius:4px;background:#4788ed}.instructor-record-section.enrollment h3:before{background:#9262e5}.instructor-record-section.family h3:before{background:#d59742}.instructor-record-section.grades h3:before{background:#33976d}
+.instructor-record-dialog .instructor-record-section dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px;background:#f5f8fd;border:1px solid #dfebfb;border-radius:15px;margin:0}
+.instructor-record-section dl>div{padding:11px;background:#fff;border:1px solid #deebf8;border-left:2px solid #92bcff;border-radius:10px;min-width:0}.instructor-record-section dt{font-size:10px;font-weight:750;color:#7891ad;margin-bottom:5px}.instructor-record-section dd{font-size:12px;font-weight:600;color:#315371;line-height:1.45}
+.instructor-record-dialog>footer{display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;background:#fafcff;padding:13px 20px}
+@media(max-width:750px){.instructor-record-filter-panel .instructor-record-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.instructor-record-filter-panel .instructor-record-filters>*{grid-column:auto!important;grid-row:auto!important}.instructor-record-dialog .instructor-record-section dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.instructor-record-dialog .instructor-record-section dl{grid-template-columns:1fr}.instructor-record-body{padding:15px}.instructor-record-dialog h2{font-size:17px}}
+
+/* Status is a single select, without a second surrounding input border. */
+body[data-page="instructor-portal"] .ip-grade-toolbar>label.ip-grade-status-filter{display:flex;background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;min-height:40px;height:40px;gap:0}
+body[data-page="instructor-portal"] .ip-grade-status-filter>select{display:block;box-sizing:border-box;width:100%;min-width:0;height:40px;min-height:40px;margin:0;padding:9px 11px;border:1px solid #71b58d;border-radius:8px;background:#f5fcf7;color:#214e37;font-family:inherit;font-size:12px;line-height:normal}
+body[data-page="instructor-portal"] .ip-grade-status-filter>select:focus{outline:2px solid #36875b;outline-offset:1px;box-shadow:none}
+
+.instructor-record-attendance-table{overflow:auto;border:1px solid #dce9f5;border-radius:10px;margin:-10px 0 22px}.instructor-record-empty{font-size:12px;color:#71879a;margin:-10px 0 22px}.instructor-record-section.attendance h3:before{background:#2998b2}.instructor-record-section.certificate h3:before{background:#c99c36}
+
+/* Full-width records overview and clearly separated filters/actions. */
+body[data-page="instructor-portal"] #instructorRecordsView>.ip-record-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;width:100%;margin-bottom:18px}
+#instructorRecordsView .ip-record-count{padding:20px;border-radius:14px;box-shadow:0 5px 15px #27573d10}
+#instructorRecordsView .ip-record-count.total{background:linear-gradient(120deg,#d7efe4,#edf9f2);border-color:#9bccb3}
+#instructorRecordsView .ip-record-count.draft{background:linear-gradient(120deg,#dceaff,#edf4ff);border-color:#a6c5f1}
+#instructorRecordsView .ip-record-count.review{background:linear-gradient(120deg,#e9ddfa,#f4edff);border-color:#c7a8eb}
+#instructorRecordsView .ip-record-count.approved{background:linear-gradient(120deg,#cceedd,#e9f9ef);border-color:#91cda9}
+#instructorRecordsView .ip-record-count small{font-size:10px;color:#406657}#instructorRecordsView .ip-record-count strong{font-size:28px}
+#instructorRecordsView .instructor-record-filter-panel{padding:0;overflow:hidden;background:#f6fbf8;border-color:#9bc9af;box-shadow:0 5px 18px #235a3a0d}
+#instructorRecordsView .instructor-record-filter-panel>header{padding:16px 18px;margin:0;background:linear-gradient(110deg,#d5eddf,#e8f6ee);border-bottom:1px solid #b8d8c4}
+#instructorRecordsView .instructor-record-filter-panel h2{color:#20583d}#instructorRecordsView .instructor-record-filter-panel p{color:#5c7d69}
+#instructorRecordsView .instructor-record-filter-icon{background:#fff;color:#32845b;border:1px solid #b3d9c1}
+#instructorRecordsView .instructor-record-filters{grid-template-columns:1.35fr 1fr 1fr 1fr;padding:16px 18px;gap:11px}
+#instructorRecordsView .instructor-record-filters :is(input,select){height:40px;border-color:#b2d3bf;background:#fff;color:#2b5740;font-size:11px}
+#instructorRecordsView .instructor-record-filters :is(input,select):focus{outline:2px solid #53a479;outline-offset:1px}
+#instructorRecordsView .instructor-record-filters [data-record-excel]{grid-column:1;grid-row:2;background:#15964c;color:#fff;border-color:#15964c}
+#instructorRecordsView .instructor-record-filters [data-record-pdf]{grid-column:2/4;grid-row:2;background:#3581ba;color:#fff;border-color:#3581ba}
+#instructorRecordsView .instructor-record-filters [data-record-clear]{grid-column:4;grid-row:2;justify-self:end;align-self:center;background:transparent;border:0;box-shadow:none;color:#286b47;font-size:11px;font-weight:700;text-decoration:underline;text-underline-offset:3px;height:auto;padding:7px}
+#instructorRecordsView .instructor-record-filters button{min-height:38px;font-size:11px;font-weight:700}
+@media(max-width:750px){body[data-page="instructor-portal"] #instructorRecordsView>.ip-record-summary{grid-template-columns:repeat(2,minmax(0,1fr))}#instructorRecordsView .instructor-record-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#instructorRecordsView .instructor-record-filters>*{grid-column:auto!important;grid-row:auto!important}#instructorRecordsView .instructor-record-filters [data-record-filter="search"]{grid-column:1/-1!important}}
+
+/* Grade filters share the records panel design. */
+body[data-page="instructor-portal"] .ip-grade-filter-panel{margin:20px;border:1px solid #9bc9af;border-radius:15px;overflow:hidden;background:#f6fbf8;box-shadow:0 4px 14px #235a3a0b}
+.ip-grade-filter-panel>header{display:flex;align-items:center;gap:12px;padding:15px 17px;background:linear-gradient(110deg,#d5eddf,#e8f6ee);border-bottom:1px solid #b8d8c4}
+.ip-grade-filter-panel>header>span{display:grid;place-items:center;width:32px;height:32px;background:#fff;border:1px solid #b3d9c1;border-radius:9px;color:#32845b}
+.ip-grade-filter-panel h2{margin:0 0 5px;font-size:14px;color:#20583d}.ip-grade-filter-panel header p{margin:0;font-size:11px;color:#5c7d69}
+body[data-page="instructor-portal"] .ip-grade-filter-panel .ip-assignment-filters{margin:0;padding:15px 17px;background:transparent;border:0;border-radius:0;box-shadow:none}
+body[data-page="instructor-portal"] .ip-grade-filter-panel :is(select,input){background:#fff;color:#2b5740;border-color:#b2d3bf}
+body[data-page="instructor-portal"] .ip-grade-filter-panel .ip-grade-toolbar>label{background:#fff;border-color:#b2d3bf}
+@media(max-width:600px){body[data-page="instructor-portal"] .ip-grade-filter-panel{margin:14px}}
+
+/* Instructor attendance: clear session details, large status cards, unified tools. */
+body[data-page="instructor-portal"] .cwts-workspace .verifier-section-heading h2{font-size:18px;color:#205d43;font-weight:750}
+body[data-page="instructor-portal"] .cwts-duty-card{padding:18px 20px;background:linear-gradient(110deg,#e0f2e7,#f4faf6);border:1px solid #a5d1b7;border-left:4px solid #2b9563}
+body[data-page="instructor-portal"] .cwts-duty-title h3{font-size:22px;color:#1c6242;margin:0 0 8px}
+body[data-page="instructor-portal"] .attendance-assignment-details{gap:12px;margin-top:14px}
+body[data-page="instructor-portal"] .attendance-assignment-details dt{font-size:10px;font-weight:700;color:#668573;text-transform:uppercase;letter-spacing:.4px}
+body[data-page="instructor-portal"] .attendance-assignment-details dd{font-size:14px;color:#285d42;font-weight:700;margin-top:6px}
+body[data-page="instructor-portal"] .attendance-status-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:16px 0}
+body[data-page="instructor-portal"] .attendance-status-filter{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:14px;min-height:100px;padding:17px 18px;font-size:13px;font-weight:700;border:1px solid #cdded3;border-radius:13px;background:#f4f8f5;color:#426750;box-shadow:0 4px 12px #22563a0a}
+body[data-page="instructor-portal"] .attendance-status-filter>span{font-size:29px;line-height:1;background:transparent;color:inherit;padding:0;min-width:0}
+body[data-page="instructor-portal"] .attendance-status-filter.present{background:#def4e6;border-color:#9dd3b1;color:#197744}
+body[data-page="instructor-portal"] .attendance-status-filter.late{background:#fff0ce;border-color:#e8c16d;color:#a06a0c}
+body[data-page="instructor-portal"] .attendance-status-filter.absent{background:#fce1df;border-color:#e8a8a2;color:#b33d35}
+body[data-page="instructor-portal"] .attendance-status-filter.unmarked{background:#eaf0f8;border-color:#c5d1e3;color:#546b89}
+body[data-page="instructor-portal"] .attendance-status-filter[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:2px;box-shadow:0 5px 14px #22563a17}
+body[data-page="instructor-portal"] .cwts-attendance-downloads{display:flex;align-items:center;flex-wrap:wrap;gap:10px;background:#edf7f1;border:1px solid #b9d9c6;border-radius:12px;padding:14px;margin-top:16px}
+body[data-page="instructor-portal"] .cwts-attendance-downloads>label{flex:1;min-width:220px;margin:0}
+body[data-page="instructor-portal"] .cwts-attendance-downloads input{box-sizing:border-box;width:100%;height:40px;border:1px solid #a6cdb6;border-radius:8px;background:#fff;padding:10px 12px;font-size:12px;color:#315d44}
+body[data-page="instructor-portal"] .cwts-attendance-downloads .btn{height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:0 15px}
+body[data-page="instructor-portal"] #cwtsAttendanceExcel{background:#17994c;color:#fff;border-color:#17994c}
+body[data-page="instructor-portal"] #cwtsAttendancePdf{background:#3686bf;color:#fff;border-color:#3686bf}
+body[data-page="instructor-portal"] #cwtsAttendanceClear{background:none;border:0;color:#2c704b;font-size:11px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+@media(max-width:750px){body[data-page="instructor-portal"] .attendance-status-filters{grid-template-columns:repeat(3,minmax(0,1fr))}body[data-page="instructor-portal"] .attendance-status-filter{padding:14px;min-height:90px}}
+@media(max-width:450px){body[data-page="instructor-portal"] .attendance-status-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+body[data-page="instructor-portal"] .cwts-session-filters{display:grid;grid-template-columns:1.4fr 1fr .8fr .8fr;gap:12px;padding:16px;background:linear-gradient(110deg,#d6ede0,#edf8f1);border:1px solid #a3cfb6;border-radius:12px;margin-top:16px}.cwts-session-filters label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#2c6147}.cwts-session-filters select{min-width:0;width:100%;height:40px;box-sizing:border-box;border:1px solid #a7cdb6;border-radius:8px;background:#fff;padding:9px;font:inherit;color:#315841}.cwts-row-company{display:block;margin-top:5px;color:#6a8775;font-size:11px}body[data-page="instructor-portal"] #cwtsAttendanceWord{background:#2d75b4;color:#fff;border-color:#2d75b4}@media(max-width:700px){body[data-page="instructor-portal"] .cwts-session-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Counts first; filters, search and records share one card. */
+body[data-page="instructor-portal"] .cwts-attendance-unified{gap:18px}
+body[data-page="instructor-portal"] .cwts-attendance-summary .attendance-status-filters{margin:0}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group{margin:16px 0 18px;background:#edf7f1;border:1px solid #acd2ba;border-radius:12px;overflow:hidden;padding:14px}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-session-filters{margin:0;padding:0;border:0;background:none;border-radius:0;box-shadow:none}
+.cwts-attendance-filter-reset{display:flex;justify-content:flex-end;margin-top:8px}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceClear{padding:3px 0;line-height:1.4;font-weight:700}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-downloads{margin:10px 0 0;padding:12px 0 0;border:0;border-top:1px solid #cee3d5;border-radius:0;background:none}
+
+body[data-page="instructor-portal"] .cwts-session-filters{grid-template-columns:1.5fr 1fr 1fr}
+@media(max-width:600px){body[data-page="instructor-portal"] .cwts-session-filters{grid-template-columns:1fr}}
+
+/* Dashboard cards reflect live assigned records and grade workflow states. */
+body[data-page="instructor-portal"] .instructor-dashboard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+body[data-page="instructor-portal"] .ip-dashboard-stat-link{display:flex;flex-direction:column;align-items:stretch;gap:14px;text-decoration:none;min-width:0;min-height:150px;box-sizing:border-box;padding:20px;border:1px solid #ffffff40;transition:transform .15s,box-shadow .15s}
+body[data-page="instructor-portal"] .ip-dashboard-stat-link:hover{transform:translateY(-2px);box-shadow:0 9px 22px #20534322}
+body[data-page="instructor-portal"] .ip-dashboard-stat-link:focus-visible{outline:3px solid #195d45;outline-offset:3px}
+body[data-page="instructor-portal"] .ip-dashboard-stat-link strong{font-size:32px;line-height:1.1;color:#fff}
+body[data-page="instructor-portal"] .ip-dashboard-stat-link .ip-stat-top>span:last-child{font-size:12px;font-weight:700;color:#fff}
+.ip-stat-link-label{display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:#ffffffdf;border-top:1px solid #ffffff35;padding-top:10px;margin-top:auto}
+.instructor-stat.missing{background:linear-gradient(120deg,#b27b22,#d59d3f)}.instructor-stat.draft{background:linear-gradient(120deg,#537aa9,#749bc9)}.instructor-stat.approved{background:linear-gradient(120deg,#23865b,#48ad7c)}.instructor-stat.live{background:linear-gradient(120deg,#237f8e,#43a2ad)}
+@media(max-width:1000px){body[data-page="instructor-portal"] .instructor-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){body[data-page="instructor-portal"] .ip-dashboard-stat-link{padding:15px;min-height:140px}body[data-page="instructor-portal"] .ip-dashboard-stat-link .ip-stat-top>span:last-child{font-size:11px}}
+
+/* Compact attendance tools styled like View Records, on one desktop row. */
+body[data-page="instructor-portal"] .cwts-attendance-filter-group{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(105px,.8fr) minmax(85px,.65fr) minmax(170px,1.5fr) auto auto;gap:9px;align-items:end;padding:14px;background:#f3faf6;border:1px solid #a3cfb6;border-radius:12px}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-session-filters,body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-downloads,body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-filter-reset{display:contents}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-session-filters label{min-width:0;font-size:10px;gap:6px}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group :is(select,input){height:36px;min-height:36px;box-sizing:border-box;width:100%;min-width:0;font-size:11px;background:#fff;border:1px solid #b2d3bf;border-radius:8px;padding:7px 9px}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-downloads>label{grid-column:4;grid-row:1;min-width:0;margin:0}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceWord{grid-column:5;grid-row:1;height:36px;min-height:36px;padding:0 12px;font-size:10px;white-space:nowrap}
+body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceClear{grid-column:6;grid-row:1;align-self:end;min-height:36px;padding:0;font-size:10px;white-space:nowrap}
+@media(max-width:950px){body[data-page="instructor-portal"] .cwts-attendance-filter-group{grid-template-columns:repeat(3,minmax(0,1fr))}body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-downloads>label{grid-column:1;grid-row:2}body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceWord{grid-column:2;grid-row:2}body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceClear{grid-column:3;grid-row:2}}
+@media(max-width:550px){body[data-page="instructor-portal"] .cwts-attendance-filter-group{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-page="instructor-portal"] .cwts-attendance-filter-group .cwts-attendance-downloads>label{grid-column:1/-1;grid-row:3}body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceWord{grid-column:1;grid-row:4}body[data-page="instructor-portal"] .cwts-attendance-filter-group #cwtsAttendanceClear{grid-column:2;grid-row:4}}
+
+.rotc-instructor-attendance-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:18px}.rotc-instructor-count{display:grid;gap:15px;border:1px solid #bdd1e8;border-radius:13px;background:#e5effb;padding:18px;color:#386087}.rotc-instructor-count strong{font-size:27px}.rotc-instructor-count small{font-size:11px;font-weight:700}.rotc-instructor-count.present{background:#def4e7;border-color:#a2d1b6;color:#24794b}.rotc-instructor-count.late{background:#fff0d0;border-color:#e6c17b;color:#9b6b1b}.rotc-instructor-count.absent{background:#fce2df;border-color:#e5aaa3;color:#ae473b}.rotc-instructor-count.unmarked{background:#ecedf5;color:#69738b}.rotc-instructor-attendance>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.rotc-instructor-attendance h2{font-size:18px;color:#285740;margin:0}.rotc-instructor-attendance-filters{display:grid;grid-template-columns:1.2fr .8fr .7fr 1.2fr auto auto;gap:9px;align-items:end;background:#e5f2e9;border:1px solid #abd1b9;border-radius:12px;padding:14px}.rotc-instructor-attendance-filters label{display:grid;gap:7px;min-width:0;font-size:10px;font-weight:700;color:#35634a}.rotc-instructor-attendance-filters :is(input,select){min-width:0;width:100%;height:38px;padding:8px;border:1px solid #b4d0bf;border-radius:8px;background:#fff;color:#345b43;box-sizing:border-box;font:inherit;font-size:11px}.rotc-instructor-attendance-filters .btn{height:38px;font-size:10px;white-space:nowrap}.rotc-instructor-attendance-filters .clear-filter-btn{font-size:10px;color:#346c49;text-decoration:underline;white-space:nowrap}.rotc-attendance-status-options{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.rotc-attendance-status-options .btn{font-size:11px}.rotc-instructor-attendance .portal-table{min-width:1000px}.rotc-instructor-attendance .portal-table td{vertical-align:middle}.rotc-readonly-status{display:inline-block;padding:5px 9px;border-radius:8px;background:#edf1f6;color:#64738b;font-size:11px;white-space:nowrap}.rotc-readonly-status.present{background:#dbf0e2;color:#237347}.rotc-readonly-status.late{background:#fff0d4;color:#9b6d1c}.rotc-readonly-status.absent{background:#fbe1de;color:#aa483c}.rotc-attendance-pages{display:flex;justify-content:space-between;align-items:center;margin-top:15px;font-size:11px;color:#6a8374}.rotc-attendance-pages>div{display:flex;gap:10px;align-items:center}@media(max-width:1050px){.rotc-instructor-attendance-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.rotc-instructor-attendance-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:550px){.rotc-instructor-attendance-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.rotc-instructor-attendance-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
