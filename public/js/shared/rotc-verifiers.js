@@ -76,7 +76,7 @@ function showAttendanceHistoryDetail(row, trigger) {
 }
 async function renderVerifierManagement(content) {
   const generation=(content.verifierManagementGeneration||0)+1;content.verifierManagementGeneration=generation;
-  const data=await API.get('/api/officer/rotc-verifiers');
+  const data=await API.get('/api/admin/rotc/rotc-verifiers');
   if(content.verifierManagementGeneration!==generation)return;
   let log=[];
   let historyRequest=0;
@@ -165,7 +165,7 @@ async function renderVerifierManagement(content) {
     log=[];renderVerifierManagementLists(content,data.assignments,log,state);
     if(!state.cycle||!state.miNumber||!state.miType)return;
     const params=new URLSearchParams({ms_level:state.cycle.ms_level,school_year:state.cycle.school_year,mi_number:state.miNumber,mi_type:state.miType});
-    API.get('/api/officer/rotc-verification-log?'+params).then(rows=>{
+    API.get('/api/admin/rotc/rotc-verification-log?'+params).then(rows=>{
       if(request!==historyRequest||content.verifierManagementGeneration!==generation)return;
       log=rows;renderVerifierManagementLists(content,data.assignments,log,state);
     }).catch(error=>{if(request===historyRequest&&content.verifierManagementGeneration===generation)toast(error.message,true);});
@@ -217,7 +217,7 @@ async function renderVerifierManagement(content) {
       const cycle=data.cycles[$('#verifierTargetCycle').value];
       if(!candidate || !cycle) throw new Error('Select a student and enrollment cycle.');
       if(!$('#verifierMiNumber').value || !$('#verifierMiType').value) throw new Error('Select a created MI and attendance type.');
-      const result=await API.post('/api/officer/rotc-verifiers',{verifier_id:candidate.id,ms_level:cycle.ms_level,school_year:cycle.school_year,mi_number:$('#verifierMiNumber').value,mi_type:$('#verifierMiType').value,battalion:$('#verifierBattalion').value,company:$('#verifierCompany').value,platoon:$('#verifierPlatoon').value,special_unit:$('#verifierAssignmentType').value==='special'?$('#verifierSpecialUnit').value:''});
+      const result=await API.post('/api/admin/rotc/rotc-verifiers',{verifier_id:candidate.id,ms_level:cycle.ms_level,school_year:cycle.school_year,mi_number:$('#verifierMiNumber').value,mi_type:$('#verifierMiType').value,battalion:$('#verifierBattalion').value,company:$('#verifierCompany').value,platoon:$('#verifierPlatoon').value,special_unit:$('#verifierAssignmentType').value==='special'?$('#verifierSpecialUnit').value:''});
       toast(result.message);await renderVerifierManagement(content);
     } catch(error) {toast(error.message,true);button.disabled=false;}
   };
@@ -252,7 +252,7 @@ function renderVerifierManagementLists(content,assignments,log,state) {
     paginate($('#verifierAssignmentPagination'),result,page=>{state.assignmentPage=page;drawAssignments();});
     node.querySelectorAll('[data-revoke]').forEach(button=>button.onclick=async()=>{
       button.disabled=true;
-      try {const result=await API.patch(`/api/officer/rotc-verifiers/${button.dataset.revoke}/revoke`,{});toast(result.message);await renderVerifierManagement(content);}
+      try {const result=await API.patch(`/api/admin/rotc/rotc-verifiers/${button.dataset.revoke}/revoke`,{});toast(result.message);await renderVerifierManagement(content);}
       catch(error){toast(error.message,true);button.disabled=false;}
     });
   };
@@ -428,10 +428,10 @@ async function renderAssignedAttendance(content, preferredAssignmentId = '') {
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
-  const director=document.body.dataset.role==='officer';
+  const manager=document.body.dataset.role==='rotc';
   try {
-    const auth=await guard(director?'officer':'student');if(!auth)return;
-    shell(director?'officer':'student',document.body.dataset.title,document.body.dataset.subtitle,auth);
-    await (director?renderVerifierManagement:renderAssignedAttendance)($('#content'));
+    const auth=await guard(manager?'rotc-admin':'student');if(!auth)return;
+    shell(manager?'rotc':'student',document.body.dataset.title,document.body.dataset.subtitle,auth);
+    await (manager?(window.renderSemesterVerifierManagement||renderVerifierManagement):(window.renderAdvanceAttendance||renderAssignedAttendance))($('#content'));
   } catch(error) { showPageError(error); }
 });
