@@ -13,6 +13,7 @@ const pool = mysql.createPool({
   queueLimit: 100,
   connectTimeout: 10000,
   dateStrings: true,
+  // SQL injection defense: prevent multiple SQL statements in one call.
   multipleStatements: false,
 });
 
@@ -26,6 +27,9 @@ async function getConnection() {
   return connection;
 }
 
+// SQL injection protection: use prepared execution for both execute() and query().
+// Pass user input separately with ? placeholders, e.g. execute('SELECT * FROM students WHERE id = ?', [id]).
+// Never concatenate or interpolate user input into SQL; prepared execution alone cannot make that safe.
 module.exports = {
   execute: pool.execute.bind(pool),
   query: pool.execute.bind(pool),
