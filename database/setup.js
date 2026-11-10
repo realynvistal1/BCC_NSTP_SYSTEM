@@ -159,6 +159,8 @@ async function ensureAttendanceColumns(db) {
   await require('./migrate-grade-attempts').ensureGradeAttempts(db);
   await require('./migrate-enrollment-lifecycle').ensureEnrollmentLifecycle(db);
   await require('./migrate-cwts-schedule-setup').ensureCwtsScheduleSetup(db);
+  await require('./migrate-cwts-exam-results').ensureCwtsExamResults(db);
+  await require('./migrate-instructor-portal').ensureInstructorPortal(db);
   await require("./migrate-remove-student-username").removeStudentUsernameColumn(db);
 
   for (const [email, username, password, role, program] of admins) {
