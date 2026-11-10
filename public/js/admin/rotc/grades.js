@@ -275,12 +275,6 @@ async function renderAdminGrades(_program, content) {
       </div>
     </div>
     <section class="panel grade-panel">
-      <div class="grade-filter-head">
-        <div>
-          <h2>Student Grades</h2>
-          <p>Encode ${program} NSTP 1 and NSTP 2 grades. Once saved, grades cannot be edited.</p>
-        </div>
-      </div>
       <div class="grade-tools">
         <select id="gradeLevel">
           <option value="">All ${prefix} Levels</option>
