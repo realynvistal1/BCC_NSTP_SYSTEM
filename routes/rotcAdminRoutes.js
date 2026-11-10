@@ -27,12 +27,28 @@ const excelUpload = multer({
 });
 
 router.use(requireAuth, requireRole('admin'), requirePortal('rotc-admin'));
+const verifiers=require('../controllers/rotcVerifierController');
+router.get('/rotc-verifiers',verifiers.management);
+router.post('/rotc-verifiers',verifiers.assign);
+router.patch('/rotc-verifiers/:id/revoke',verifiers.revoke);
+router.get('/rotc-verification-log',verifiers.audit);
+const gradeInstructors=require('../controllers/gradeInstructorController').forProgram('ROTC');
+router.get('/instructor-assignments',gradeInstructors.list);
+const instructorPortal=require('../controllers/instructorPortalController').forProgram('ROTC');
+router.patch('/instructors/:id/review',instructorPortal.reviewAccount);
+router.get('/instructors/:id/photo',instructorPortal.photo);
+router.get('/grade-submissions',instructorPortal.grades);
+router.patch('/grade-submissions/:id/review',instructorPortal.reviewGrade);
+// Instructors register through the shared Instructor Portal.
+router.post('/instructor-assignments',gradeInstructors.assign);
+router.patch('/instructor-assignments/:id/remove',gradeInstructors.remove);
 
 router.get('/students/:studentId/files/:field', (req,res) => { req.params.program='rotc'; return require('../services/studentDetailService').serveUpload(req,res); });
 router.get('/dashboard', controller.dashboard);
 router.get('/enrollment-schedule', controller.schedules);
 router.get('/sample-enrollment-settings', (req, res) => res.json(require('../services/sampleEnrollmentService').settings()));
 router.post('/enrollment-schedule', controller.schedules);
+router.patch('/enrollment-schedule/:id/extend', controller.extendSchedule);
 router.get('/enrollments', controller.enrollments);
 router.get('/enrollments/:id/photo', controller.enrollmentPhoto);
 router.get('/enrollments/:id', controller.enrollmentDetail);
@@ -47,7 +63,7 @@ router.get('/roster/editor', require('../controllers/rotcRosterController').edit
 router.post('/roster/editor', require('../controllers/rotcRosterController').editor);
 router.post('/auto-assign', require('../controllers/rotcRosterController').assign);
 router.get('/grades', controller.grades);
-router.post('/grades', controller.grades);
+router.post('/grades', (req,res)=>res.status(403).json({message:'Grades must be submitted by the assigned instructor and reviewed by the admin.'}));
 router.get('/offenses', controller.offenses);
 router.post('/offenses', controller.offenses);
 router.get('/serial-numbers', controller.serials);
