@@ -466,6 +466,8 @@ exports.register = async (req, res) => {
       });
     }
 
+    await require('../services/cwtsExamService').requireEligible(connection, schedule, body);
+
     const [duplicates] = await connection.execute(
       'SELECT id FROM students WHERE email=? OR student_id=?',
       [body.email, body.student_id]
@@ -520,6 +522,14 @@ exports.register = async (req, res) => {
 
     await connection.beginTransaction();
 
+    // Lock the schedule just as result imports and approvals do, then recheck on submission.
+    if (body.nstp_component === 'CWTS') {
+      const exam = require('../services/cwtsExamService');
+      await exam.schedule(connection, schedule.id, true);
+      await exam.requireEligible(connection, schedule, body, true);
+      const [existing] = await connection.execute('SELECT id FROM students WHERE student_id=? OR email=? FOR UPDATE', [body.student_id, body.email]);
+      if (existing.length) exam.fail('Student ID or email is already registered.', 409);
+    }
     await require('../services/specialEnrollmentService').check(connection, schedule.id, body);
 
     const insertStudentSql = `
@@ -1008,6 +1018,11 @@ exports.reEnroll = async (req, res) => {
       return res.status(400).json({
         message: 'NSTP component can only be changed when correcting a rejected MS 1 enrollment.',
       });
+    }
+    if (selectedProgram === 'CWTS' && String(targetLevel) === '1') {
+      const exam = require('../services/cwtsExamService');
+      await exam.schedule(connection, schedule.id, true);
+      await exam.requireEligible(connection, schedule, student, true);
     }
     const required = [
       'contact_number',
