@@ -32,11 +32,19 @@ exports.studentPhoto=endpoint(async(req,res)=>sendPhoto(res,await accounts.stude
 exports.assignments=endpoint(async(req,res)=>res.json(await grades.assignments(db,req.user)));
 exports.records=endpoint(async(req,res)=>res.json(await grades.records(db,req.user,req.params.id)));
 exports.save=endpoint(async(req,res)=>res.json(await grades.save(db,req.user,req.params.id,req.params.recordId,req.body)));
+exports.saveAll=endpoint(async(req,res)=>res.json(await grades.saveAll(db,req.user,req.body)));
+const gradeFiles=require('../services/gradeAttachmentService');
+function sendWorkbook(res,file){
+  res.set({'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="Supporting_Grades.xlsx"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}).send(file.file_data);
+}
+exports.uploadGradeWorkbook=endpoint(async(req,res)=>res.json(await gradeFiles.upload(db,req.user,req.params.id,req.file)));
+exports.downloadGradeWorkbook=endpoint(async(req,res)=>sendWorkbook(res,await gradeFiles.download(db,req.user,req.params.id)));
 exports.forProgram=program=>({
   reviewAccount:endpoint(async(req,res)=>res.json(await accounts.review(db,program,req.params.id,req.body,req.user.email))),
   photo:endpoint(async(req,res)=>sendPhoto(res,await accounts.portrait(db,program,req.params.id))),
   grades:endpoint(async(req,res)=>res.json(await grades.reviewList(db,program))),
   reviewGrade:endpoint(async(req,res)=>res.json(await grades.review(db,program,req.params.id,req.body,req.user.email)))
+  ,downloadGradeWorkbook:endpoint(async(req,res)=>sendWorkbook(res,await gradeFiles.download(db,req.user,req.params.id,program)))
 });
 
 const instructorRecords=require('../services/instructorRecordService');
@@ -76,3 +84,10 @@ exports.downloadAttendance=endpoint(async(req,res)=>{
 });
 
 exports.rotcAttendanceOverview=endpoint(async(req,res)=>{res.set('Cache-Control','private, no-store');res.json(await require('../services/rotcInstructorAttendanceService').overview(db,req.user));});
+
+exports.downloadStudentRecordsExcel=endpoint(async(req,res)=>{
+  const records=await instructorRecords.list(db,req.user,req.query);
+  if(!records.length)accounts.fail('No assigned student records match these filters.',404);
+  const buffer=require('../services/recordWorkbookService').build(req.user.program,records);
+  res.set({'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="'+req.user.program+'_Student_Records.xlsx"','Cache-Control':'private, no-store'}).send(buffer);
+});
