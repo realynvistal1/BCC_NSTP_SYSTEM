@@ -236,10 +236,14 @@ test('database workflow: permanent finalization, withdrawal transfers, published
     await assert.rejects(require('../services/rotcEnrollmentReviewService').review(records[0], 'rejected', 'Test'), /finalized/);
     const [[published]] = await connection.execute('SELECT special_unit,rotc_platoon FROM students WHERE id=?',[ids[0]]);
     assert.equal(published.special_unit,'Medics'); assert.equal(Number(published.rotc_platoon),1);
+    const [withdrawnGrant] = await connection.execute("INSERT INTO rotc_verifier_assignments(verifier_id,battalion,company,platoon,special_unit,ms_level,school_year,assigned_by) VALUES(?,0,'',0,'Medics','1','2098-2099','verify@invalid.test')",[ids[2]]);
     const [withdrawal] = await connection.execute("INSERT INTO advance_course_withdrawals(student_id,reason) VALUES(?,'Verification')",[ids[2]]);
     const response = {code:200,status(code){this.code=code;return this},json(body){this.body=body;return this}};
     await require('../controllers/rotcWithdrawalController').update({params:{id:withdrawal.insertId},body:{status:'approved'},user:{email:'verify@invalid.test'}},response);
     assert.equal(response.code,200,JSON.stringify(response.body));
+    assert.equal(response.body.removed_verifier_assignments,1);
+    const [[revokedGrant]]=await connection.execute('SELECT active FROM rotc_verifier_assignments WHERE id=?',[withdrawnGrant.insertId]);
+    assert.equal(Number(revokedGrant.active),0,'Approved withdrawal revokes access while preserving the assignment history');
     const repeat = {code:200,status(code){this.code=code;return this},json(body){this.body=body;return this}};
     await require('../controllers/rotcWithdrawalController').update({params:{id:withdrawal.insertId},body:{status:'approved'},user:{email:'verify@invalid.test'}},repeat);
     assert.equal(repeat.code,409);
