@@ -380,3 +380,14 @@ body[data-page="grades"] .admin-grade-filter-panel .grade-tools :is(select,input
 body[data-page="grades"] .admin-grade-filter-panel .grade-tools .btn{grid-column:3;height:38px;background:#15964c;border-color:#15964c;color:#fff}
 body[data-page="grades"] .admin-grade-filter-panel .clear-filter-btn{grid-column:4;justify-self:end;color:#286b47}
 @media(max-width:650px){body[data-page="grades"] .admin-grade-filter-panel>.grade-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-grade-filter-panel [data-filter="search"]{grid-column:1/-1;grid-row:auto}body[data-page="grades"] .admin-grade-filter-panel .grade-tools .btn{grid-column:1}body[data-page="grades"] .admin-grade-filter-panel .clear-filter-btn{grid-column:2}}
+
+/* Make the company instructor clear and easy to recognize. */
+.company-grade-group .company-grade-instructor{gap:13px;margin-top:12px}
+.company-grade-group .company-grade-instructor .company-grade-avatar{width:62px;height:62px;border:3px solid #fff;box-shadow:0 3px 10px #28553e20}
+.company-grade-group .company-grade-instructor small{font-size:11px;font-weight:600;color:#567b65}
+.company-grade-group .company-grade-instructor strong{font-size:15px;font-weight:750;color:#205c3e;line-height:1.4}
+
+/* Follow the Platoon Roster hierarchy on ROTC Grades. */
+.grade-roster-battalion{margin-top:22px;padding:13px 17px;background:#d8e8f8;border:1px solid #bdd5ed;border-radius:10px;color:#254f78}.grade-roster-battalion h2{margin:0;font-size:17px;font-weight:700}.grade-roster-battalion+.company-grade-group{margin-top:10px}
+
+.company-grade-instructor .grade-instructor-name-file{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}.company-grade-instructor .grade-instructor-name-file .btn{max-width:100%;white-space:normal;overflow-wrap:anywhere}
