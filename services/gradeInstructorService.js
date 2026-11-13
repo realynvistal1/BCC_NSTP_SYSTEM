@@ -1,3 +1,4 @@
+const scope=require('./instructorScopeService');
 const companies=require('./cwtsCompanyService');
 const {isReasonableEmail}=require('./requestValidationService');
 const tables={ROTC:'rotc_instructors',CWTS:'cwts_instructors'};
@@ -13,10 +14,16 @@ async function management(db,program,scheduleId){
   const [instructors]=await db.execute(`SELECT id,first_name,middle_name,last_name,email,status,review_status,review_note,requested_year,requested_level,profile_photo IS NOT NULL has_photo,created_at FROM ${table} ORDER BY last_name,first_name`);
   if(!selected)return {schedules,instructors,schedule:null,companies:[],assignments:[],approved_students:0};
   const [assignments]=await db.execute(`SELECT a.id,a.company,a.active,a.updated_at,COALESCE(a.rotc_instructor_id,a.cwts_instructor_id) instructor_id,
-    i.first_name,i.last_name,i.email,i.status instructor_status FROM grade_instructor_assignments a
-    JOIN ${table} i ON i.id=a.${columns[program]} WHERE a.schedule_id=? AND a.program=? AND a.active=1 ORDER BY a.company`,[selected.id,program]);
+    i.first_name,i.last_name,i.email,i.status instructor_status,
+    f.id latest_attachment_id,f.original_name latest_attachment_name,f.created_at latest_attachment_created_at
+    FROM grade_instructor_assignments a
+    JOIN ${table} i ON i.id=a.${columns[program]}
+    LEFT JOIN instructor_grade_attachments f ON f.id=(
+      SELECT MAX(upload.id) FROM instructor_grade_attachments upload
+      WHERE upload.assignment_id=a.id AND upload.program=a.program AND upload.instructor_id=a.${columns[program]}
+    ) WHERE a.schedule_id=? AND a.program=? AND a.active=1 ORDER BY a.company`,[selected.id,program]);
   const [[count]]=await db.execute("SELECT COUNT(*) total FROM student_ms_records WHERE program=? AND CAST(schedule_id AS UNSIGNED)=? AND status='approved'",[program,selected.id]);
-  return {schedules,instructors,schedule:selected,companies:program==='CWTS'?(await companies.details(db,selected.id)).map(row=>row.name):[],assignments,approved_students:Number(count.total)};
+  return {schedules,instructors,schedule:selected,companies:program==='CWTS'?(await companies.details(db,selected.id)).map(row=>row.name):await scope.available(db,selected.id),assignments,approved_students:Number(count.total)};
 }
 async function create(db,program,body,actor){
   const table=programTable(program);
@@ -34,13 +41,14 @@ async function create(db,program,body,actor){
 async function assign(db,program,body,actor){
   const table=programTable(program),scheduleId=id(body.schedule_id),instructorId=id(body.instructor_id);
   const company=String(body.company||'').trim();
-  if(program==='ROTC'&&company)fail('The ROTC instructor handles all ROTC students. Do not select a company.');
+  if(program==='ROTC'&&!scope.groups.includes(company))fail('Select a ROTC company or group.');
   if(program==='CWTS'&&(!company||company.length>30))fail('Select a company.');
   const connection=await db.getConnection();
   try{
     await connection.beginTransaction();
     const [[cycle]]=await connection.execute('SELECT id FROM enrollment_schedules WHERE id=? AND program=? FOR UPDATE',[scheduleId,program]);
     if(!cycle)fail('Enrollment schedule not found.',404);
+    if(program==='ROTC'&&!(await scope.available(connection,scheduleId)).includes(company))fail('Select a company or group configured for this semester.');
     if(program==='CWTS'&&!(await companies.details(connection,scheduleId)).some(row=>row.name===company))fail('Select a company configured for this enrollment schedule.');
     const [[instructor]]=await connection.execute(`SELECT id,status,review_status FROM ${table} WHERE id=? FOR UPDATE`,[instructorId]);
     if(!instructor||instructor.status!=='active'||instructor.review_status!=='approved')fail('Select an approved, active instructor.');
