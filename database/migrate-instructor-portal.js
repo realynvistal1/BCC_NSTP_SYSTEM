@@ -34,6 +34,7 @@ async function ensureInstructorPortal(db) {
     version INT UNSIGNED NOT NULL,note VARCHAR(500) NOT NULL DEFAULT '',actor VARCHAR(255) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(submission_id) REFERENCES instructor_grade_submissions(id)
   ) ENGINE=InnoDB`);
+  await require('./migrate-grade-attachments').ensureGradeAttachments(db);
 }
 module.exports={ensureInstructorPortal};
 if(require.main===module){const db=require('../config/database');ensureInstructorPortal(db).then(()=>console.log('Instructor portal tables ready.')).catch(e=>{console.error(e.code||e.message);process.exitCode=1;}).finally(()=>db.end());}
