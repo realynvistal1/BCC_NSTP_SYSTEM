@@ -15,11 +15,14 @@
   }
   function portrait(url,name){const initials=name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('');return `<span class="company-grade-avatar"><span aria-hidden="true">${esc(initials)}</span><img src="${url}" alt="" loading="lazy" onerror="this.remove()"></span>`;}
   function instructorHeader(record){
-    const scope=companyAssignments.get(Number(record.schedule_id)),assignment=scope?.assignments.find(a=>a.company===record.company);
-    if(!assignment)return '<span class="company-grade-instructor-empty">No instructor assigned</span>';
-    const instructor=scope.instructors.find(i=>Number(i.id)===Number(assignment.instructor_id))||assignment;
-    const name=[instructor.first_name,instructor.middle_name,instructor.last_name].filter(Boolean).join(' ');
-    return `<div class="company-grade-instructor">${portrait(base+'/instructors/'+Number(assignment.instructor_id)+'/photo',name)}<div><small>Instructor</small><strong>${esc(name)}</strong></div></div>`;
+    const scope=companyAssignments.get(Number(record.schedule_id)),assignments=(scope?.assignments||[]).filter(a=>a.company===record.company);
+    if(!assignments.length)return '<span class="company-grade-instructor-empty">No instructor assigned</span>';
+    return assignments.map(assignment=>{
+      const instructor=scope.instructors.find(i=>Number(i.id)===Number(assignment.instructor_id))||assignment;
+      const name=[instructor.first_name,instructor.middle_name,instructor.last_name].filter(Boolean).join(' ');
+      const file=assignment.latest_attachment_id?`<a class="btn small" href="${base}/grade-attachments/${Number(assignment.latest_attachment_id)}/download" title="Download uploaded Excel file">Uploaded Excel: ${esc(assignment.latest_attachment_name)}</a>`:'<small>No Excel uploaded for this group</small>';
+      return `<div class="company-grade-instructor">${portrait(base+'/instructors/'+Number(assignment.instructor_id)+'/photo',name)}<div class="grade-instructor-name-file"><strong>${esc(name)}</strong>${file}</div></div>`;
+    }).join('');
   }
   function records(){
     const students=new Map((saved.students||[]).map(s=>[Number(s.student_id),s]));
@@ -43,9 +46,9 @@
     const rows=filtered(),groups=new Map();
     const summary=[['Students',new Set(rows.map(r=>r.student_id)).size,''],['Approved',rows.filter(r=>r.state==='approved').length,'green'],['For Review',rows.filter(r=>r.state==='submitted').length,'blue'],['Not Submitted',rows.filter(r=>r.state==='ungraded').length,'amber'],['Returned',rows.filter(r=>r.state==='returned').length,'red']];
     content.querySelector('[data-summary]').innerHTML=summary.map(([label,count,tone])=>`<div class="grade-summary-card ${tone}"><small>${label}</small><strong>${count}</strong></div>`).join('');
-    rows.forEach(r=>{const key=JSON.stringify([r.year,String(r.ms_level),r.company]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);});
-    const ordered=[...groups.entries()].sort((a,b)=>b[1][0].year.localeCompare(a[1][0].year)||Number(a[1][0].ms_level)-Number(b[1][0].ms_level)||a[1][0].company.localeCompare(b[1][0].company));
-    content.querySelector('[data-companies]').innerHTML=ordered.map(([key,list],index)=>{const first=list[0],pending=list.filter(r=>r.state==='submitted');return `<section class="company-grade-group"><header><div><h2>${first.company?esc(first.company)+' Company':'Unassigned Students'}</h2>${instructorHeader(first)}</div><button class="btn success" data-approve-group="${index}" ${!pending.length||busy?'disabled':''}>Approve All Grades (${pending.length})</button></header><div class="table-wrap"><table class="data-table grade-table"><thead><tr><th>#</th><th>Student</th><th>Course</th><th>Midterm</th><th>Final</th><th>Average</th><th>Result</th><th>Status</th><th>Action</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td>${i+1}</td><td><div class="company-grade-student">${portrait(base+'/students/'+Number(r.student_id)+'/photo',fullName(r.student))}<div><strong>${esc(fullName(r.student))}</strong><small class="company-grade-student-id">${esc(r.student.student_no||'')}</small></div></div></td><td>${esc(r.student.course||'')}</td><td>${value(r.mid)}</td><td>${value(r.final)}</td><td><strong>${value(average(r))}</strong></td><td>${result(r)}</td><td><span class="badge ${r.state==='approved'?'success':r.state==='returned'?'danger':'warning'}">${({submitted:'For Review',approved:'Approved',returned:'Returned',ungraded:'Not Submitted'})[r.state]}</span></td><td>${r.state==='submitted'?`<div class="company-grade-actions"><button class="btn small success" data-approve="${Number(r.submission.id)}" ${busy?'disabled':''}>Approve</button><button class="btn small" data-return="${Number(r.submission.id)}" ${busy?'disabled':''}>Return</button></div>`:'--'}</td></tr>`).join('')}</tbody></table></div></section>`;}).join('')||'<div class="empty">No students match these filters.</div>';
+    rows.forEach(r=>{const key=JSON.stringify([String(r.schedule_id),r.company]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);});
+    const ordered=[...groups.entries()].sort((a,b)=>b[1][0].year.localeCompare(a[1][0].year)||Number(a[1][0].ms_level)-Number(b[1][0].ms_level)||a[1][0].company.localeCompare(b[1][0].company,undefined,{numeric:true})||Number(a[1][0].schedule_id)-Number(b[1][0].schedule_id));
+    content.querySelector('[data-companies]').innerHTML=ordered.map(([key,list],index)=>{const first=list[0],pending=list.filter(r=>r.state==='submitted');return `<section class="company-grade-group"><header><div><h2>${first.company?esc(first.company)+' Company':'Unassigned Students'}</h2>${instructorHeader(first)}</div><button class="btn success" data-approve-group="${index}" ${!pending.length||busy?'disabled':''}>Approve All Grades (${pending.length})</button></header><div class="table-wrap"><table class="data-table grade-table"><thead><tr><th>#</th><th>Student</th><th>Course</th><th>Midterm</th><th>Final</th><th>Average</th><th>Result</th><th>Status</th><th>Supporting Excel</th><th>Action</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td>${i+1}</td><td><div class="company-grade-student">${portrait(base+'/students/'+Number(r.student_id)+'/photo',fullName(r.student))}<div><strong>${esc(fullName(r.student))}</strong><small class="company-grade-student-id">${esc(r.student.student_no||'')}</small></div></div></td><td>${esc(r.student.course||'')}</td><td>${value(r.mid)}</td><td>${value(r.final)}</td><td><strong>${value(average(r))}</strong></td><td>${result(r)}</td><td><span class="badge ${r.state==='approved'?'success':r.state==='returned'?'danger':'warning'}">${({submitted:'For Review',approved:'Approved',returned:'Returned',ungraded:'Not Submitted'})[r.state]}</span></td><td>${r.submission?.attachment_id?`<a class="btn small" href="${base}/grade-attachments/${Number(r.submission.attachment_id)}/download" title="${esc(r.submission.attachment_name||'Supporting workbook')}">Review Excel</a>`:'<small>No supporting Excel</small>'}</td><td>${r.state==='submitted'?`<div class="company-grade-actions"><button class="btn small success" data-approve="${Number(r.submission.id)}" ${busy?'disabled':''}>Approve</button><button class="btn small" data-return="${Number(r.submission.id)}" ${busy?'disabled':''}>Return</button></div>`:'--'}</td></tr>`).join('')}</tbody></table></div></section>`;}).join('')||'<div class="empty">No students match these filters.</div>';
     content.querySelector('[data-total]').textContent=rows.length+' records shown';
     content.querySelectorAll('[data-approve-group]').forEach(button=>button.onclick=()=>review(ordered[Number(button.dataset.approveGroup)][1].filter(r=>r.state==='submitted'),'approve'));
     content.querySelectorAll('[data-approve],[data-return]').forEach(button=>button.onclick=()=>review(rows.filter(r=>Number(r.submission?.id)===Number(button.dataset.approve||button.dataset.return)),button.dataset.approve?'approve':'return'));
@@ -59,12 +62,13 @@
     finally{busy=false;try{await load();}catch(e){error=error||e.message;renderCompanies();}}
     toast(error?`${completed} processed. ${error}`:`${completed} grade${completed===1?'':'s'} ${action==='approve'?'approved':'returned'}.`,Boolean(error));
   }
-  function download(){
+  async function download(){
     const rows=filtered();if(!rows.length){toast('No records to download.',true);return;}
-    const xml=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const row=values=>'<Row>'+values.map(v=>`<Cell><Data ss:Type="String">${xml(v)}</Data></Cell>`).join('')+'</Row>';
-    const body=row(['Student ID','Student Name','Course','School Year','NSTP Level','Company','Midterm','Final','Average','Result','Status'])+rows.map(r=>row([r.student.student_no,fullName(r.student),r.student.course,r.year,r.ms_level,r.company,value(r.mid),value(r.final),value(average(r)),result(r),r.state])).join('');
-    const blob=new Blob([`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="CWTS Grades"><Table>${body}</Table></Worksheet></Workbook>`],{type:'application/vnd.ms-excel;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='CWTS_Company_Grades.xls';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const button=content.querySelector('[data-download]');button.disabled=true;
+    try{const response=await fetch(base+'/grades/download',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_ids:rows.map(r=>Number(r.enrollment_record_id))})});
+      if(!response.ok){const error=await response.json();throw Error(error.message||'Unable to download grades.');}
+      const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='CWTS_Grades.xlsx';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(e){toast(e.message,true);}finally{button.disabled=false;}
   }
   await load();
 }
