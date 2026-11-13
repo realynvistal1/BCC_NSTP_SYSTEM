@@ -37,12 +37,17 @@ async function initLogin() {
     if (submitting) return;
     submitting = true;
 
-    const button = form.querySelector('button[type="submit"],button');
-    const previousText = button?.textContent;
+    const button = form.querySelector('button[type="submit"]');
+    const previousMarkup = button?.innerHTML;
+    let redirecting = false;
+    const message = $('#msg');
+    message.textContent = '';
+    message.className = 'notice hidden';
 
     if (button) {
       button.disabled = true;
-      button.textContent = 'Logging in...';
+      button.setAttribute('aria-busy', 'true');
+      button.innerHTML = '<span class="login-loading-spinner" aria-hidden="true"></span><span>Logging in...</span>';
     }
 
     try {
@@ -59,6 +64,8 @@ async function initLogin() {
       });
 
       await API.get('/api/auth/me');
+      redirecting = true;
+      if (button) button.innerHTML = '<span>Opening dashboard...</span>';
       location.assign(data.redirect || '/student/dashboard');
     } catch (error) {
       if (checkboxId !== null) window.grecaptcha.reset(checkboxId);
@@ -67,10 +74,11 @@ async function initLogin() {
         : error.message;
       $('#msg').className = 'notice error';
     } finally {
-      submitting = false;
-      if (button) {
+      if (!redirecting) submitting = false;
+      if (button && !redirecting) {
         button.disabled = false;
-        button.textContent = previousText;
+        button.removeAttribute('aria-busy');
+        button.innerHTML = previousMarkup;
       }
     }
   });
