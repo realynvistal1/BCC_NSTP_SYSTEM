@@ -1,4 +1,6 @@
-﻿const details=require('./studentDetailService');
+const {readAccess}=require('./instructorAssignmentHistoryService');
+const instructorScope=require('./instructorScopeService');
+const details=require('./studentDetailService');
 const accounts=require('./instructorPortalService');
 async function list(db,user,query={},includePhoto=false){
   accounts.table(user.program);
@@ -8,15 +10,15 @@ async function list(db,user,query={},includePhoto=false){
   if(query.recordId){const id=accounts.id(query.recordId);extra=' AND r.id=?';params.push(id);}
   const [rows]=await db.execute(`SELECT ${details.projection('s')},s.id student_db_id,s.student_id student_no,
     r.id record_id,r.ms_level,r.status enrollment_status,es.year school_year,r.assignment_company company,
-    r.assignment_battalion battalion,r.assignment_company rotc_company,r.assignment_platoon rotc_platoon,r.assignment_special_unit special_unit,
+    r.assignment_is_advance is_advance_course,r.assignment_battalion battalion,r.assignment_company rotc_company,r.assignment_platoon rotc_platoon,r.assignment_special_unit special_unit,
     g.midterm,g.final_term,g.status grade_status ${includePhoto?',s.photo profile_photo':''}
     FROM student_ms_records r JOIN students s ON s.id=r.student_id
     JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED) AND es.program=r.program
     LEFT JOIN student_grade_attempts g ON g.enrollment_record_id=r.id
     WHERE r.program=? AND r.status='approved' AND s.role='student'
-    AND r.id=(SELECT MAX(latest.id) FROM student_ms_records latest WHERE latest.student_id=r.student_id AND latest.program=r.program AND latest.ms_level=r.ms_level AND latest.status IN ('approved','withdrawn','dropped'))
-    AND EXISTS(SELECT 1 FROM grade_instructor_assignments a WHERE a.program=r.program AND a.schedule_id=es.id AND a.${column}=? AND a.active=1 ${user.program==='CWTS'?'AND a.company=r.assignment_company':''})${extra}
+    AND EXISTS(SELECT 1 FROM grade_instructor_assignments a WHERE a.program=r.program AND a.schedule_id=es.id AND ${readAccess('a',column)} AND a.company<>'' ${user.program==='CWTS'?'AND a.company=r.assignment_company':'AND '+instructorScope.matches()})${extra}
     ORDER BY s.last_name,s.first_name`,params);
+  if(user.program==='ROTC')for(const row of rows)row.company=Number(row.is_advance_course)?'Advance Course':row.special_unit||row.company;
   const search=String(query.search||'').trim().toLowerCase();
   return rows.filter(r=>(!query.year||r.school_year===query.year)&&(!query.level||String(r.ms_level)===String(query.level))&&(!query.company||r.company===query.company)&&(!query.course||r.course===query.course)&&(!query.sex||r.sex===query.sex)&&(!search||`${r.student_no} ${r.last_name} ${r.first_name} ${r.middle_name||''}`.toLowerCase().includes(search))).map(r=>{for(const key of ['photo','medical_certificate','xray_file','cor_file'])delete r[key];if(includePhoto){r.photo=r.profile_photo;delete r.profile_photo;}return r;});
 }
