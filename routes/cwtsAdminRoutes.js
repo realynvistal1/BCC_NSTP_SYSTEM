@@ -27,9 +27,11 @@ const excelUpload = multer({
 });
 
 router.use(requireAuth, requireRole('admin'), requirePortal('cwts-admin'));
+router.post('/grades/download',require('../controllers/gradeExportController').forProgram('CWTS'));
 const gradeInstructors=require('../controllers/gradeInstructorController').forProgram('CWTS');
 router.get('/instructor-assignments',gradeInstructors.list);
 const instructorPortal=require('../controllers/instructorPortalController').forProgram('CWTS');
+router.get('/grade-attachments/:id/download',instructorPortal.downloadGradeWorkbook);
 router.patch('/instructors/:id/review',instructorPortal.reviewAccount);
 router.get('/instructors/:id/photo',instructorPortal.photo);
 router.get('/grade-submissions',instructorPortal.grades);
