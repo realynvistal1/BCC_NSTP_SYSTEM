@@ -27,6 +27,7 @@ const excelUpload = multer({
 });
 
 router.use(requireAuth, requireRole('admin'), requirePortal('rotc-admin'));
+router.post('/grades/download',require('../controllers/gradeExportController').forProgram('ROTC'));
 const verifiers=require('../controllers/rotcVerifierController');
 router.get('/rotc-verifiers',verifiers.management);
 router.post('/rotc-verifiers',verifiers.assign);
@@ -35,6 +36,7 @@ router.get('/rotc-verification-log',verifiers.audit);
 const gradeInstructors=require('../controllers/gradeInstructorController').forProgram('ROTC');
 router.get('/instructor-assignments',gradeInstructors.list);
 const instructorPortal=require('../controllers/instructorPortalController').forProgram('ROTC');
+router.get('/grade-attachments/:id/download',instructorPortal.downloadGradeWorkbook);
 router.patch('/instructors/:id/review',instructorPortal.reviewAccount);
 router.get('/instructors/:id/photo',instructorPortal.photo);
 router.get('/grade-submissions',instructorPortal.grades);
