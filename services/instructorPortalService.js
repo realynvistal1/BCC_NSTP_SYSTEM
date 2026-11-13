@@ -1,3 +1,5 @@
+const {readAccess}=require('./instructorAssignmentHistoryService');
+const instructorScope=require('./instructorScopeService');
 const auth=require('./authService');
 const sharp=require('sharp');
 const {isReasonableEmail}=require('./requestValidationService');
@@ -97,8 +99,8 @@ async function studentPortrait(db,user,studentId){
     WHERE s.id=? AND s.role='student' AND s.nstp_component=? AND EXISTS (
       SELECT 1 FROM grade_instructor_assignments a JOIN student_ms_records r
         ON CAST(r.schedule_id AS UNSIGNED)=a.schedule_id AND r.program=a.program AND r.status='approved'
-      WHERE a.program=? AND a.${column}=? AND a.active=1 AND r.student_id=s.id
-        ${user.program==='CWTS'?'AND r.assignment_company=a.company':''})`,[studentId,user.program,user.program,user.id]);
+      WHERE a.program=? AND ${readAccess('a',column)} AND a.company<>'' AND r.student_id=s.id
+        ${user.program==='CWTS'?'AND r.assignment_company=a.company':'AND '+instructorScope.matches()})`,[studentId,user.program,user.program,user.id]);
   if(!student)fail('This student is not in your assigned company or class.',403);
   const parsed=parseDataUrl(student.photo);
   if(!parsed||!['image/jpeg','image/png','image/webp'].includes(parsed.mimeType))fail('No student profile photo available.',404);
