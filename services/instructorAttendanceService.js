@@ -1,3 +1,4 @@
+const {readAccess}=require('./instructorAssignmentHistoryService');
 const {id,fail}=require('./instructorPortalService');
 const attendance=require('./attendanceService');
 const offenses=require('./offenseService');
@@ -17,18 +18,18 @@ const studentScope=`EXISTS (SELECT 1 FROM student_ms_records r
   AND s.role='student' AND s.nstp_component='CWTS'`;
 async function list(db,user,now=new Date()){
   requireCwts(user);
-  const [rows]=await db.execute(`SELECT a.id company_assignment_id,a.company,ses.id session_id,
+  const [rows]=await db.execute(`SELECT a.id company_assignment_id,a.company,a.active,a.cwts_instructor_id assigned_instructor_id,ses.id session_id,
     ses.mi_number,ses.mi_type,ses.ms_level,ses.school_year,ses.open_date,ses.close_date
-    ${scopeJoin} WHERE a.program='CWTS' AND a.cwts_instructor_id=? AND a.active=1
+    ${scopeJoin} WHERE a.program='CWTS' AND a.company<>'' AND ${readAccess('a','cwts_instructor_id')}
     ORDER BY ses.open_date DESC,a.company`,[user.id]);
-  return rows.map(row=>({...row,id:`${row.company_assignment_id}-${row.session_id}`,effective_status:attendance.getEffectiveStatus(row,now)}))
+  return rows.map(row=>({...row,read_only:Number(row.active)!==1||Number(row.assigned_instructor_id)!==Number(user.id),id:`${row.company_assignment_id}-${row.session_id}`,effective_status:attendance.getEffectiveStatus(row,now)}))
     .filter(row=>row.effective_status!=='scheduled')
     .sort((a,b)=>Number(['open','late'].includes(b.effective_status))-Number(['open','late'].includes(a.effective_status)));
 }
 async function allowed(db,user,value,lock=false){
   requireCwts(user);const [assignmentId,sessionId]=scopeIds(value);
   const [[row]]=await db.execute(`SELECT ses.*,a.id company_assignment_id,a.company,a.schedule_id ${scopeJoin}
-    WHERE a.id=? AND ses.id=? AND a.program='CWTS' AND a.active=1 AND a.cwts_instructor_id=? ${lock?'FOR UPDATE':''}`,[assignmentId,sessionId,user.id]);
+    WHERE a.id=? AND ses.id=? AND a.program='CWTS' AND a.company<>'' AND ${lock?'a.active=1 AND a.cwts_instructor_id=?':readAccess('a','cwts_instructor_id')} ${lock?'FOR UPDATE':''}`,[assignmentId,sessionId,user.id]);
   if(!row)fail('This company or attendance session is not assigned to your account. Refresh attendance.',403);
   if(attendance.getEffectiveStatus(row)==='scheduled')fail('This attendance session has not opened yet.');
   return row;
@@ -36,11 +37,11 @@ async function allowed(db,user,value,lock=false){
 async function records(db,user,value){
   await allowed(db,user,value);const [assignmentId,sessionId]=scopeIds(value);
   const [rows]=await db.execute(`SELECT s.id student_internal_id,s.student_id,s.first_name,s.middle_name,s.last_name,
-    ar.id,COALESCE(ar.status,'unmarked') status,ar.record_version,ar.claimed_present,ar.false_present,ar.verified_by,ar.verified_at,
+    ar.id,ar.created_at,COALESCE(ar.status,'unmarked') status,ar.record_version,ar.claimed_present,ar.false_present,ar.verified_by,ar.verified_at,
     ses.id session_id,ses.mi_number,ses.mi_type,ses.open_date ${scopeJoin}
     JOIN students s ON ${studentScope}
     LEFT JOIN attendance_records ar ON ar.student_id=s.id AND ar.attendance_session_id=ses.id
-    WHERE a.id=? AND ses.id=? AND a.program='CWTS' AND a.cwts_instructor_id=? AND a.active=1 ORDER BY s.last_name,s.first_name`,[assignmentId,sessionId,user.id]);
+    WHERE a.id=? AND ses.id=? AND a.program='CWTS' AND ${readAccess('a','cwts_instructor_id')} ORDER BY s.last_name,s.first_name`,[assignmentId,sessionId,user.id]);
   return rows;
 }
 async function verify(db,user,value,studentId,body){
