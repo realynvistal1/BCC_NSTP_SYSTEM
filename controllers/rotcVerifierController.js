@@ -6,17 +6,7 @@ const { parsePositiveInt } = require('../services/requestValidationService');
 
 const companyNames = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel'];
 const specialUnits = ['Medics','HQ','MP'];
-const eligible = `EXISTS (SELECT 1 FROM student_ms_records vr
-  JOIN enrollment_schedules ves ON ves.id=CAST(vr.schedule_id AS UNSIGNED)
-  WHERE vr.student_id=a.verifier_id AND vr.program='ROTC' AND vr.status='approved'
-    AND vr.ms_level=a.ms_level AND ves.program='ROTC' AND ves.year=a.school_year
-    AND vr.assignment_is_advance=1 AND vr.assignment_special_unit IS NULL
-    )
-  AND EXISTS (SELECT 1 FROM students vs WHERE vs.id=a.verifier_id
-    AND vs.role='student' AND vs.nstp_component='ROTC'
-    AND vs.willing_to_take_advance_course=1
-    AND (a.special_unit IN ('Medics','HQ','MP')
-      OR (a.battalion=1 AND vs.sex='Male') OR (a.battalion=2 AND vs.sex='Female')))`;
+const {eligibleSql:eligible,groupList,coverage}=require('../services/rotcVerifierCoverageService');
 let scope = `ses.program='ROTC' AND COALESCE(ses.is_advance_course,0)=0
   AND ses.ms_level=a.ms_level AND ses.school_year=a.school_year
   AND (a.mi_number=0 OR ses.mi_number=a.mi_number)
@@ -29,7 +19,7 @@ let scope = `ses.program='ROTC' AND COALESCE(ses.is_advance_course,0)=0
       AND ((a.special_unit='' AND smr.assignment_battalion=a.battalion
         AND smr.assignment_company=a.company AND smr.assignment_platoon=a.platoon
         AND smr.assignment_special_unit IS NULL)
-        OR (a.special_unit IN ('Medics','HQ','MP') AND smr.assignment_special_unit=a.special_unit))
+        OR (a.special_unit IN ('Medics','HQ','MP') AND smr.assignment_special_unit=a.special_unit AND smr.assignment_platoon=a.platoon))
       AND COALESCE(smr.assignment_is_advance,0)=0)`;
 // Membership belongs to the session opening time, not today's edited roster.
 const sessionAssignment = path => `NULLIF(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(
@@ -46,7 +36,7 @@ function validAssignment(body) {
   if (!verifierId || (!semester&&(!miNumber||miNumber>15||!['in','out'].includes(miType)))
     || !['1','2'].includes(level) || !/^\d{4}-\d{4}$/.test(year)
     || Number(year.slice(5))!==Number(year.slice(0,4))+1) return null;
-  if (specialUnit) return specialUnits.includes(specialUnit) ? [verifierId,0,'',0,level,year,specialUnit,miNumber,miType] : null;
+  if (specialUnit) return specialUnits.includes(specialUnit)&&[1,2].includes(platoon) ? [verifierId,0,'',platoon,level,year,specialUnit,miNumber,miType] : null;
   if (![1,2].includes(battalion)||!companyNames.includes(company) || !Number.isInteger(platoon) || platoon<1 || platoon>255) return null;
   return [verifierId,battalion,company,platoon,level,year,'',miNumber,miType];
 }
@@ -58,7 +48,9 @@ function endpoint(fn) {
 }
 exports.management = endpoint(async (req,res) => {
   const [assignments]=await db.execute(`SELECT a.*,s.student_id,s.first_name,s.last_name,
-    (${eligible}) eligible FROM rotc_verifier_assignments a JOIN students s ON s.id=a.verifier_id
+    (${eligible}) eligible,
+    EXISTS(SELECT 1 FROM advance_course_withdrawals w WHERE w.student_id=a.verifier_id AND w.status='approved') withdrawal_approved
+    FROM rotc_verifier_assignments a JOIN students s ON s.id=a.verifier_id
     ORDER BY a.school_year DESC,a.battalion,a.company,a.platoon`);
   const [candidates]=await db.execute(`SELECT DISTINCT s.id,s.student_id,s.first_name,s.last_name,s.sex,s.course,s.year_level,smr.ms_level,es.year school_year
     FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
@@ -70,12 +62,8 @@ exports.management = endpoint(async (req,res) => {
   const [sessions]=await db.execute(`SELECT DISTINCT ms_level,school_year,mi_number,mi_type FROM attendance_sessions
     WHERE program='ROTC' AND COALESCE(is_advance_course,0)=0 AND mi_number BETWEEN 1 AND 15
       AND mi_type IN ('in','out') ORDER BY school_year DESC,ms_level,mi_number,mi_type`);
-  const [groups]=await db.execute(`SELECT DISTINCT r.ms_level,es.year school_year,r.assignment_battalion battalion,r.assignment_company company,r.assignment_platoon platoon
-    FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED)
-    WHERE r.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL
-      AND r.assignment_special_unit IS NULL AND COALESCE(r.assignment_is_advance,0)=0 AND r.assignment_company IS NOT NULL
-    ORDER BY r.assignment_battalion,r.assignment_company,r.assignment_platoon`);
-  const [specialGroups]=await db.execute(`SELECT DISTINCT r.ms_level,es.year school_year,r.assignment_special_unit special_unit FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED) WHERE r.program='ROTC' AND es.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL AND r.assignment_special_unit IN ('Medics','HQ','MP') ORDER BY r.assignment_special_unit`);
+  const rosterGroups=await groupList(db);
+  const groups=rosterGroups.filter(g=>!g.special_unit),specialGroups=rosterGroups.filter(g=>g.special_unit);
   const companies=Object.fromEntries([1,2].map(battalion=>[battalion,[...new Set(groups.filter(group=>Number(group.battalion)===battalion).map(group=>group.company))]]));
   res.json({assignments,candidates,companies,groups,specialGroups,cycles,specialUnits,sessions});
 });
@@ -89,10 +77,14 @@ exports.assign = endpoint(async (req,res) => {
       AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1
       AND smr.assignment_special_unit IS NULL AND smr.ms_level=? AND es.year=?`,[id,level,year]);
   if(!candidates.length) return res.status(400).json({message:'The verifier must be approved and assigned to Advance Course in the selected MS level and school year.'});
-  if(!values[6] && candidates[0].sex!==(values[1]===1?'Male':'Female'))
-    return res.status(400).json({message:values[1]===1?'Battalion 1 requires a male Advance Course verifier.':'Battalion 2 requires a female Advance Course verifier.'});
+  if(candidates[0].sex!==((values[6]?values[3]:values[1])===1?'Male':'Female'))
+    return res.status(400).json({message:((values[6]?values[3]:values[1])===1?'This platoon requires a male Advance Course verifier.':'This platoon requires a female Advance Course verifier.')});
   const [cycles]=await db.execute("SELECT id FROM enrollment_schedules WHERE program='ROTC' AND ms_level=? AND year=?",[level,year]);
   if(!cycles.length) return res.status(400).json({message:'Select an existing ROTC enrollment level and school year.'});
+  if(values[6]) {
+    const allowed=(await groupList(db)).some(g=>g.special_unit===values[6]&&Number(g.platoon)===values[3]&&String(g.ms_level)===level&&g.school_year===year);
+    if(!allowed)return res.status(400).json({message:'Select a special-unit platoon from the published roster.'});
+  }
   if(!values[6]) {
     const [groups]=await db.execute(`SELECT r.id FROM student_ms_records r JOIN enrollment_schedules es ON es.id=CAST(r.schedule_id AS UNSIGNED)
       WHERE r.program='ROTC' AND r.status='approved' AND es.platoons_assigned_at IS NOT NULL AND r.ms_level=? AND es.year=?
@@ -118,12 +110,12 @@ exports.assign = endpoint(async (req,res) => {
     }
     // Serialize assignments for this cycle so concurrent requests cannot replace active access.
     await connection.execute('SELECT id FROM enrollment_schedules WHERE id=? FOR UPDATE',[cycles[0].id]);
-    const [eligibleNow]=await connection.execute(`SELECT s.id FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
+    const [eligibleNow]=await connection.execute(`SELECT s.id,s.sex FROM students s JOIN student_ms_records smr ON smr.student_id=s.id
       JOIN enrollment_schedules es ON es.id=CAST(smr.schedule_id AS UNSIGNED)
       WHERE s.id=? AND s.role='student' AND s.nstp_component='ROTC' AND s.willing_to_take_advance_course=1
         AND smr.program='ROTC' AND smr.status='approved' AND smr.assignment_is_advance=1 AND smr.assignment_special_unit IS NULL
         AND smr.ms_level=? AND es.program='ROTC' AND es.year=? FOR UPDATE`,[id,level,year]);
-    if(!eligibleNow.length){await connection.rollback();return res.status(409).json({message:'Verifier enrollment is no longer eligible for this MS level and school year. Refresh the list.'});}
+    if(!eligibleNow.length||eligibleNow[0].sex!==((values[6]?values[3]:values[1])===1?'Male':'Female')){await connection.rollback();return res.status(409).json({message:'Verifier enrollment is no longer eligible for this MS level and school year. Refresh the list.'});}
 
     const [existing]=await connection.execute(`SELECT id FROM rotc_verifier_assignments
       WHERE battalion=? AND company=? AND platoon=? AND ms_level=? AND school_year=?
