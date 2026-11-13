@@ -223,7 +223,7 @@ async function loadAttendanceProgress() {
   renderMIProgress();
 
   const next = getNextAllowed(attendanceProgress.progress);
-  const canPrepareAttendance = Boolean(next && !blockingAttendanceSession);
+  const canPrepareAttendance = Boolean(next && !blockingAttendanceSession && attendanceProgress?.verifier_coverage?.ready!==false);
   if (canPrepareAttendance) {
     selectedNumber = next.number;
     selectedType = next.type;
@@ -246,12 +246,14 @@ function validateAttendanceForm() {
   const closeDate = document.getElementById("attendanceCloseDate").value;
   const location = readAttendanceLocation();
   const validDates = openDate && closeDate && new Date(closeDate) > new Date(openDate);
-  const ready = Boolean(program && selectedNumber && selectedType && validDates && location && !blockingAttendanceSession);
+  const ready = Boolean(program && selectedNumber && selectedType && validDates && location && !blockingAttendanceSession && attendanceProgress?.verifier_coverage?.ready!==false);
   document.getElementById("createAttendanceButton").disabled = !ready;
   const validation = document.getElementById("attendanceValidation");
-  validation.classList.toggle("blocked", Boolean(blockingAttendanceSession));
+  validation.classList.toggle("blocked", Boolean(blockingAttendanceSession)||attendanceProgress?.verifier_coverage?.ready===false);
 
-  if (blockingAttendanceSession) {
+  if(attendanceProgress?.verifier_coverage?.ready===false){
+    validation.textContent=attendanceProgress.verifier_coverage.warning;
+  } else if (blockingAttendanceSession) {
     const timing = blockingAttendanceTime(blockingAttendanceSession);
     validation.innerHTML = `
       <strong>Wait for ${esc(blockingAttendanceLabel(blockingAttendanceSession))} attendance to close.</strong>
@@ -349,6 +351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
     });
     document.getElementById("createAttendanceButton").addEventListener("click", createAttendanceSession);
+    window.addEventListener("focus",()=>{if(attendanceProgress?.verifier_coverage?.ready===false)loadAttendanceProgress().catch(error=>toast(error.message,true));});
   } catch (error) {
     console.error(error);
     toast(error.message, true);
