@@ -16,6 +16,7 @@ exports.update = async (req,res) => {
     const [[schedule]] = await connection.execute('SELECT * FROM enrollment_schedules WHERE id=? FOR UPDATE', [candidate.schedule_id]);
     const [[request]] = await connection.execute(`SELECT w.*,s.sex FROM advance_course_withdrawals w JOIN students s ON s.id=w.student_id WHERE w.id=? AND w.status='pending' FOR UPDATE`, [id]);
     if (!request) roster.fail('Withdrawal request already processed or not found.');
+    let removedVerifierAssignments=0;
     if (status === 'approved') {
       if (!schedule?.platoons_assigned_at) roster.fail('Finalize the roster before processing an Advance Course transfer.');
       const [[record]] = await connection.execute("SELECT * FROM student_ms_records WHERE student_id=? AND program='ROTC' AND status='approved' ORDER BY id DESC LIMIT 1 FOR UPDATE", [request.student_id]);
@@ -38,10 +39,15 @@ exports.update = async (req,res) => {
       await history.append(connection, {...record,assignment_battalion:slot.battalion,assignment_company:slot.company,assignment_platoon:slot.platoon,assignment_special_unit:null,assignment_is_advance:0}, 'Approved Advance Course withdrawal',req.user.email);
       const [[latest]] = await connection.execute('SELECT id FROM student_ms_records WHERE student_id=? ORDER BY id DESC LIMIT 1', [request.student_id]);
       if (Number(latest.id) === Number(record.id)) await connection.execute(`UPDATE students SET battalion=?,rotc_company=?,rotc_platoon=?,special_unit=NULL,willing_to_take_advance_course=0,platoon=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`, [slot.battalion,slot.company,slot.platoon,roster.label(slot),request.student_id]);
+      // Revoke current-semester access atomically with the transfer; retain audit history.
+      const [revoked]=await connection.execute(`UPDATE rotc_verifier_assignments SET active=0,assigned_by=?
+        WHERE verifier_id=? AND ms_level=? AND school_year=? AND active=1`,
+      [req.user.email,request.student_id,record.ms_level,schedule.year]);
+      removedVerifierAssignments=Number(revoked.affectedRows);
     }
     await connection.execute('UPDATE advance_course_withdrawals SET status=?,admin_remarks=?,updated_at=CURRENT_TIMESTAMP WHERE id=?', [status,remarks || null,id]);
     await connection.commit();
-    return res.json({message:status === 'approved' ? 'Withdrawal approved. Student transferred to an available regular platoon. Published roster updated.' : 'Withdrawal rejected.'});
+    return res.json({message:status === 'approved' ? 'Withdrawal approved. Student transferred to an available regular platoon. Published roster updated.'+(removedVerifierAssignments?' Attendance verifier assignment removed. Assign another eligible Advance Course student to the affected group.':'') : 'Withdrawal rejected.',removed_verifier_assignments:removedVerifierAssignments});
   } catch(error) {
     if(connection) await connection.rollback();
     if(!error.status) console.error('ROTC withdrawal:',error.message);
