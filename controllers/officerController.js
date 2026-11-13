@@ -1,3 +1,4 @@
+const verifierCoverage=require('../services/rotcVerifierCoverageService');
 const studentDetails = require('../services/studentDetailService');
 const path = require('path');
 const db = require('../config/database');
@@ -388,6 +389,7 @@ exports.attendanceProgress = async (req, res) => {
       program: rawProgram,
       actual_program: program,
       cycle,
+      verifier_coverage:program==='ROTC'&&!isAdvance?await verifierCoverage.coverage(db,cycle.ms_level,cycle.school_year):null,
       radius_meters: attendance.ATTENDANCE_RADIUS_METERS,
       late_minutes: attendance.LATE_THRESHOLD_MINUTES,
       blocking_session: blockingSession
@@ -470,6 +472,8 @@ exports.createAttendance = async (req, res) => {
         message: 'Select a valid MS/CWTS level.',
       });
     }
+
+    if(program==='ROTC'&&!isAdvance){const readiness=await verifierCoverage.coverage(db,msLevel,schoolYear);if(!readiness.ready)return res.status(409).json({message:readiness.warning,verifier_coverage:readiness});}
 
     const [nonClosedSessions] = await db.execute(
       `SELECT * FROM attendance_sessions
