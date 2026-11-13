@@ -4,7 +4,7 @@ async function history(db, studentId, program) {
   if (program) { clauses.push('r.program=?'); values.push(program); }
   const [rows] = await db.execute(`SELECT r.id enrollment_record_id,r.student_id,r.ms_level,r.program,
     r.status enrollment_status,r.status_reason,r.enrollment_kind,r.absence_years,r.schedule_id,r.assignment_label,r.assignment_battalion,
-    r.assignment_company,r.assignment_platoon,r.assignment_special_unit,
+    r.assignment_company,r.assignment_platoon,r.assignment_special_unit,r.assignment_is_advance,
     es.year school_year,a.midterm,a.final_term,a.grade,a.status,a.updated_at,
     (1 + (SELECT COUNT(*) FROM student_ms_records prior WHERE prior.student_id=r.student_id
       AND prior.program=r.program AND prior.ms_level=r.ms_level
