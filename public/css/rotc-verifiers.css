@@ -635,3 +635,14 @@ body[data-role="rotc"][data-page="rotc-verifiers"] .intro h1{color:#fff}
 body[data-role="rotc"][data-page="rotc-verifiers"] .intro .intro-kicker{color:#b9d8f2}
 body[data-role="rotc"][data-page="rotc-verifiers"] .intro p{color:#d8e7f4}
 body[data-role="rotc"][data-page="rotc-verifiers"] .intro:after{background:#ffffff0b}
+
+/* Use the light blue ROTC page-header treatment. */
+body[data-role="rotc"][data-page="rotc-verifiers"] .intro{background:linear-gradient(110deg,#f6faff,#9ecafa);border:1px solid #5599ff;box-shadow:0 6px 18px #487bb00c}
+body[data-role="rotc"][data-page="rotc-verifiers"] .intro h1{color:#102d4b}
+body[data-role="rotc"][data-page="rotc-verifiers"] .intro .intro-kicker{color:#4287cc}
+body[data-role="rotc"][data-page="rotc-verifiers"] .intro p{color:#567c9e}
+body[data-role="rotc"][data-page="rotc-verifiers"] .intro:after{background:#ffffff32}
+
+.verifier-coverage-warning{margin:0 0 18px;padding:16px 18px;border:1px solid #e8b54d;border-left:5px solid #d99b20;border-radius:12px;background:#fff8e6;color:#79520f}
+.verifier-coverage-warning[hidden]{display:none}
+.verifier-coverage-warning strong{display:block;font-size:15px}.verifier-coverage-warning p{margin:7px 0;line-height:1.5}.verifier-coverage-warning summary{cursor:pointer;font-weight:600}.verifier-coverage-warning ul{margin:10px 0 0;padding-left:22px;line-height:1.7}
